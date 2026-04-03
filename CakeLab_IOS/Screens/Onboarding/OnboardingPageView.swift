@@ -78,13 +78,15 @@ struct OnboardingPageView: View {
 
                         // ── Title ─────────────────────────────────────────
                         page.titleText
-                            .font(.urbanistBold(20))
+                            .font(.urbanistBold(18))
                             .multilineTextAlignment(.leading)
-                            .fixedSize(horizontal: false, vertical: true)
+                            .lineLimit(page.singleLine ? 1 : nil)
+                            .minimumScaleFactor(page.singleLine ? 0.78 : 1)
+                            .fixedSize(horizontal: false, vertical: !page.singleLine)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 32)
+                            .padding(.horizontal, 30)
 
-                        Spacer().frame(height: 12)
+                        Spacer().frame(height: 11)
 
                         // ── Subtitle ──────────────────────────────────────
                         Text(page.subtitle)
@@ -94,7 +96,7 @@ struct OnboardingPageView: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .lineSpacing(4)
-                            .padding(.horizontal, 32)
+                            .padding(.horizontal, 30)
 
                         Spacer()
 

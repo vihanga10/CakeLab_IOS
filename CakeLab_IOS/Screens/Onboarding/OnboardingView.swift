@@ -13,11 +13,12 @@ struct OnboardingPage {
     let titleSegments: [(String, Bool)]
     let subtitle: String
     let imageName: String
+    var singleLine: Bool = false
 
     var titleText: Text {
         titleSegments.reduce(Text("")) { result, segment in
             result + Text(segment.0)
-                .font(Font.custom("Urbanist-Bold", size: 26))
+                .font(Font.custom(segment.1 ? "Urbanist-SemiBold" : "Urbanist-Bold", size: 26))
                 .foregroundColor(segment.1 ? .cakeBrown : Color(red: 0.1, green: 0.1, blue: 0.1))
         }
     }
@@ -27,7 +28,7 @@ struct OnboardingPage {
 struct OnboardingView: View {
 
     @State private var currentPage = 0
-    @State private var showMain = false
+    @State private var showLanguage = false
 
     private let pages: [OnboardingPage] = [
         // Page 1
@@ -60,13 +61,14 @@ struct OnboardingView: View {
                 (" Moment",        false)
             ],
             subtitle: "From 'Request Sent' to 'Cake Delivered' see live updates in real time",
-            imageName: "splash3"
+            imageName: "splash3",
+            singleLine: true
         )
     ]
 
     var body: some View {
-        if showMain {
-            ContentView()
+        if showLanguage {
+            LanguageSelectionView()
         } else {
             TabView(selection: $currentPage) {
                 ForEach(pages.indices, id: \.self) { index in
@@ -79,7 +81,7 @@ struct OnboardingView: View {
                                 if currentPage < pages.count - 1 {
                                     currentPage += 1
                                 } else {
-                                    showMain = true
+                                    showLanguage = true
                                 }
                             }
                         },
