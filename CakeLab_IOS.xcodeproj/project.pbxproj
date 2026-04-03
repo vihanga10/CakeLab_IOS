@@ -6,6 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		B28ECF4F2F7F8597002345B5 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = B28ECF4E2F7F8597002345B5 /* FirebaseAuth */; };
+		B28ECF512F7F8597002345B5 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = B28ECF502F7F8597002345B5 /* FirebaseFirestore */; };
+		B28ECF532F7F8597002345B5 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = B28ECF522F7F8597002345B5 /* FirebaseMessaging */; };
+		B28ECF552F7F8597002345B5 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = B28ECF542F7F8597002345B5 /* FirebaseStorage */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		B28ECF3B2F7F77BA002345B5 /* CakeLab_IOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CakeLab_IOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +30,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B28ECF532F7F8597002345B5 /* FirebaseMessaging in Frameworks */,
+				B28ECF552F7F8597002345B5 /* FirebaseStorage in Frameworks */,
+				B28ECF4F2F7F8597002345B5 /* FirebaseAuth in Frameworks */,
+				B28ECF512F7F8597002345B5 /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +76,10 @@
 			);
 			name = CakeLab_IOS;
 			packageProductDependencies = (
+				B28ECF4E2F7F8597002345B5 /* FirebaseAuth */,
+				B28ECF502F7F8597002345B5 /* FirebaseFirestore */,
+				B28ECF522F7F8597002345B5 /* FirebaseMessaging */,
+				B28ECF542F7F8597002345B5 /* FirebaseStorage */,
 			);
 			productName = CakeLab_IOS;
 			productReference = B28ECF3B2F7F77BA002345B5 /* CakeLab_IOS.app */;
@@ -94,6 +109,9 @@
 			);
 			mainGroup = B28ECF322F7F77B9002345B5;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				B28ECF4D2F7F8597002345B5 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B28ECF3C2F7F77BA002345B5 /* Products */;
 			projectDirPath = "";
@@ -328,6 +346,40 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		B28ECF4D2F7F8597002345B5 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.11.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		B28ECF4E2F7F8597002345B5 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B28ECF4D2F7F8597002345B5 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		B28ECF502F7F8597002345B5 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B28ECF4D2F7F8597002345B5 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		B28ECF522F7F8597002345B5 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B28ECF4D2F7F8597002345B5 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+		B28ECF542F7F8597002345B5 /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B28ECF4D2F7F8597002345B5 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = B28ECF332F7F77B9002345B5 /* Project object */;
 }
