@@ -14,8 +14,8 @@ struct BiometricAuthView: View {
     
     var body: some View {
         NavigationStack {
-            if navigateToHome {
-                ContentView()
+            if let user = vm.authenticatedUser, navigateToHome {
+                ContentViewWrapper(user: user)
             } else {
                 GeometryReader { geo in
                     let cardHeight = geo.size.height * 0.70
@@ -154,10 +154,18 @@ struct BiometricAuthView: View {
                 // ── Authentication Button ─────────────────────────────
                 Button {
                     Task {
+                        // Step 1: Verify email and fetch user
                         await vm.checkUserExists()
-                        await vm.authenticateWithFaceID()
-                        if vm.errorMessage == nil && vm.isUserValid {
-                            navigateToHome = true
+                        
+                        // Only proceed to Face ID if user was found
+                        if vm.isUserValid && vm.errorMessage == nil {
+                            // Step 2: Authenticate with Face ID
+                            await vm.authenticateWithFaceID()
+                            
+                            // Step 3: Navigate if Face ID successful
+                            if vm.errorMessage == nil && vm.authenticatedUser != nil {
+                                navigateToHome = true
+                            }
                         }
                     }
                 } label: {
@@ -175,7 +183,7 @@ struct BiometricAuthView: View {
                     .background(Color.cakeBrown)
                     .clipShape(Capsule())
                 }
-                .disabled(vm.isLoading || !vm.faceIDAvailable || vm.email.isEmpty)
+                .disabled(vm.isLoading || vm.email.isEmpty)
                 .padding(.horizontal, 28)
                 
                 // ── OR Divider (close to button) ───────────────────────

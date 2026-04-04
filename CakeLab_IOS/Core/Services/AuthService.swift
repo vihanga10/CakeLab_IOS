@@ -13,14 +13,14 @@ final class AuthService: AuthServiceProtocol {
     // MARK: Sign In
     func signIn(email: String, password: String) async throws -> AppUser {
         do {
-            print("🔐 DEBUG: Starting sign-in for \(email)")
+            print("DEBUG: Starting sign-in for \(email)")
             let result = try await auth.signIn(withEmail: email, password: password)
-            print("✅ DEBUG: Firebase Auth sign-in successful: \(result.user.uid)")
+            print("DEBUG: Firebase Auth sign-in successful: \(result.user.uid)")
             return try await fetchUser(uid: result.user.uid)
         } catch let error as NSError {
-            print("❌ ERROR Domain: \(error.domain)")
-            print("❌ ERROR Code: \(error.code)")
-            print("❌ ERROR Message: \(error.localizedDescription)")
+            print("ERROR Domain: \(error.domain)")
+            print("ERROR Code: \(error.code)")
+            print("ERROR Message: \(error.localizedDescription)")
             throw AuthError.networkError(error.localizedDescription)
         }
     }
@@ -28,9 +28,9 @@ final class AuthService: AuthServiceProtocol {
     // MARK: Sign Up
     func signUp(email: String, password: String, role: UserRole) async throws -> AppUser {
         do {
-            print("🔐 DEBUG: Starting sign-up for \(email)")
+            print("DEBUG: Starting sign-up for \(email)")
             let result = try await auth.createUser(withEmail: email, password: password)
-            print("✅ DEBUG: Firebase Auth user created: \(result.user.uid)")
+            print("DEBUG: Firebase Auth user created: \(result.user.uid)")
             
             let uid = result.user.uid
             let user = AppUser(
@@ -43,15 +43,15 @@ final class AuthService: AuthServiceProtocol {
                 createdAt: Date()
             )
             
-            print("💾 DEBUG: Saving user profile to Firestore...")
+            print("DEBUG: Saving user profile to Firestore...")
             try await saveUser(user)
-            print("✅ DEBUG: User profile saved successfully")
+            print("DEBUG: User profile saved successfully")
             return user
         } catch let error as NSError {
-            print("❌ ERROR Domain: \(error.domain)")
-            print("❌ ERROR Code: \(error.code)")
-            print("❌ ERROR Message: \(error.localizedDescription)")
-            print("❌ FULL ERROR: \(error)")
+            print("ERROR Domain: \(error.domain)")
+            print("ERROR Code: \(error.code)")
+            print("ERROR Message: \(error.localizedDescription)")
+            print("FULL ERROR: \(error)")
             throw AuthError.networkError(error.localizedDescription)
         }
     }
@@ -68,7 +68,7 @@ final class AuthService: AuthServiceProtocol {
     // MARK: OTP Management
     func saveOTP(email: String, otp: String) async throws {
         do {
-            print("💾 DEBUG: Saving OTP to Firestore for \(email)")
+            print("DEBUG: Saving OTP to Firestore for \(email)")
             let otpData: [String: Any] = [
                 "email": email,
                 "otp": otp,
@@ -78,11 +78,11 @@ final class AuthService: AuthServiceProtocol {
             
             // Save to otps collection with email as document ID
             try await db.collection("otps").document(email).setData(otpData, merge: true)
-            print("✅ DEBUG: OTP saved successfully for \(email)")
+            print("DEBUG: OTP saved successfully for \(email)")
         } catch let error as NSError {
-            print("❌ OTP SAVE ERROR Domain: \(error.domain)")
-            print("❌ OTP SAVE ERROR Code: \(error.code)")
-            print("❌ OTP SAVE ERROR Message: \(error.localizedDescription)")
+            print("OTP SAVE ERROR Domain: \(error.domain)")
+            print("OTP SAVE ERROR Code: \(error.code)")
+            print("OTP SAVE ERROR Message: \(error.localizedDescription)")
             throw AuthError.networkError("Failed to save OTP: \(error.localizedDescription)")
         }
     }
@@ -93,7 +93,7 @@ final class AuthService: AuthServiceProtocol {
             let doc = try await db.collection("otps").document(email).getDocument()
             
             guard let data = doc.data() else {
-                print("❌ DEBUG: No OTP record found for \(email)")
+                print("DEBUG: No OTP record found for \(email)")
                 throw AuthError.unknown("OTP not found. Please request a new one.")
             }
             
@@ -102,25 +102,25 @@ final class AuthService: AuthServiceProtocol {
             
             // Check if OTP is expired
             if Date() > expiresAt {
-                print("❌ DEBUG: OTP expired for \(email)")
+                print("DEBUG: OTP expired for \(email)")
                 throw AuthError.unknown("OTP has expired. Please request a new one.")
             }
             
             // Check if OTP matches
             let isValid = savedOTP == userOTP
             if isValid {
-                print("✅ DEBUG: OTP verification successful for \(email)")
+                print("DEBUG: OTP verification successful for \(email)")
                 // Delete the OTP after successful verification
                 try await db.collection("otps").document(email).delete()
             } else {
-                print("❌ DEBUG: OTP mismatch - saved: \(savedOTP), provided: \(userOTP)")
+                print("DEBUG: OTP mismatch - saved: \(savedOTP), provided: \(userOTP)")
             }
             
             return isValid
         } catch let error as NSError {
-            print("❌ OTP VERIFY ERROR Domain: \(error.domain)")
-            print("❌ OTP VERIFY ERROR Code: \(error.code)")
-            print("❌ OTP VERIFY ERROR Message: \(error.localizedDescription)")
+            print("OTP VERIFY ERROR Domain: \(error.domain)")
+            print("OTP VERIFY ERROR Code: \(error.code)")
+            print("OTP VERIFY ERROR Message: \(error.localizedDescription)")
             throw error
         }
     }
@@ -130,7 +130,33 @@ final class AuthService: AuthServiceProtocol {
         try auth.signOut()
     }
 
-    // MARK: - Private helpers
+    // MARK: - Fetch User by Email
+    func fetchUserByEmail(_ email: String) async throws -> AppUser {
+        do {
+            print("🔍 DEBUG: Fetching user by email: \(email)")
+            
+            // Query users collection where email matches
+            let query = db.collection("users").whereField("email", isEqualTo: email)
+            let snapshot = try await query.getDocuments()
+            
+            guard let document = snapshot.documents.first else {
+                print("DEBUG: No user found with email: \(email)")
+                throw AuthError.unknown("User not found. Please check your email or sign up.")
+            }
+            
+            let data = document.data()
+            let uid = document.documentID
+            let user = try decodeUser(from: data, uid: uid)
+            
+            print("DEBUG: User found - Email: \(user.email), Role: \(user.role.rawValue)")
+            return user
+        } catch let error as NSError {
+            print("FETCH USER ERROR Domain: \(error.domain)")
+            print("FETCH USER ERROR Code: \(error.code)")
+            print("FETCH USER ERROR Message: \(error.localizedDescription)")
+            throw error
+        }
+    }
 
     private func fetchUser(uid: String) async throws -> AppUser {
         let doc = try await db.collection("users").document(uid).getDocument()
@@ -150,12 +176,12 @@ final class AuthService: AuthServiceProtocol {
         ]
         do {
             try await db.collection("users").document(user.id).setData(data)
-            print("✅ DEBUG: Firestore write successful for user \(user.id)")
+            print("DEBUG: Firestore write successful for user \(user.id)")
         } catch let error as NSError {
-            print("❌ FIRESTORE ERROR Domain: \(error.domain)")
-            print("❌ FIRESTORE ERROR Code: \(error.code)")
-            print("❌ FIRESTORE ERROR Message: \(error.localizedDescription)")
-            print("❌ FIRESTORE FULL ERROR: \(error)")
+            print("FIRESTORE ERROR Domain: \(error.domain)")
+            print("FIRESTORE ERROR Code: \(error.code)")
+            print("FIRESTORE ERROR Message: \(error.localizedDescription)")
+            print("FIRESTORE FULL ERROR: \(error)")
             throw error
         }
     }

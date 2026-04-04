@@ -66,21 +66,18 @@ final class BiometricAuthViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         
-        Task {
-            do {
-                // TODO: In production, you would verify the user exists by attempting to fetch their profile
-                // For MVP, we'll assume the user exists if they provide a valid email
-                // In a real app, you might have a backend endpoint to verify user existence
-                
-                print("✅ Email validated: \(email)")
-                isUserValid = true
-                isLoading = false
-            } catch {
-                errorMessage = "Unable to verify user. Please try again."
-                isUserValid = false
-                isLoading = false
-                print("❌ User verification error: \(error.localizedDescription)")
-            }
+        do {
+            // Fetch user by email from Firestore
+            let user = try await authService.fetchUserByEmail(email.trimmingCharacters(in: .whitespaces))
+            print("✅ DEBUG: User verified - Email: \(user.email), Role: \(user.role.rawValue)")
+            authenticatedUser = user
+            isUserValid = true
+            isLoading = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isUserValid = false
+            isLoading = false
+            print("❌ User verification error: \(error.localizedDescription)")
         }
     }
     
@@ -88,6 +85,11 @@ final class BiometricAuthViewModel: ObservableObject {
     func authenticateWithFaceID() async {
         guard isUserValid else {
             errorMessage = "Please enter a valid email first"
+            return
+        }
+        
+        guard let user = authenticatedUser else {
+            errorMessage = "User information not found"
             return
         }
         
@@ -110,9 +112,9 @@ final class BiometricAuthViewModel: ObservableObject {
             
             if success {
                 print("✅ DEBUG: Face ID authentication successful for \(email)")
+                print("✅ DEBUG: User role: \(user.role.rawValue)")
+                // Successfully authenticated - the view will handle navigation via binding
                 isLoading = false
-                // In production, you would fetch the actual user from Firebase here
-                // For now, we'll just mark authentication as complete
             } else {
                 errorMessage = "Face ID authentication was cancelled"
                 isLoading = false

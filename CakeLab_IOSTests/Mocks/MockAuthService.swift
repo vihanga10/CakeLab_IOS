@@ -14,12 +14,13 @@ final class MockAuthService: AuthServiceProtocol {
     var mockOTPValid = true
 
     // MARK: - Call tracking (verify ViewModel calls the right methods)
-    private(set) var signInCalled    = false
-    private(set) var signUpCalled    = false
-    private(set) var resetCalled     = false
-    private(set) var signOutCalled   = false
-    private(set) var saveOTPCalled   = false
-    private(set) var verifyOTPCalled = false
+    private(set) var signInCalled         = false
+    private(set) var signUpCalled         = false
+    private(set) var resetCalled          = false
+    private(set) var signOutCalled        = false
+    private(set) var saveOTPCalled        = false
+    private(set) var verifyOTPCalled      = false
+    private(set) var fetchUserByCalled    = false
 
     var currentUserID: String? { mockUser.id }
 
@@ -52,6 +53,12 @@ final class MockAuthService: AuthServiceProtocol {
         verifyOTPCalled = true
         if shouldFail { throw errorToThrow }
         return mockOTPValid
+    }
+
+    func fetchUserByEmail(_ email: String) async throws -> AppUser {
+        fetchUserByCalled = true
+        if shouldFail { throw errorToThrow }
+        return mockUser
     }
 
     func signOut() throws {
