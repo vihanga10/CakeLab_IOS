@@ -11,7 +11,7 @@ private struct Language: Identifiable {
 struct LanguageSelectionView: View {
 
     @State private var selectedLanguage: String = "English"
-    @State private var showMain = false
+    @State private var showSignIn = false
 
     private let languages: [Language] = [
         Language(native: "English",   english: "British English"),
@@ -22,8 +22,8 @@ struct LanguageSelectionView: View {
     private let cardHeight: CGFloat = 460
 
     var body: some View {
-        if showMain {
-            ContentView()
+        if showSignIn {
+            NavigationStack { SignInView() }
         } else {
             GeometryReader { geo in
                 ZStack(alignment: .bottom) {
@@ -85,7 +85,7 @@ struct LanguageSelectionView: View {
                             // ── Continue Button ───────────────────────────
                             Button(action: {
                                 withAnimation(.easeInOut(duration: 0.35)) {
-                                    showMain = true
+                                    showSignIn = true
                                 }
                             }) {
                                 Text("Continue")

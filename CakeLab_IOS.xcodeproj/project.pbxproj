@@ -13,14 +13,30 @@
 		B28ECF552F7F8597002345B5 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = B28ECF542F7F8597002345B5 /* FirebaseStorage */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		B28ED0322F80C908002345B5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B28ECF332F7F77B9002345B5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B28ECF3A2F7F77B9002345B5;
+			remoteInfo = CakeLab_IOS;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		B28ECF3B2F7F77BA002345B5 /* CakeLab_IOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CakeLab_IOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B28ED02E2F80C908002345B5 /* CakeLab_IOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CakeLab_IOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		B28ECF3D2F7F77BA002345B5 /* CakeLab_IOS */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = CakeLab_IOS;
+			sourceTree = "<group>";
+		};
+		B28ED02F2F80C908002345B5 /* CakeLab_IOSTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CakeLab_IOSTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -37,6 +53,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B28ED02B2F80C908002345B5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -44,6 +67,7 @@
 			isa = PBXGroup;
 			children = (
 				B28ECF3D2F7F77BA002345B5 /* CakeLab_IOS */,
+				B28ED02F2F80C908002345B5 /* CakeLab_IOSTests */,
 				B28ECF3C2F7F77BA002345B5 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -52,6 +76,7 @@
 			isa = PBXGroup;
 			children = (
 				B28ECF3B2F7F77BA002345B5 /* CakeLab_IOS.app */,
+				B28ED02E2F80C908002345B5 /* CakeLab_IOSTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -85,6 +110,29 @@
 			productReference = B28ECF3B2F7F77BA002345B5 /* CakeLab_IOS.app */;
 			productType = "com.apple.product-type.application";
 		};
+		B28ED02D2F80C908002345B5 /* CakeLab_IOSTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B28ED0362F80C908002345B5 /* Build configuration list for PBXNativeTarget "CakeLab_IOSTests" */;
+			buildPhases = (
+				B28ED02A2F80C908002345B5 /* Sources */,
+				B28ED02B2F80C908002345B5 /* Frameworks */,
+				B28ED02C2F80C908002345B5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B28ED0332F80C908002345B5 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				B28ED02F2F80C908002345B5 /* CakeLab_IOSTests */,
+			);
+			name = CakeLab_IOSTests;
+			packageProductDependencies = (
+			);
+			productName = CakeLab_IOSTests;
+			productReference = B28ED02E2F80C908002345B5 /* CakeLab_IOSTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -97,6 +145,10 @@
 				TargetAttributes = {
 					B28ECF3A2F7F77B9002345B5 = {
 						CreatedOnToolsVersion = 26.2;
+					};
+					B28ED02D2F80C908002345B5 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = B28ECF3A2F7F77B9002345B5;
 					};
 				};
 			};
@@ -118,12 +170,20 @@
 			projectRoot = "";
 			targets = (
 				B28ECF3A2F7F77B9002345B5 /* CakeLab_IOS */,
+				B28ED02D2F80C908002345B5 /* CakeLab_IOSTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		B28ECF392F7F77B9002345B5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B28ED02C2F80C908002345B5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -140,7 +200,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B28ED02A2F80C908002345B5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B28ED0332F80C908002345B5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B28ECF3A2F7F77B9002345B5 /* CakeLab_IOS */;
+			targetProxy = B28ED0322F80C908002345B5 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		B28ECF442F7F77BA002345B5 /* Debug */ = {
@@ -326,6 +401,46 @@
 			};
 			name = Release;
 		};
+		B28ED0342F80C908002345B5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.vihanga.CakeLab-IOSTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CakeLab_IOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CakeLab_IOS";
+			};
+			name = Debug;
+		};
+		B28ED0352F80C908002345B5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.vihanga.CakeLab-IOSTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CakeLab_IOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CakeLab_IOS";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -343,6 +458,15 @@
 			buildConfigurations = (
 				B28ECF472F7F77BA002345B5 /* Debug */,
 				B28ECF482F7F77BA002345B5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B28ED0362F80C908002345B5 /* Build configuration list for PBXNativeTarget "CakeLab_IOSTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B28ED0342F80C908002345B5 /* Debug */,
+				B28ED0352F80C908002345B5 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
