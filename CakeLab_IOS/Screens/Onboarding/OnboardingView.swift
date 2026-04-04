@@ -17,9 +17,10 @@ struct OnboardingPage {
 
     var titleText: Text {
         titleSegments.reduce(Text("")) { result, segment in
-            result + Text(segment.0)
+            let styled = Text(segment.0)
                 .font(Font.custom(segment.1 ? "Urbanist-SemiBold" : "Urbanist-Bold", size: 26))
                 .foregroundColor(segment.1 ? .cakeBrown : Color(red: 0.1, green: 0.1, blue: 0.1))
+            return Text("\(result)\(styled)")
         }
     }
 }

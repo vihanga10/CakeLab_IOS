@@ -31,6 +31,10 @@ protocol AuthServiceProtocol {
     func signUp(email: String, password: String, role: UserRole) async throws -> AppUser
     /// Send a password reset email.
     func sendPasswordReset(email: String) async throws
+    /// Save OTP for password reset to Firestore.
+    func saveOTP(email: String, otp: String) async throws
+    /// Verify the OTP provided by user for password reset.
+    func verifyOTP(email: String, userOTP: String) async throws -> Bool
     /// Sign out the current user.
     func signOut() throws
     /// Currently signed-in user's UID, nil if not authenticated.

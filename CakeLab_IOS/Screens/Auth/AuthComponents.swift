@@ -97,14 +97,12 @@ struct SocialButtons: View {
     var body: some View {
         HStack(spacing: 24) {
             Spacer()
-            // Google
+            // Google — use image asset
             socialCircle {
-                // Google G multicolor icon approximation
-                Text("G")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(
-                        LinearGradient(colors: [.red, .orange], startPoint: .top, endPoint: .bottom)
-                    )
+                Image("google")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 24, height: 24)
             }
             // Apple
             socialCircle {

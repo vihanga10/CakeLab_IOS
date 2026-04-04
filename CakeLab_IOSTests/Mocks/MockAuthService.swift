@@ -11,12 +11,15 @@ final class MockAuthService: AuthServiceProtocol {
     var shouldFail     = false
     var errorToThrow: Error = AuthError.networkError("Mock network error")
     var mockUser: AppUser  = .mock
+    var mockOTPValid = true
 
     // MARK: - Call tracking (verify ViewModel calls the right methods)
     private(set) var signInCalled    = false
     private(set) var signUpCalled    = false
     private(set) var resetCalled     = false
     private(set) var signOutCalled   = false
+    private(set) var saveOTPCalled   = false
+    private(set) var verifyOTPCalled = false
 
     var currentUserID: String? { mockUser.id }
 
@@ -38,6 +41,17 @@ final class MockAuthService: AuthServiceProtocol {
     func sendPasswordReset(email: String) async throws {
         resetCalled = true
         if shouldFail { throw errorToThrow }
+    }
+
+    func saveOTP(email: String, otp: String) async throws {
+        saveOTPCalled = true
+        if shouldFail { throw errorToThrow }
+    }
+
+    func verifyOTP(email: String, userOTP: String) async throws -> Bool {
+        verifyOTPCalled = true
+        if shouldFail { throw errorToThrow }
+        return mockOTPValid
     }
 
     func signOut() throws {
