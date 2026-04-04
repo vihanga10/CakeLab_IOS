@@ -23,7 +23,7 @@ struct LanguageSelectionView: View {
 
     var body: some View {
         if showSignIn {
-            NavigationStack { SignInView() }
+            NavigationStack { BiometricAuthView() }
         } else {
             GeometryReader { geo in
                 ZStack(alignment: .bottom) {

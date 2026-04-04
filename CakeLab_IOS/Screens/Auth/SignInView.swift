@@ -63,7 +63,7 @@ struct SignInView: View {
             .navigationDestination(isPresented: $showSignUp)  { SignUpView() }
             .navigationDestination(isPresented: $showForgot)  { ForgotPasswordView() }
             .navigationDestination(isPresented: $showFaceID)  {
-                if let user = vm.signedInUser { BiometricAuthView(user: user) }
+                BiometricAuthView()
             }
             .navigationBarHidden(true)
             .onChange(of: vm.navigateToFaceID) { _, newVal in

@@ -60,9 +60,7 @@ struct SignUpView: View {
             }
             .ignoresSafeArea()
             .navigationDestination(isPresented: $showFaceID) {
-                if let user = vm.createdUser {
-                    BiometricAuthView(user: user)
-                }
+                BiometricAuthView()
             }
             .navigationBarHidden(true)
             .onChange(of: vm.navigateToFaceID) { _, newVal in

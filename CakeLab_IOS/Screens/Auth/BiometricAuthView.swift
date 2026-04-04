@@ -1,242 +1,267 @@
 import SwiftUI
+import LocalAuthentication
 
-// MARK: - Biometric Auth View (Face ID / Touch ID screen)
+// MARK: - Biometric Auth View (Face ID)
 struct BiometricAuthView: View {
-
-    let user: AppUser
-
-    @State private var email           = ""
-    @State private var authState: AuthState = .idle
-    @State private var navigateToMain  = false
-    @State private var showEmailLogin  = false
-
-    private let biometric = BiometricManager()
-    private let bgImage   = "language"
-    private let cardHeight: CGFloat = 400
-
-    enum AuthState {
-        case idle, authenticating, success, failed(String)
-    }
-
+    
+    @StateObject private var vm = BiometricAuthViewModel()
+    @State private var navigateToSignIn = false
+    @State private var navigateToSignUp = false
+    @State private var navigateToHome = false
+    @Environment(\.dismiss) private var dismiss
+    
+    private let bgImage = "Signin_up"
+    
     var body: some View {
-        if navigateToMain {
-            ContentView()
-        } else {
-            GeometryReader { geo in
-                ZStack(alignment: .bottom) {
-
-                    // ── Background photo ─────────────────────────────────
-                    Image(bgImage)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: geo.size.width, height: geo.size.height)
-                        .clipped()
-
-                    // ── Gradient fade ────────────────────────────────────
-                    LinearGradient(
-                        colors: [.clear, Color.white.opacity(0.2), .white],
-                        startPoint: .top, endPoint: .bottom
-                    )
-                    .frame(height: cardHeight + 80)
-                    .frame(maxWidth: .infinity)
-
-                    // ── White card ───────────────────────────────────────
-                    VStack(spacing: 0) {
-                        cardContent(geo: geo)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: cardHeight)
-                            .background(Color.white)
-                            .clipShape(TopRoundedRectangle2(cornerRadius: 40))
-
-                        Color.white.frame(height: geo.safeAreaInsets.bottom)
+        NavigationStack {
+            if navigateToHome {
+                ContentView()
+            } else {
+                GeometryReader { geo in
+                    let cardHeight = geo.size.height * 0.70
+                    ZStack(alignment: .bottom) {
+                        
+                        // ── Background photo ─────────────────────────────────
+                        Image(bgImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: geo.size.width, height: geo.size.height)
+                            .clipped()
+                        
+                        // ── Gradient fade ────────────────────────────────────
+                        LinearGradient(
+                            colors: [.clear, Color.white.opacity(0.2), .white],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                        .frame(height: cardHeight + 80)
+                        .frame(maxWidth: .infinity)
+                        
+                        // ── White card ───────────────────────────────────────
+                        VStack(spacing: 0) {
+                            cardContent
+                                .frame(maxWidth: .infinity)
+                                .frame(height: cardHeight)
+                                .background(Color.white)
+                                .clipShape(TopRoundedRectangle2(cornerRadius: 40))
+                            
+                            Color.white.frame(height: geo.safeAreaInsets.bottom)
+                        }
+                        
+                        // ── Back chevron ─────────────────────────────────────
+                       VStack(spacing: 0) {
+                        HStack {
+                            Button { dismiss() } label: {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.white)
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal, 40)
+                        .padding(.top, geo.safeAreaInsets.top + 79)
+                        Spacer()
                     }
+                    }
+                    .ignoresSafeArea()
                 }
                 .ignoresSafeArea()
-            }
-            .ignoresSafeArea()
-            .navigationBarHidden(true)
-            .onAppear {
-                // Automatically trigger Face ID when screen appears
-                Task {
-                    await triggerBiometric()
+                .navigationBarHidden(true)
+                .navigationDestination(isPresented: $navigateToSignIn) {
+                    SignInView()
+                }
+                .navigationDestination(isPresented: $navigateToSignUp) {
+                    SignUpView()
                 }
             }
         }
     }
-
-    // MARK: - Card content
-    @ViewBuilder
-    private func cardContent(geo: GeometryProxy) -> some View {
-        VStack(spacing: 0) {
-
-            Spacer().frame(height: 32)
-
+    
+    // MARK: - Card Content
+    private var cardContent: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            
+            Spacer().frame(height: 24)
+            
             // ── Heading ───────────────────────────────────────────────
             VStack(alignment: .leading, spacing: 4) {
-                Text("HI , WELCOME BACK")
+                Text("HI, WELCOME BACK")
                     .font(.urbanistBold(22))
                     .foregroundColor(.cakeBrown)
-
+                
                 Text("Sign In with Face ID")
                     .font(.urbanistRegular(13))
                     .foregroundColor(.cakeGrey)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 28)
-
-            Spacer().frame(height: 36)
-
-            // ── Face ID frame icon ────────────────────────────────────
-            faceIDIcon
-
-            Spacer().frame(height: 12)
-
-            Text("Position your face on the box")
-                .font(.urbanistRegular(13))
-                .foregroundColor(.cakeGrey)
-
-            Spacer().frame(height: 32)
-
-            // ── Email field (optional pre-fill) ───────────────────────
+            
+            Spacer().frame(height: 20)
+            
+            // ── Email field ───────────────────────────────────────────
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 2) {
                     Text("Email Address")
                         .font(.urbanistSemiBold(14))
                         .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                    Text("*").font(.urbanistBold(14)).foregroundColor(.red)
+                    Text("*")
+                        .font(.urbanistBold(14))
+                        .foregroundColor(.red)
                 }
-                AuthTextField(placeholder: "you@example.com",
-                              text: $email,
-                              keyboardType: .emailAddress)
+                
+                AuthTextField(
+                    placeholder: "you@example.com",
+                    text: $vm.email,
+                    keyboardType: .emailAddress
+                )
             }
             .padding(.horizontal, 28)
-
-            // ── Error message ─────────────────────────────────────────
-            if case .failed(let msg) = authState {
-                Text(msg)
+            
+            // ── Validation message ────────────────────────────────────
+            if let error = vm.errorMessage {
+                Text(error)
                     .font(.urbanistRegular(12))
                     .foregroundColor(.red)
                     .padding(.horizontal, 28)
                     .padding(.top, 8)
             }
-
-            Spacer()
-
-            // ── OR + Login with Email divider ─────────────────────────
+            
+            Spacer().frame(height: 20)
+            
+            // ── Face ID Preview Box ────────────────────────────────────
             VStack(spacing: 16) {
+                VStack(spacing: 0) {
+                    // Face ID corner bracket frame
+                    ZStack {
+                        // Corner brackets (custom shape)
+                        FaceIDFrame()
+                            .stroke(Color(red: 0.3, green: 0.65, blue: 0.35), lineWidth: 2.5)
+                            .frame(width: 140, height: 140)
+                        
+                        VStack(spacing: 12) {
+                            Image(systemName: "face.smiling")
+                                .font(.system(size: 50))
+                                .foregroundColor(Color(red: 0.6, green: 0.6, blue: 0.6))
+                        }
+                    }
+                    .frame(height: 160)
+                    
+                    Spacer().frame(height: 12)
+                    
+                    Text("Position with face on the box")
+                        .font(.urbanistRegular(13))
+                        .foregroundColor(.cakeGrey)
+                }
+                
+                // ── Authentication Button ─────────────────────────────
+                Button {
+                    Task {
+                        await vm.checkUserExists()
+                        await vm.authenticateWithFaceID()
+                        if vm.errorMessage == nil && vm.isUserValid {
+                            navigateToHome = true
+                        }
+                    }
+                } label: {
+                    ZStack {
+                        if vm.isLoading {
+                            ProgressView().tint(.white)
+                        } else {
+                            Text("Verify with Face ID")
+                                .font(.urbanistSemiBold(16))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(Color.cakeBrown)
+                    .clipShape(Capsule())
+                }
+                .disabled(vm.isLoading || !vm.faceIDAvailable || vm.email.isEmpty)
+                .padding(.horizontal, 28)
+                
+                // ── OR Divider (close to button) ───────────────────────
                 ORDivider()
                     .padding(.horizontal, 28)
-
-                Button {
-                    showEmailLogin = true
-                } label: {
-                    HStack(spacing: 4) {
-                        Text("Login with")
-                            .font(.urbanistRegular(14))
-                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                        Text("Email & Password")
-                            .font(.urbanistSemiBold(14))
-                            .foregroundColor(.cakeBrown)
-                    }
+                    .padding(.top, 16)
+            }
+            
+            // ── Login with Email & Password (Centered) ────────────────
+            Button {
+                navigateToSignIn = true
+            } label: {
+                HStack(spacing: 2) {
+                    Text("Login with")
+                        .font(.urbanistRegular(13))
+                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    Text("Email & Password")
+                        .font(.urbanistSemiBold(13))
+                        .foregroundColor(.cakeBrown)
                 }
             }
-            .padding(.bottom, 32)
-        }
-    }
-
-    // MARK: - Face ID icon (custom drawn to match design)
-    private var faceIDIcon: some View {
-        ZStack {
-            // Corner brackets
-            FaceIDBrackets()
-                .stroke(Color(red: 0.3, green: 0.65, blue: 0.35), lineWidth: 2.5)
-                .frame(width: 100, height: 100)
-
-            // Face icon fill
-            Image(systemName: "face.smiling")
-                .font(.system(size: 52, weight: .ultraLight))
-                .foregroundColor(Color(red: 0.6, green: 0.6, blue: 0.6))
-        }
-        // Pulse animation while authenticating
-        .scaleEffect(authState == .authenticating ? 1.08 : 1.0)
-        .animation(authState == .authenticating
-            ? .easeInOut(duration: 0.7).repeatForever(autoreverses: true)
-            : .default, value: authState == .authenticating)
-        .onTapGesture {
-            Task { await triggerBiometric() }
-        }
-    }
-
-    // MARK: - Trigger Face ID
-    private func triggerBiometric() async {
-        authState = .authenticating
-        do {
-            let success = try await biometric.authenticate(reason: "Sign in to CakeLab")
-            if success {
-                authState       = .success
-                navigateToMain  = true
-            } else {
-                authState = .failed("Face ID authentication failed. Tap the icon to retry.")
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            
+            // ── Create Account Link (Centered) ─────────────────────────
+            HStack(spacing: 2) {
+                Text("Don't have an account ?")
+                    .font(.urbanistRegular(15))
+                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                
+                Button {
+                    navigateToSignUp = true
+                } label: {
+                    Text("Create Account")
+                        .font(.urbanistSemiBold(15))
+                        .foregroundColor(.cakeBrown)
+                }
             }
-        } catch {
-            authState = .failed(error.localizedDescription)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 16)
+            .padding(.bottom, 15)
         }
     }
 }
 
-// MARK: - Face ID Bracket Shape
-private struct FaceIDBrackets: Shape {
+// MARK: - Face ID Frame Shape (Corner Brackets)
+private struct FaceIDFrame: Shape {
     func path(in rect: CGRect) -> Path {
-        let r: CGFloat = 14   // corner radius of bracket
-        let l: CGFloat = 26   // length of each bracket arm
-        var p = Path()
-
-        // Top-left
-        p.move(to: CGPoint(x: rect.minX, y: rect.minY + l))
-        p.addLine(to: CGPoint(x: rect.minX, y: rect.minY + r))
-        p.addQuadCurve(to: CGPoint(x: rect.minX + r, y: rect.minY),
-                       control: CGPoint(x: rect.minX, y: rect.minY))
-        p.addLine(to: CGPoint(x: rect.minX + l, y: rect.minY))
-
-        // Top-right
-        p.move(to: CGPoint(x: rect.maxX - l, y: rect.minY))
-        p.addLine(to: CGPoint(x: rect.maxX - r, y: rect.minY))
-        p.addQuadCurve(to: CGPoint(x: rect.maxX, y: rect.minY + r),
-                       control: CGPoint(x: rect.maxX, y: rect.minY))
-        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + l))
-
-        // Bottom-right
-        p.move(to: CGPoint(x: rect.maxX, y: rect.maxY - l))
-        p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - r))
-        p.addQuadCurve(to: CGPoint(x: rect.maxX - r, y: rect.maxY),
-                       control: CGPoint(x: rect.maxX, y: rect.maxY))
-        p.addLine(to: CGPoint(x: rect.maxX - l, y: rect.maxY))
-
-        // Bottom-left
-        p.move(to: CGPoint(x: rect.minX + l, y: rect.maxY))
-        p.addLine(to: CGPoint(x: rect.minX + r, y: rect.maxY))
-        p.addQuadCurve(to: CGPoint(x: rect.minX, y: rect.maxY - r),
-                       control: CGPoint(x: rect.minX, y: rect.maxY))
-        p.addLine(to: CGPoint(x: rect.minX, y: rect.maxY - l))
-
-        return p
-    }
-}
-
-// MARK: - Equatable conformance for authState (animation)
-extension BiometricAuthView.AuthState: Equatable {
-    static func == (lhs: BiometricAuthView.AuthState, rhs: BiometricAuthView.AuthState) -> Bool {
-        switch (lhs, rhs) {
-        case (.idle, .idle), (.authenticating, .authenticating), (.success, .success): return true
-        case (.failed(let a), .failed(let b)): return a == b
-        default: return false
-        }
+        let cornerLength: CGFloat = 28
+        let cornerRadius: CGFloat = 8
+        var path = Path()
+        
+        // Top-left corner
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY + cornerLength))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + cornerRadius))
+        path.addQuadCurve(to: CGPoint(x: rect.minX + cornerRadius, y: rect.minY),
+                         control: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.minX + cornerLength, y: rect.minY))
+        
+        // Top-right corner
+        path.move(to: CGPoint(x: rect.maxX - cornerLength, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX - cornerRadius, y: rect.minY))
+        path.addQuadCurve(to: CGPoint(x: rect.maxX, y: rect.minY + cornerRadius),
+                         control: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY + cornerLength))
+        
+        // Bottom-right corner
+        path.move(to: CGPoint(x: rect.maxX, y: rect.maxY - cornerLength))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - cornerRadius))
+        path.addQuadCurve(to: CGPoint(x: rect.maxX - cornerRadius, y: rect.maxY),
+                         control: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.maxX - cornerLength, y: rect.maxY))
+        
+        // Bottom-left corner
+        path.move(to: CGPoint(x: rect.minX + cornerLength, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX + cornerRadius, y: rect.maxY))
+        path.addQuadCurve(to: CGPoint(x: rect.minX, y: rect.maxY - cornerRadius),
+                         control: CGPoint(x: rect.minX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY - cornerLength))
+        
+        return path
     }
 }
 
 // MARK: - Preview
 #Preview {
-    NavigationStack {
-        BiometricAuthView(user: .mock)
-    }
+    NavigationStack { BiometricAuthView() }
 }
+
