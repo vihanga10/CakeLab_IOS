@@ -7,7 +7,7 @@ struct SignUpView: View {
     @StateObject private var vm = SignUpViewModel()
     @State private var showPassword        = false
     @State private var showConfirmPassword = false
-    @State private var showFaceID          = false
+    @State private var showContentView     = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -59,12 +59,15 @@ struct SignUpView: View {
                 .ignoresSafeArea()
             }
             .ignoresSafeArea()
-            .navigationDestination(isPresented: $showFaceID) {
-                BiometricAuthView()
+            .navigationDestination(isPresented: $showContentView) {
+                // Pass the created user to ContentView
+                if let user = vm.createdUser {
+                    ContentViewWrapper(user: user)
+                }
             }
             .navigationBarHidden(true)
             .onChange(of: vm.navigateToFaceID) { _, newVal in
-                if newVal { showFaceID = true }
+                if newVal { showContentView = true }
             }
         }
     }

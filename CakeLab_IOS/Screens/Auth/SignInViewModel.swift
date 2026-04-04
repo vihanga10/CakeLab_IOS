@@ -32,6 +32,22 @@ final class SignInViewModel: ObservableObject {
             do {
                 let user = try await authService.signIn(email: email.trimmingCharacters(in: .whitespaces),
                                                         password: password)
+                
+                // ✅ Validate that selected role matches database role
+                guard let selectedRole = selectedRole else {
+                    errorMessage = AuthError.roleNotSelected.errorDescription
+                    isLoading = false
+                    return
+                }
+                
+                if user.role != selectedRole {
+                    print("❌ ERROR: Role mismatch - Selected: \(selectedRole.rawValue), Database: \(user.role.rawValue)")
+                    errorMessage = "Role mismatch. Please select '\(user.role.rawValue.capitalized)' to continue."
+                    isLoading = false
+                    return
+                }
+                
+                print("✅ DEBUG: Role validation passed - User is: \(user.role.rawValue)")
                 signedInUser    = user
                 navigateToFaceID = true
             } catch {
