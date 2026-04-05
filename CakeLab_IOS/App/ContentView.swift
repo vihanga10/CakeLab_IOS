@@ -13,7 +13,7 @@ struct ContentViewWrapper: View {
     
     var body: some View {
         if user.role == .customer {
-            CustomerHomeView(user: user)
+            CustomerTabView(user: user)
         } else if user.role == .baker {
             CrafterHomeView(user: user)
         } else {
