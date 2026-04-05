@@ -26,25 +26,30 @@ final class ForgotPasswordViewModel: ObservableObject {
         
         Task {
             do {
-                print("🔐 DEBUG: Generating OTP for \(email)")
+                print("🔐 DEBUG: Checking if email exists in database - \(email)")
+                
+                // First, check if email exists in database
+                _ = try await authService.fetchUserByEmail(email.trimmingCharacters(in: .whitespaces))
+                
+                print("✅ DEBUG: Email found in database")
                 
                 // Generate 5-digit OTP
                 let otp = String(Int.random(in: 10000...99999))
                 self.generatedOTP = otp
                 
-                print("✅ DEBUG: Generated OTP: \(otp)")
+                print("📱 DEBUG: Generated OTP: \(otp)")
                 
                 // Save OTP to database
                 try await authService.saveOTP(email: email, otp: otp)
                 
-                print("✅ DEBUG: OTP saved to Firebase")
+                print("💾 DEBUG: OTP saved to Firebase")
                 
                 otpSent = true
                 isLoading = false
             } catch {
-                errorMessage = error.localizedDescription
+                errorMessage = "Email not found. Please check your email or sign up."
                 isLoading = false
-                print("❌ ERROR: Failed to send OTP - \(error.localizedDescription)")
+                print("❌ ERROR: Email not found or OTP send failed - \(error.localizedDescription)")
             }
         }
     }
@@ -58,13 +63,13 @@ final class ForgotPasswordViewModel: ObservableObject {
             if isValid {
                 print("✅ DEBUG: OTP verification successful")
             } else {
-                print("❌ DEBUG: OTP verification failed - invalid code")
+                print("DEBUG: OTP verification failed - invalid code")
             }
             
             return isValid
         } catch {
             errorMessage = error.localizedDescription
-            print("❌ ERROR: OTP verification error - \(error.localizedDescription)")
+            print("ERROR: OTP verification error - \(error.localizedDescription)")
             return false
         }
     }

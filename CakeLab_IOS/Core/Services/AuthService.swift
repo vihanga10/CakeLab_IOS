@@ -130,6 +130,58 @@ final class AuthService: AuthServiceProtocol {
         try auth.signOut()
     }
 
+    // MARK: - Re-authenticate User
+    func reauthenticate(email: String, password: String) async throws {
+        do {
+            guard let user = auth.currentUser else {
+                throw AuthError.unknown("No user is currently signed in.")
+            }
+            
+            print("🔐 DEBUG: Re-authenticating user: \(user.uid)")
+            
+            let credential = EmailAuthProvider.credential(withEmail: email, password: password)
+            try await user.reauthenticate(with: credential)
+            
+            print("✅ DEBUG: Re-authentication successful for user: \(user.uid)")
+        } catch let error as NSError {
+            print("RE-AUTH ERROR Domain: \(error.domain)")
+            print("RE-AUTH ERROR Code: \(error.code)")
+            print("RE-AUTH ERROR Message: \(error.localizedDescription)")
+            throw AuthError.unknown(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Update Password
+    func updatePassword(newPassword: String, currentEmail: String, currentPassword: String) async throws {
+        do {
+            guard let user = auth.currentUser else {
+                throw AuthError.unknown("No user is currently signed in.")
+            }
+            
+            print("🔐 DEBUG: Current user email: \(user.email ?? "nil")")
+            print("🔐 DEBUG: Provided email for re-auth: \(currentEmail)")
+            print("🔐 DEBUG: Re-authenticating before password update for user: \(user.uid)")
+            
+            // First, re-authenticate the user
+            try await reauthenticate(email: currentEmail, password: currentPassword)
+            
+            print("🔐 DEBUG: Re-auth completed, refreshing user session...")
+            // Refresh the user to ensure the session is updated
+            try await user.reload()
+            
+            print("🔐 DEBUG: Updating password for user: \(user.uid)")
+            
+            try await user.updatePassword(to: newPassword)
+            
+            print("✅ DEBUG: Password updated successfully for user: \(user.uid)")
+        } catch let error as NSError {
+            print("PASSWORD UPDATE ERROR Domain: \(error.domain)")
+            print("PASSWORD UPDATE ERROR Code: \(error.code)")
+            print("PASSWORD UPDATE ERROR Message: \(error.localizedDescription)")
+            throw AuthError.unknown(error.localizedDescription)
+        }
+    }
+
     // MARK: - Fetch User by Email
     func fetchUserByEmail(_ email: String) async throws -> AppUser {
         do {

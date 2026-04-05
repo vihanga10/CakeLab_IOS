@@ -65,6 +65,16 @@ final class MockAuthService: AuthServiceProtocol {
         signOutCalled = true
         if shouldFail { throw errorToThrow }
     }
+
+    func reauthenticate(email: String, password: String) async throws {
+        if shouldFail { throw errorToThrow }
+        // Mock implementation - just track the call
+    }
+
+    func updatePassword(newPassword: String, currentEmail: String, currentPassword: String) async throws {
+        if shouldFail { throw errorToThrow }
+        // Mock implementation - just track the call
+    }
 }
 
 // MARK: - Mock Biometric Context

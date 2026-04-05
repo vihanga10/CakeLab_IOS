@@ -39,6 +39,10 @@ protocol AuthServiceProtocol {
     func fetchUserByEmail(_ email: String) async throws -> AppUser
     /// Sign out the current user.
     func signOut() throws
+    /// Re-authenticate user with email and password (required for sensitive operations).
+    func reauthenticate(email: String, password: String) async throws
+    /// Update password for current user (requires re-authentication with current password).
+    func updatePassword(newPassword: String, currentEmail: String, currentPassword: String) async throws
     /// Currently signed-in user's UID, nil if not authenticated.
     var currentUserID: String? { get }
 }
