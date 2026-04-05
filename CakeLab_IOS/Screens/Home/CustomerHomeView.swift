@@ -1,21 +1,34 @@
 import SwiftUI
+import FirebaseFirestore
 
 // MARK: - Customer Home View
 @MainActor
 struct CustomerHomeView: View {
-    let user: AppUser
+    @State var user: AppUser
     @Binding var selectedTab: Int
     @State private var searchText = ""
+    @StateObject private var viewModel = CustomerHomeViewModel()
+    
+    private let db = Firestore.firestore()
 
-    private let activeOrders: [(id: String, label: String)] = [
-        (id: "B001",  label: "Order No:\nB001"),
-        (id: "B011",  label: "Order No:\nB011"),
-        (id: "BS033", label: "Order No:\nBS033")
-    ]
+    // Categories are the same for every customer — no database needed
     private let categories: [(name: String, image: String)] = [
-        (name: "Cupcakes",      image: "cupcake_cat"),
-        (name: "Wedding Cakes", image: "wedding_cat"),
-        (name: "3D Cakes",      image: "3d_cat")
+        (name: "Wedding Cakes",     image: "wedding_cat"),
+        (name: "Birthday Cakes",    image: "birthday_cat"),
+        (name: "Anniversary Cakes", image: "anniversary_cat"),
+        (name: "Baby Shower Cakes",       image: "babyshower_cat"),
+        (name: "Cupcakes",          image: "cupcake_cat"),
+        (name: "Buttercream Cakes",       image: "buttercream_cat"),
+        (name: "Corporate Cakes",   image: "corporate_cat"),
+        (name: "Engagement Cakes",        image: "engagement_cat"),
+        (name: "Graduation Cakes",        image: "graduation_cat"),
+        (name: "Baptism Cakes",           image: "baptism_cat"),
+        (name: "Retirement Cakes",        image: "retirement_cat"),
+        (name: "Farewell Cakes",          image: "farewell_cat"),
+        (name: "Vegan Cakes",       image: "vegan_cat"),
+        (name: "Sculpted Cakes",    image: "sculpted_cat"),
+        
+        
     ]
 
     var body: some View {
@@ -29,22 +42,26 @@ struct CustomerHomeView: View {
 
                         // MARK: - Header Section
                         HStack(alignment: .center, spacing: 12) {
-                            // Profile avatar
-                            ZStack {
-                                Circle()
-                                    .fill(Color(red: 0.90, green: 0.86, blue: 0.82))
-                                    .frame(width: 48, height: 48)
-                                Image(systemName: "person.fill")
-                                    .font(.system(size: 22))
-                                    .foregroundColor(.cakeBrown)
+                            // Profile avatar (clickable)
+                            NavigationLink(destination: CustomerProfileDetailView(user: user)) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color(red: 0.90, green: 0.86, blue: 0.82))
+                                        .frame(width: 48, height: 48)
+                                    Image(systemName: "person.fill")
+                                        .font(.system(size: 22))
+                                        .foregroundColor(.cakeBrown)
+                                }
                             }
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Good Morning")
                                     .font(.urbanistRegular(13))
                                     .foregroundColor(.cakeGrey)
-                                Text(user.name.isEmpty ? "Vihanga Madushamini" : user.name)
+                                // Show name if available, otherwise show email
+                                Text(user.name.isEmpty ? user.email : user.name)
                                     .font(.urbanistSemiBold(15))
                                     .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                    .lineLimit(1)
                             }
                             Spacer()
                             Button {} label: {
@@ -75,16 +92,26 @@ struct CustomerHomeView: View {
                         .padding(.bottom, 20)
                         
                         // MARK: - Dream Cake Request Card
-                        VStack(alignment: .leading, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 0) {
                             Text("Bring Your Cake Vision to Life")
-                                .font(.urbanistBold(16))
-                                .foregroundColor(Color(red: 0.15, green: 0.1, blue: 0.05))
+                                .font(.urbanistBold(17))
+                                .foregroundColor(Color(red: 0, green: 0, blue: 0))
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .multilineTextAlignment(.center)
+                            
+                            Spacer().frame(height: 14)
+                            
                             Text("Share your photo, description, budget & exactly how you want it made. Our talented Cake Crafters will suggest the best designs to turn your vision into reality.")
                                 .font(.urbanistRegular(12))
-                                .foregroundColor(Color(red: 0.35, green: 0.25, blue: 0.15))
+                                .foregroundColor(Color(red: 95/255, green: 95/255, blue: 95/255))
                                 .lineSpacing(3)
+                                .frame(maxWidth: .infinity)
+                                .multilineTextAlignment(.center)
+                            
+                            Spacer().frame(height: 18)
+                            
                             NavigationLink(destination: CreateCakeRequestView()) {
-                                HStack(spacing: 8) {
+                                 HStack(spacing: 8) {
                                     ZStack {
                                         Circle()
                                             .fill(Color.white.opacity(0.25))
@@ -103,53 +130,63 @@ struct CustomerHomeView: View {
                                 .clipShape(Capsule())
                             }
                         }
-                        .padding(16)
-                        .background(Color(red: 0.92, green: 0.88, blue: 0.83))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 22)
+                        .background(Color(red: 235/255, green: 228/255, blue: 222/255))
                         .cornerRadius(16)
                         .padding(.horizontal, 20)
                         .padding(.bottom, 28)
 
                         // MARK: - What Are You Craving?
-                        VStack(alignment: .leading, spacing: 14) {
+                        VStack(alignment: .leading, spacing: 16) {
                             Text("What are you craving today?")
                                 .font(.urbanistBold(15))
                                 .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
                                 .padding(.horizontal, 20)
 
-                            HStack(spacing: 10) {
-                                ForEach(categories, id: \.name) { cat in
-                                    Button {} label: {
-                                        VStack(spacing: 8) {
-                                            ZStack {
-                                                RoundedRectangle(cornerRadius: 14)
-                                                    .fill(Color(red: 0.93, green: 0.91, blue: 0.89))
-                                                    .frame(height: 88)
-                                                if UIImage(named: cat.image) != nil {
-                                                    Image(cat.image)
-                                                        .resizable()
-                                                        .scaledToFill()
-                                                        .frame(height: 88)
-                                                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                                                } else {
-                                                    Image(systemName: "birthday.cake.fill")
-                                                        .font(.system(size: 28))
-                                                        .foregroundColor(.cakeBrown.opacity(0.45))
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 16) {
+                                    ForEach(categories, id: \.name) { cat in
+                                        Button {} label: {
+                                            VStack(spacing: 8) {
+                                                ZStack {
+                                                    RoundedRectangle(cornerRadius: 12)
+                                                        .fill(Color(red: 0.93, green: 0.91, blue: 0.89))
+                                                    if UIImage(named: cat.image) != nil {
+                                                        Image(cat.image)
+                                                            .resizable()
+                                                            .scaledToFill()
+                                                            .frame(width: 88, height: 88)
+                                                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                                                    } else {
+                                                        Image(systemName: "birthday.cake.fill")
+                                                            .font(.system(size: 28))
+                                                            .foregroundColor(.cakeBrown.opacity(0.45))
+                                                    }
                                                 }
+                                                .frame(width: 88, height: 88)
+                                                .clipped()
+                                                
+                                                Text(cat.name)
+                                                    .font(.urbanistSemiBold(11))
+                                                    .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
+                                                    .multilineTextAlignment(.center)
+                                                    .lineLimit(2)
+                                                    .minimumScaleFactor(0.9)
+                                                    .frame(width: 88, height: 32, alignment: .top)
                                             }
-                                            Text(cat.name)
-                                                .font(.urbanistSemiBold(11))
-                                                .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
-                                                .multilineTextAlignment(.center)
+                                            .frame(width: 88, height: 128, alignment: .top)
                                         }
+                                        .buttonStyle(.plain)
                                     }
-                                    .frame(maxWidth: .infinity)
                                 }
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 4)
                             }
-                            .padding(.horizontal, 20)
                         }
                         .padding(.bottom, 28)
                         
-                        // MARK: - Active Orders
+                        // MARK: - Active Orders  (user-specific — fetched per logged-in user)
                         VStack(alignment: .leading, spacing: 14) {
                             HStack {
                                 Text("Active Orders")
@@ -164,43 +201,80 @@ struct CustomerHomeView: View {
                             }
                             .padding(.horizontal, 20)
 
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 16) {
-                                    ForEach(activeOrders, id: \.id) { order in
-                                        VStack(spacing: 10) {
-                                            ZStack {
+                            if viewModel.isLoadingOrders {
+                                // Loading skeleton
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 16) {
+                                        ForEach(0..<3, id: \.self) { _ in
+                                            VStack(spacing: 10) {
                                                 Circle()
-                                                    .stroke(Color(red: 0.15, green: 0.65, blue: 0.22), lineWidth: 2.5)
+                                                    .fill(Color(red: 0.91, green: 0.91, blue: 0.91))
                                                     .frame(width: 90, height: 90)
-                                                Circle()
-                                                    .fill(Color(red: 0.93, green: 0.91, blue: 0.88))
-                                                    .frame(width: 82, height: 82)
-                                                Image(systemName: "birthday.cake.fill")
-                                                    .font(.system(size: 30))
-                                                    .foregroundColor(.cakeBrown.opacity(0.45))
+                                                RoundedRectangle(cornerRadius: 4)
+                                                    .fill(Color(red: 0.91, green: 0.91, blue: 0.91))
+                                                    .frame(width: 68, height: 22)
                                             }
-                                            Text(order.label)
-                                                .font(.urbanistRegular(11))
-                                                .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
-                                                .multilineTextAlignment(.center)
+                                            .frame(width: 100)
                                         }
-                                        .frame(width: 100)
                                     }
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 4)
                                 }
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 4)
+                            } else if viewModel.activeOrders.isEmpty {
+                                // Empty state — first-time users or no active orders
+                                VStack(spacing: 8) {
+                                    Image(systemName: "cart.badge.plus")
+                                        .font(.system(size: 34))
+                                        .foregroundColor(.cakeBrown.opacity(0.35))
+                                    Text("No active orders yet")
+                                        .font(.urbanistSemiBold(13))
+                                        .foregroundColor(.cakeGrey)
+                                    Text("Post a cake request below to get started!")
+                                        .font(.urbanistRegular(12))
+                                        .foregroundColor(.cakeGrey.opacity(0.7))
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 20)
+                            } else {
+                                // Real orders from Firestore — different for each user
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 16) {
+                                        ForEach(viewModel.activeOrders) { order in
+                                            VStack(spacing: 10) {
+                                                ZStack {
+                                                    Circle()
+                                                        .stroke(Color(red: 0.15, green: 0.65, blue: 0.22), lineWidth: 2.5)
+                                                        .frame(width: 90, height: 90)
+                                                    Circle()
+                                                        .fill(Color(red: 0.93, green: 0.91, blue: 0.88))
+                                                        .frame(width: 82, height: 82)
+                                                    Image(systemName: "birthday.cake.fill")
+                                                        .font(.system(size: 30))
+                                                        .foregroundColor(.cakeBrown.opacity(0.45))
+                                                }
+                                                Text("Order No:\n\(order.id.prefix(6))")
+                                                    .font(.urbanistRegular(11))
+                                                    .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
+                                                    .multilineTextAlignment(.center)
+                                            }
+                                            .frame(width: 100)
+                                        }
+                                    }
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 4)
+                                }
                             }
                         }
                         .padding(.bottom, 28)
                         
-                        // MARK: - Artisans Near You
+                        // MARK: - Artisans Near You  (common — same list for all customers)
                         VStack(alignment: .leading, spacing: 14) {
                             HStack {
                                 Text("Artisans Near You")
                                     .font(.urbanistBold(15))
                                     .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
                                 Spacer()
-                                Button {} label: {
+                                NavigationLink(destination: ArtisansNearYouView()) {
                                     Text("See all")
                                         .font(.urbanistSemiBold(13))
                                         .foregroundColor(.cakeBrown)
@@ -208,24 +282,71 @@ struct CustomerHomeView: View {
                             }
                             .padding(.horizontal, 20)
 
-                            VStack(spacing: 12) {
-                                ArtisanCard(name: "Butter Boutique", rating: "5.0", reviews: "(41 reviews)",
-                                            specialty: ["Cupcakes", "Vegan", "3D Cakes"],
-                                            location: "70 Rosmead Place, Colombo 07, Sri Lanka")
-                                ArtisanCard(name: "Patissere", rating: "4.7", reviews: "(33 reviews)",
-                                            specialty: ["Birthday", "Vegan", "Wedding Cakes"],
-                                            location: "379 R. A. De Mel Mawatha, Colombo 03")
-                                ArtisanCard(name: "Frost & Crumb", rating: "4.8", reviews: "(19 reviews)",
-                                            specialty: ["Cupcakes", "Lava Cakes"],
-                                            location: "2.8 km away – Colombo 07")
+                            if viewModel.isLoadingArtisans {
+                                // Loading skeleton
+                                VStack(spacing: 12) {
+                                    ForEach(0..<3, id: \.self) { _ in
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .fill(Color(red: 0.93, green: 0.93, blue: 0.93))
+                                            .frame(height: 100)
+                                    }
+                                }
+                                .padding(.horizontal, 20)
+                            } else if viewModel.artisans.isEmpty {
+                                Text("No artisans available right now.")
+                                    .font(.urbanistRegular(13))
+                                    .foregroundColor(.cakeGrey)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .padding(.vertical, 20)
+                            } else {
+                                // Real artisans from Firestore — same for every customer
+                                VStack(spacing: 12) {
+                                    ForEach(viewModel.artisans) { artisan in
+                                        ArtisanCard(
+                                            name: artisan.name,
+                                            rating: artisan.ratingText,
+                                            reviews: artisan.reviewsText,
+                                            specialty: artisan.specialties,
+                                            location: artisan.location,
+                                            isOnline: artisan.isOnline
+                                        )
+                                    }
+                                }
+                                .padding(.horizontal, 20)
                             }
-                            .padding(.horizontal, 20)
                         }
                         .padding(.bottom, 32)
                     }
                 }
             }
             .navigationBarHidden(true)
+            .task {
+                // Refresh user data from Firestore
+                await refreshUserFromFirestore()
+                
+                // Run both fetches concurrently when the screen loads
+                async let orders: ()   = viewModel.fetchActiveOrders(for: user.id)
+                async let artisans: () = viewModel.fetchArtisans()
+                await orders
+                await artisans
+            }
+        }
+    }
+    
+    // MARK: - Refresh User
+    /// Fetches the latest user data from Firestore to reflect profile edits
+    private func refreshUserFromFirestore() async {
+        do {
+            let snapshot = try await db.collection("users").document(user.id).getDocument()
+            do {
+                let updatedUser = try snapshot.data(as: AppUser.self)
+                self.user = updatedUser
+                print("DEBUG: User data refreshed from Firestore")
+            } catch {
+                print("DEBUG: Could not decode AppUser from snapshot")
+            }
+        } catch {
+            print("ERROR fetching user from Firestore: \(error)")
         }
     }
 }
@@ -237,6 +358,8 @@ struct ArtisanCard: View {
     let reviews: String
     let specialty: [String]
     let location: String
+    var isOnline: Bool = true        // online indicator dot
+    var imageURL: String? = nil      // optional remote image (future)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -280,7 +403,7 @@ struct ArtisanCard: View {
                 }
                 Spacer()
                 Circle()
-                    .fill(Color(red: 0.15, green: 0.72, blue: 0.25))
+                    .fill(isOnline ? Color(red: 0.15, green: 0.72, blue: 0.25) : Color.gray.opacity(0.4))
                     .frame(width: 11, height: 11)
             }
             HStack(spacing: 5) {

@@ -1,0 +1,21 @@
+{
+  "images" : [
+    {
+      "filename" : "Какой милый тортик! _ Интересный контент в группе Идеи для свадьбы в ОК (Одноклассники).jpeg",
+      "idiom" : "universal",
+      "scale" : "1x"
+    },
+    {
+      "idiom" : "universal",
+      "scale" : "2x"
+    },
+    {
+      "idiom" : "universal",
+      "scale" : "3x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

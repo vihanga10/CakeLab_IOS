@@ -15,6 +15,13 @@ struct AppUser: Codable, Identifiable, Sendable {
     var avatarURL: String?
     var fcmToken: String?
     var createdAt: Date
+    
+    // Profile fields
+    var phoneNumber: String?
+    var address: String?
+    var city: String?
+    var postalCode: String?
+    var dateOfBirth: Date?
 
     // MARK: - Firestore field keys
     enum CodingKeys: String, CodingKey {
@@ -25,6 +32,11 @@ struct AppUser: Codable, Identifiable, Sendable {
         case avatarURL
         case fcmToken
         case createdAt
+        case phoneNumber
+        case address
+        case city
+        case postalCode
+        case dateOfBirth
     }
 }
 
@@ -38,7 +50,12 @@ extension AppUser {
             role: .customer,
             avatarURL: nil,
             fcmToken: nil,
-            createdAt: Date()
+            createdAt: Date(),
+            phoneNumber: nil,
+            address: nil,
+            city: nil,
+            postalCode: nil,
+            dateOfBirth: nil
         )
     }
 
@@ -50,7 +67,12 @@ extension AppUser {
             role: .baker,
             avatarURL: nil,
             fcmToken: nil,
-            createdAt: Date()
+            createdAt: Date(),
+            phoneNumber: nil,
+            address: nil,
+            city: nil,
+            postalCode: nil,
+            dateOfBirth: nil
         )
     }
 }

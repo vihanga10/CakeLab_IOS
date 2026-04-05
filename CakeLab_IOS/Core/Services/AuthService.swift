@@ -40,7 +40,12 @@ final class AuthService: AuthServiceProtocol {
                 role: role,
                 avatarURL: nil,
                 fcmToken: nil,
-                createdAt: Date()
+                createdAt: Date(),
+                phoneNumber: nil,
+                address: nil,
+                city: nil,
+                postalCode: nil,
+                dateOfBirth: nil
             )
             
             print("DEBUG: Saving user profile to Firestore...")
@@ -219,15 +224,9 @@ final class AuthService: AuthServiceProtocol {
     }
 
     private func saveUser(_ user: AppUser) async throws {
-        let data: [String: Any] = [
-            "uid":       user.id,
-            "email":     user.email,
-            "name":      user.name,
-            "role":      user.role.rawValue,
-            "createdAt": Timestamp(date: user.createdAt)
-        ]
         do {
-            try await db.collection("users").document(user.id).setData(data)
+            // Use Codable to encode all user fields including profile fields
+            try await db.collection("users").document(user.id).setData(from: user)
             print("DEBUG: Firestore write successful for user \(user.id)")
         } catch let error as NSError {
             print("FIRESTORE ERROR Domain: \(error.domain)")

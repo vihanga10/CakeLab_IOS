@@ -13,7 +13,7 @@ struct CustomerTabView: View {
                 case 0: CustomerHomeView(user: user, selectedTab: $selectedTab)
                 case 1: CustomerBidsView()
                 case 2: CustomerOrdersView()
-                case 3: CustomerProfileView(user: user)
+                case 3: CustomerProfileDetailView(user: user)
                 default: CustomerHomeView(user: user, selectedTab: $selectedTab)
                 }
             }
