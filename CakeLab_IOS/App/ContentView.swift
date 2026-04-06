@@ -15,7 +15,7 @@ struct ContentViewWrapper: View {
         if user.role == .customer {
             CustomerTabView(user: user)
         } else if user.role == .baker {
-            CrafterHomeView(user: user)
+            BakerTabView(user: user)
         } else {
             Text("Unknown role")
         }
