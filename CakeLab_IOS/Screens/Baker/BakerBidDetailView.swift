@@ -1,4 +1,6 @@
 import SwiftUI
+import FirebaseAuth
+import FirebaseFirestore
 
 // MARK: - Baker Bid Detail View
 @MainActor
@@ -13,6 +15,7 @@ struct BakerBidDetailView: View {
     @State private var bidMessage = ""
     @State private var showConfirmation = false
     @State private var bidSubmitted = false
+    @State private var isSubmittingBid = false
     @Environment(\.dismiss) private var dismiss
 
     private var formattedAlternativeDate: String {
@@ -388,18 +391,25 @@ struct BakerBidDetailView: View {
                             .cornerRadius(14)
                     }
                     Button {
-                        bidSubmitted = true
-                        showConfirmation = false
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { dismiss() }
+                        Task {
+                            await submitBid()
+                        }
                     } label: {
-                        Text("Submit Bid")
-                            .font(.urbanistBold(15))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(Color.cakeBrown)
-                            .cornerRadius(14)
+                        if isSubmittingBid {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Text("Submit Bid")
+                        }
                     }
+                    .disabled(isSubmittingBid)
+                    .opacity(isSubmittingBid ? 0.8 : 1)
+                    .font(.urbanistBold(15))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color.cakeBrown)
+                    .cornerRadius(14)
                 }
             }
             .padding(24)
@@ -424,6 +434,63 @@ struct BakerBidDetailView: View {
         }
         .padding(.vertical, 6)
         .overlay(Divider().padding(.top, 28), alignment: .bottom)
+    }
+    
+    private func submitBid() async {
+        guard let bakerID = Auth.auth().currentUser?.uid,
+              let amount = Double(bidAmount),
+              !request.requestDocumentID.isEmpty else {
+            return
+        }
+        
+        isSubmittingBid = true
+        
+        let db = Firestore.firestore()
+        let bidDocumentID = "\(request.requestDocumentID)_\(bakerID)"
+        let bidRef = db.collection("bids").document(bidDocumentID)
+        let requestRef = db.collection("cakeRequests").document(request.requestDocumentID)
+        
+        do {
+            let bakerProfile = try await db.collection("users").document(bakerID).getDocument()
+            let bakerData = bakerProfile.data() ?? [:]
+            let bidSnapshot = try await bidRef.getDocument()
+            let alreadyExists = bidSnapshot.exists
+            let bakerName = (bakerData["name"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            let bidPayload: [String: Any] = [
+                "requestDocumentID": request.requestDocumentID,
+                "customerID": request.customerID,
+                "bakerID": bakerID,
+                "bakerName": bakerName.isEmpty ? (Auth.auth().currentUser?.email ?? "Baker") : bakerName,
+                "amount": amount,
+                "message": bidMessage,
+                "deliveryNote": deliveryNote,
+                "canDeliverOnTime": canDeliverOnTime,
+                "alternativeDate": canDeliverOnTime ? NSNull() : alternativeDate.timeIntervalSince1970,
+                "submittedAt": Date().timeIntervalSince1970
+            ]
+            
+            try await bidRef.setData(bidPayload, merge: true)
+            
+            if !alreadyExists {
+                try await db.runTransaction { transaction, _ in
+                    let snapshot = try? transaction.getDocument(requestRef)
+                    let currentCount = snapshot?.data()?[("bidCount")] as? Int ?? 0
+                    transaction.updateData(["bidCount": currentCount + 1], forDocument: requestRef)
+                    return nil
+                }
+            }
+            
+            bidSubmitted = true
+            showConfirmation = false
+            isSubmittingBid = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                dismiss()
+            }
+        } catch {
+            isSubmittingBid = false
+            print("Error submitting bid: \(error)")
+        }
     }
 }
 

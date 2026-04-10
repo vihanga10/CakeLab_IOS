@@ -78,7 +78,7 @@ struct BakerHomeView: View {
                 BakerMatchingRequestsView()
             }
             .navigationDestination(isPresented: $showAllOpen) {
-                BakerOtherRequestsView()
+                EmptyView()
             }
             .navigationDestination(isPresented: $showAllActive) {
                 BakerOrdersView()
@@ -529,7 +529,9 @@ struct BakerActiveOrderCard: View {
 
 // MARK: - Mock Data Models
 struct CakeRequest: Identifiable {
-    let id = UUID()
+    let id: String
+    let requestDocumentID: String
+    let customerID: String
     let title: String
     let category: CakeCategory
     let location: String
@@ -542,6 +544,40 @@ struct CakeRequest: Identifiable {
     let customerName: String
     let postedTime: String
     var isMatching: Bool = true
+    
+    init(
+        id: String = UUID().uuidString,
+        requestDocumentID: String = "",
+        customerID: String = "",
+        title: String,
+        category: CakeCategory,
+        location: String,
+        deliveryDate: String,
+        budgetRange: String,
+        bidCount: Int,
+        description: String,
+        servings: Int,
+        flavours: [String],
+        customerName: String,
+        postedTime: String,
+        isMatching: Bool = true
+    ) {
+        self.id = id
+        self.requestDocumentID = requestDocumentID
+        self.customerID = customerID
+        self.title = title
+        self.category = category
+        self.location = location
+        self.deliveryDate = deliveryDate
+        self.budgetRange = budgetRange
+        self.bidCount = bidCount
+        self.description = description
+        self.servings = servings
+        self.flavours = flavours
+        self.customerName = customerName
+        self.postedTime = postedTime
+        self.isMatching = isMatching
+    }
 }
 
 struct CakeCategory: Identifiable {

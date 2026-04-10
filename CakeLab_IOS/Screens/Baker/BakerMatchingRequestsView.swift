@@ -1,34 +1,39 @@
 import SwiftUI
+import FirebaseFirestore
 
 // MARK: - Baker Matching Requests View (Nav Tab 1)
 @MainActor
 struct BakerMatchingRequestsView: View {
     @State private var searchText = ""
     @State private var selectedFilter: RequestFilter = .all
-
+    @State private var publishedRequests: [CakeRequestRecord] = []
+    @State private var isLoading = false
+    
     enum RequestFilter: String, CaseIterable {
         case all = "All"
         case wedding = "Wedding"
         case birthday = "Birthday"
-        case corporate = "Corporate"
-        case custom = "Custom"
+        case anniversary = "Anniversary"
+        case cupcakes = "Cupcakes"
+        case babyShower = "Baby Shower"
     }
-
-    var filtered: [CakeRequest] {
-        mockMatchingRequests.filter { req in
-            let matchSearch = searchText.isEmpty || req.title.localizedCaseInsensitiveContains(searchText)
-            let matchFilter = selectedFilter == .all || req.category.name.localizedCaseInsensitiveContains(selectedFilter.rawValue)
-            return matchSearch && matchFilter
+    
+    private var filtered: [CakeRequestRecord] {
+        publishedRequests.filter { request in
+            let matchesSearch = searchText.isEmpty || request.displayTitle.localizedCaseInsensitiveContains(searchText)
+            let matchesFilter = selectedFilter == .all ||
+                request.categories.contains { $0.localizedCaseInsensitiveContains(selectedFilter.rawValue) } ||
+                request.displayCategory.localizedCaseInsensitiveContains(selectedFilter.rawValue)
+            return matchesSearch && matchesFilter
         }
     }
-
+    
     var body: some View {
         NavigationStack {
             ZStack {
                 Color(red: 0.97, green: 0.96, blue: 0.94).ignoresSafeArea()
-
+                
                 VStack(spacing: 0) {
-                    // Search bar
                     HStack(spacing: 10) {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(.cakeGrey)
@@ -43,8 +48,7 @@ struct BakerMatchingRequestsView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
                     .padding(.bottom, 14)
-
-                    // Filter chips
+                    
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 10) {
                             ForEach(RequestFilter.allCases, id: \.self) { filter in
@@ -65,8 +69,13 @@ struct BakerMatchingRequestsView: View {
                         .padding(.horizontal, 20)
                     }
                     .padding(.bottom, 14)
-
-                    if filtered.isEmpty {
+                    
+                    if isLoading {
+                        Spacer()
+                        ProgressView("Loading requests...")
+                            .tint(.cakeBrown)
+                        Spacer()
+                    } else if filtered.isEmpty {
                         VStack(spacing: 16) {
                             Image(systemName: "tray")
                                 .font(.system(size: 48))
@@ -74,7 +83,7 @@ struct BakerMatchingRequestsView: View {
                             Text("No matching requests")
                                 .font(.urbanistSemiBold(16))
                                 .foregroundColor(.cakeGrey)
-                            Text("Try changing your filter or location settings")
+                            Text("Published customer requests will appear here once they match your search or category filter")
                                 .font(.urbanistRegular(13))
                                 .foregroundColor(.cakeGrey.opacity(0.7))
                                 .multilineTextAlignment(.center)
@@ -83,23 +92,17 @@ struct BakerMatchingRequestsView: View {
                     } else {
                         ScrollView(showsIndicators: false) {
                             VStack(spacing: 14) {
-                                // Header info
                                 HStack {
-                                    Text("\(filtered.count) requests match your categories")
+                                    Text("\(filtered.count) published requests")
                                         .font(.urbanistRegular(13))
                                         .foregroundColor(.cakeGrey)
                                     Spacer()
-                                    Image(systemName: "location.fill")
-                                        .font(.system(size: 11))
-                                    Text("Colombo")
-                                        .font(.urbanistMedium(12))
                                 }
-                                .foregroundColor(.cakeGrey)
                                 .padding(.horizontal, 20)
-
-                                ForEach(filtered) { req in
-                                    NavigationLink(destination: BakerBidDetailView(request: req)) {
-                                        MatchingRequestCard(request: req)
+                                
+                                ForEach(filtered) { request in
+                                    NavigationLink(destination: BakerBidDetailView(request: request.toCakeRequest())) {
+                                        MatchingRequestCard(request: request.toCakeRequest())
                                     }
                                     .buttonStyle(.plain)
                                     .padding(.horizontal, 20)
@@ -112,69 +115,30 @@ struct BakerMatchingRequestsView: View {
             }
             .navigationTitle("Matching Requests")
             .navigationBarTitleDisplayMode(.large)
-        }
-    }
-}
-
-// MARK: - Baker Other Open Requests View
-@MainActor
-struct BakerOtherRequestsView: View {
-    @State private var searchText = ""
-
-    var filtered: [CakeRequest] {
-        mockOtherRequests.filter { req in
-            searchText.isEmpty || req.title.localizedCaseInsensitiveContains(searchText)
-        }
-    }
-
-    var body: some View {
-        ZStack {
-            Color(red: 0.97, green: 0.96, blue: 0.94).ignoresSafeArea()
-            VStack(spacing: 0) {
-                // Info Banner
-                HStack(spacing: 12) {
-                    Image(systemName: "info.circle.fill")
-                        .foregroundColor(Color(red: 0.3, green: 0.45, blue: 0.8))
-                    Text("These requests are outside your published categories. You can still place bids!")
-                        .font(.urbanistRegular(12))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                }
-                .padding(14)
-                .background(Color(red: 0.3, green: 0.45, blue: 0.8).opacity(0.08))
-                .cornerRadius(12)
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 12)
-
-                // Search
-                HStack(spacing: 10) {
-                    Image(systemName: "magnifyingglass").foregroundColor(.cakeGrey)
-                    TextField("Search open requests...", text: $searchText)
-                        .font(.urbanistRegular(14))
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .background(Color.white)
-                .cornerRadius(14)
-                .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 14)
-
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 14) {
-                        ForEach(filtered) { req in
-                            NavigationLink(destination: BakerBidDetailView(request: req)) {
-                                OtherRequestCard(request: req)
-                            }
-                            .buttonStyle(.plain)
-                            .padding(.horizontal, 20)
-                        }
-                    }
-                    .padding(.bottom, 100)
-                }
+            .task {
+                await fetchPublishedRequests()
+            }
+            .refreshable {
+                await fetchPublishedRequests()
             }
         }
-        .navigationTitle("Other Open Requests")
-        .navigationBarTitleDisplayMode(.large)
+    }
+    
+    private func fetchPublishedRequests() async {
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let snapshot = try await Firestore.firestore()
+                .collection("cakeRequests")
+                .whereField("status", isEqualTo: "open")
+                .getDocuments()
+            
+            publishedRequests = snapshot.documents
+                .compactMap(CakeRequestRecord.init(document:))
+                .sorted { $0.createdAt > $1.createdAt }
+        } catch {
+            print("Error fetching published requests: \(error)")
+        }
     }
 }

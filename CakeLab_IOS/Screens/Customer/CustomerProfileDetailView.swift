@@ -18,6 +18,7 @@ struct CustomerProfileDetailView: View {
     }
 
     var body: some View {
+        NavigationStack {
         ZStack {
             Color.white.ignoresSafeArea()
 
@@ -104,54 +105,71 @@ struct CustomerProfileDetailView: View {
                             Text(viewModel.user.name.isEmpty ? viewModel.user.email : viewModel.user.name)
                                 .font(.urbanistBold(18))
                                 .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                            
-                            Text(viewModel.user.email)
-                                .font(.urbanistRegular(13))
-                                .foregroundColor(.cakeGrey)
+
+                            if let city = viewModel.user.city, !city.isEmpty {
+                                Text("\(city), Sri Lanka")
+                                    .font(.urbanistRegular(13))
+                                    .foregroundColor(.cakeGrey)
+                            } else {
+                                Text(viewModel.user.email)
+                                    .font(.urbanistRegular(13))
+                                    .foregroundColor(.cakeGrey)
+                            }
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
 
                         // MARK: - Menu Items
-                        VStack(spacing: 0) {
+                        // ── Account ──────────────────────────────────────
+                        ProfileSection(title: "Account") {
                             MenuItem(
                                 icon: "person.fill",
                                 title: "Edit Profile",
                                 action: { showEditSheet = true }
                             )
-                            
                             MenuItem(
-                                icon: "mappin.circle.fill",
-                                title: "My Addresses",
+                                icon: "clock.arrow.circlepath",
+                                title: "Payment History",
                                 action: {}
                             )
-                            
                             MenuItem(
-                                icon: "creditcard.fill",
-                                title: "Payment Methods",
+                                icon: "lock.fill",
+                                title: "Change Password",
                                 action: {}
                             )
-                            
-                            MenuItem(
-                                icon: "bell.badge.fill",
-                                title: "Notifications",
-                                action: {}
-                            )
-                            
-                            MenuItem(
-                                icon: "questionmark.circle.fill",
-                                title: "Help & Support",
-                                action: {}
-                            )
-                            
-                            MenuItem(
-                                icon: "doc.text.fill",
-                                title: "Privacy Policy",
-                                action: {}
-                            )
+                            NavigationLink(destination: PublishRequestView()) {
+                                MenuItemRow(icon: "paperplane.fill", title: "Publish Request")
+                            }
+                            NavigationLink(destination: DraftIdeasView()) {
+                                MenuItemRow(icon: "pencil.and.scribble", title: "Draft Ideas")
+                            }
                         }
-                        .background(Color.white)
-                        .cornerRadius(12)
+                        .padding(.horizontal, 16)
+
+                        // ── Preferences ───────────────────────────────────
+                        ProfileSection(title: "Preferences") {
+                            MenuItem(icon: "globe", title: "Language", action: {})
+                            MenuItem(icon: "hand.raised.fill", title: "Privacy & Security", action: {})
+                        }
+                        .padding(.horizontal, 16)
+
+                        // ── Support ───────────────────────────────────────
+                        ProfileSection(title: "Support") {
+                            MenuItem(icon: "questionmark.circle.fill", title: "Help & Support", action: {})
+                            MenuItem(icon: "doc.text.fill", title: "Terms & Privacy Policy", action: {})
+                        }
+                        .padding(.horizontal, 16)
+
+                        // ── Log Out ───────────────────────────────────────
+                        Button(action: {}) {
+                            Text("Log Out")
+                                .font(.urbanistSemiBold(15))
+                                .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.28))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 50)
+                                .background(Color(red: 1.0, green: 0.92, blue: 0.92))
+                                .cornerRadius(12)
+                        }
                         .padding(.horizontal, 16)
 
                         Spacer().frame(height: 20)
@@ -161,12 +179,63 @@ struct CustomerProfileDetailView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
         .sheet(isPresented: $showEditSheet) {
             EditProfileSheet(viewModel: viewModel, isPresented: $showEditSheet)
         }
         .task {
             await viewModel.fetchProfile()
         }
+        } // end NavigationStack
+    }
+}
+
+// MARK: - Profile Section Container
+struct ProfileSection<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(title)
+                .font(.urbanistSemiBold(13))
+                .foregroundColor(.cakeGrey)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+            VStack(spacing: 0) {
+                content()
+            }
+            .background(Color.white)
+            .cornerRadius(12)
+        }
+    }
+}
+
+// MARK: - Menu Item Row (for NavigationLink usage)
+struct MenuItemRow: View {
+    let icon: String
+    let title: String
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+                    .frame(width: 44, height: 44)
+                Image(systemName: icon)
+                    .font(.system(size: 18))
+                    .foregroundColor(.cakeBrown)
+            }
+            Text(title)
+                .font(.urbanistRegular(15))
+                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.cakeGrey)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 
