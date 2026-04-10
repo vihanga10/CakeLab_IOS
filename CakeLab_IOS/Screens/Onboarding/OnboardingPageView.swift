@@ -114,11 +114,21 @@ struct OnboardingPageView: View {
 
                             Spacer()
 
-                            // Next button – chevron
+                            // Next button – chevron, final page shows small Done button
                             Button(action: onNext) {
-                                Image(systemName: currentPage == totalPages - 1 ? "checkmark" : "chevron.right")
-                                    .font(.system(size: 20, weight: .bold))
-                                    .foregroundColor(.cakeBrown)
+                                if currentPage == totalPages - 1 {
+                                    Text("Done")
+                                        .font(.urbanistSemiBold(14))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 8)
+                                        .background(Color.cakeBrown)
+                                        .clipShape(Capsule())
+                                } else {
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 20, weight: .bold))
+                                        .foregroundColor(.cakeBrown)
+                                }
                             }
                         }
                         .padding(.horizontal, 32)
@@ -137,6 +147,7 @@ struct OnboardingPageView: View {
             .ignoresSafeArea()
         }
         .ignoresSafeArea()
+        .preferredColorScheme(.light)
     }
 }
 
