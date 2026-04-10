@@ -11,47 +11,23 @@ struct PublishRequestView: View {
     @State private var isLoading = false
 
     var body: some View {
-        ZStack {
-            Color(red: 0.97, green: 0.97, blue: 0.97).ignoresSafeArea()
+        ZStack(alignment: .top) {
+            Color.white.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.cakeBrown)
-                    }
-                    Spacer()
-                    Text("Publish Requests")
-                        .font(.urbanistBold(18))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                    Spacer()
-                    Color.clear.frame(width: 24)
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .background(Color.white)
-                .shadow(color: Color.black.opacity(0.04), radius: 2)
+                headerBar
 
                 if isLoading {
-                    Spacer()
-                    ProgressView("Loading requests...")
-                        .tint(.cakeBrown)
-                    Spacer()
-                } else if requests.isEmpty {
-                    Spacer()
-                    VStack(spacing: 12) {
-                        Image(systemName: "doc.text")
-                            .font(.system(size: 44))
-                            .foregroundColor(.cakeGrey)
-                        Text("No published requests yet")
-                            .font(.urbanistSemiBold(15))
-                            .foregroundColor(.cakeGrey)
-                        Text("Publish a cake request to see it here")
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .tint(.cakeBrown)
+                        Text("Loading requests...")
                             .font(.urbanistRegular(13))
                             .foregroundColor(.cakeGrey)
                     }
-                    Spacer()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if requests.isEmpty {
+                    emptyState
                 } else {
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 12) {
@@ -60,8 +36,8 @@ struct PublishRequestView: View {
                             }
                         }
                         .padding(.horizontal, 16)
-                        .padding(.top, 14)
-                        .padding(.bottom, 30)
+                        .padding(.top, 10)
+                        .padding(.bottom, 28)
                     }
                 }
             }
@@ -73,6 +49,55 @@ struct PublishRequestView: View {
         .refreshable {
             await fetchPublishedRequests()
         }
+    }
+
+    private var headerBar: some View {
+        HStack {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.cakeBrown)
+            }
+            Spacer()
+            VStack(spacing: 2) {
+                Text("Published Requests")
+                    .font(.urbanistBold(18))
+                    .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
+                
+            }
+            Spacer()
+            Color.clear.frame(width: 24)
+        }
+        .padding(.horizontal, 20)
+        .frame(height: 56)
+        .background(Color.white)
+        
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 70, height: 70)
+                Image(systemName: "doc.text")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundColor(.cakeBrown)
+            }
+            Text("No published requests yet")
+                .font(.urbanistSemiBold(16))
+                .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
+            Text("Publish a cake request to see it here")
+                .font(.urbanistRegular(13))
+                .foregroundColor(.cakeGrey)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var backgroundLayer: some View {
+        Color.white.ignoresSafeArea()
     }
     
     private func fetchPublishedRequests() async {
@@ -125,9 +150,9 @@ private struct PublishedRequestCard: View {
             }
         }
         .padding(16)
-        .background(Color.white)
+        .background(Color(red: 0.98, green: 0.976, blue: 0.973))
         .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
+        .shadow(color: Color.black.opacity(0.15), radius: 6, x: 0, y: 2)
     }
 
     private func infoItem(icon: String, label: String) -> some View {

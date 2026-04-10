@@ -11,57 +11,33 @@ struct DraftIdeasView: View {
     @State private var isLoading = false
 
     var body: some View {
-        ZStack {
-            Color(red: 0.97, green: 0.97, blue: 0.97).ignoresSafeArea()
+        ZStack(alignment: .top) {
+            backgroundLayer
 
             VStack(spacing: 0) {
-                HStack {
-                    Button { dismiss() } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.cakeBrown)
-                    }
-                    Spacer()
-                    Text("Draft Ideas")
-                        .font(.urbanistBold(18))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                    Spacer()
-                    Color.clear.frame(width: 24)
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .background(Color.white)
-                .shadow(color: Color.black.opacity(0.04), radius: 2)
+                headerBar
 
                 if isLoading {
-                    Spacer()
-                    ProgressView("Loading drafts...")
-                        .tint(.cakeBrown)
-                    Spacer()
-                } else if drafts.isEmpty {
-                    Spacer()
-                    VStack(spacing: 12) {
-                        Image(systemName: "pencil.and.scribble")
-                            .font(.system(size: 44))
-                            .foregroundColor(.cakeGrey)
-                        Text("No draft ideas yet")
-                            .font(.urbanistSemiBold(15))
-                            .foregroundColor(.cakeGrey)
-                        Text("Save a cake request as draft to see it here")
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .tint(.cakeBrown)
+                        Text("Loading drafts...")
                             .font(.urbanistRegular(13))
                             .foregroundColor(.cakeGrey)
                     }
-                    Spacer()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if drafts.isEmpty {
+                    emptyState
                 } else {
                     ScrollView(showsIndicators: false) {
-                        VStack(spacing: 12) {
+                        VStack(spacing: 14) {
                             ForEach(drafts) { draft in
                                 DraftRequestCard(draft: draft)
                             }
                         }
                         .padding(.horizontal, 16)
-                        .padding(.top, 14)
-                        .padding(.bottom, 30)
+                        .padding(.top, 16)
+                        .padding(.bottom, 28)
                     }
                 }
             }
@@ -72,6 +48,70 @@ struct DraftIdeasView: View {
         }
         .refreshable {
             await fetchDrafts()
+        }
+    }
+
+    private var headerBar: some View {
+        HStack {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.cakeBrown)
+            }
+            Spacer()
+            VStack(spacing: 2) {
+                Text("Draft Ideas")
+                    .font(.urbanistBold(18))
+                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                Text("Saved for later")
+                    .font(.urbanistRegular(11))
+                    .foregroundColor(.cakeGrey)
+            }
+            Spacer()
+            Color.clear.frame(width: 24)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 14)
+        .background(Color.white)
+        .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color.cakeBrown.opacity(0.12))
+                    .frame(width: 70, height: 70)
+                Image(systemName: "pencil.and.scribble")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundColor(.cakeBrown)
+            }
+            Text("No draft ideas yet")
+                .font(.urbanistSemiBold(16))
+                .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
+            Text("Save a cake request as draft to see it here")
+                .font(.urbanistRegular(13))
+                .foregroundColor(.cakeGrey)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var backgroundLayer: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color(red: 0.98, green: 0.96, blue: 0.94), Color(red: 0.97, green: 0.97, blue: 0.97)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            Circle()
+                .fill(Color.cakeBrown.opacity(0.06))
+                .frame(width: 220, height: 220)
+                .offset(x: 140, y: -120)
         }
     }
     
