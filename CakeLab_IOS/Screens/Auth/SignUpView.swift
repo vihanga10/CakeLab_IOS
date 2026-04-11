@@ -7,7 +7,7 @@ struct SignUpView: View {
     @StateObject private var vm = SignUpViewModel()
     @State private var showPassword        = false
     @State private var showConfirmPassword = false
-    @State private var showContentView     = false
+    @State private var showSignUpSuccessAlert = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -59,15 +59,19 @@ struct SignUpView: View {
                 .ignoresSafeArea()
             }
             .ignoresSafeArea()
-            .navigationDestination(isPresented: $showContentView) {
-                // Pass the created user to ContentView
-                if let user = vm.createdUser {
-                    ContentViewWrapper(user: user)
-                }
-            }
             .navigationBarHidden(true)
             .onChange(of: vm.navigateToFaceID) { _, newVal in
-                if newVal { showContentView = true }
+                if newVal {
+                    showSignUpSuccessAlert = true
+                    vm.navigateToFaceID = false
+                }
+            }
+            .alert("Registration Successful", isPresented: $showSignUpSuccessAlert) {
+                Button("OK") {
+                    dismiss()
+                }
+            } message: {
+                Text("Your account has been created successfully. Please sign in to continue.")
             }
         }
     }

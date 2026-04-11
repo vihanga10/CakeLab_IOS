@@ -110,7 +110,10 @@ struct OTPVerificationView: View {
                             Spacer().frame(height: 20)
 
                             // ── Verify button ─────────────────────────────────────────
-                            NavigationLink(destination: ResetPasswordView(email: email), isActive: $navigateToReset) {
+                            NavigationLink(destination: ResetPasswordView(email: email, onPasswordChanged: {
+                                onVerified()
+                                dismiss()
+                            }), isActive: $navigateToReset) {
                                 Button {
                                     verifyOTP()
                                 } label: {

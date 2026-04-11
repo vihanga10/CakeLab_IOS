@@ -38,11 +38,6 @@ final class ResetPasswordViewModel: ObservableObject {
                 
                 didReset = true
                 isLoading = false
-                
-                // Auto dismiss after 2 seconds
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    // Navigation will handle dismissal
-                }
             } catch {
                 errorMessage = error.localizedDescription
                 isLoading = false
@@ -57,11 +52,13 @@ final class ResetPasswordViewModel: ObservableObject {
 struct ResetPasswordView: View {
 
     let email: String
+    let onPasswordChanged: () -> Void
     @StateObject private var vm      = ResetPasswordViewModel()
     @State private var showCurrent   = false
     @State private var showNew       = false
     @State private var showConfirm   = false
     @State private var showFullScreen = false
+    @State private var showSuccessAlert = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -76,6 +73,11 @@ struct ResetPasswordView: View {
             vm.email = email
             if !showFullScreen {
                 showFullScreen = true
+            }
+        }
+        .onChange(of: vm.didReset) { _, didReset in
+            if didReset {
+                showSuccessAlert = true
             }
         }
     }
@@ -157,13 +159,6 @@ struct ResetPasswordView: View {
                                     .padding(.top, 10)
                             }
 
-                            if vm.didReset {
-                                Text("Password changed successfully!")
-                                    .font(.urbanistSemiBold(13))
-                                    .foregroundColor(Color(red: 0.2, green: 0.6, blue: 0.3))
-                                    .padding(.top, 10)
-                            }
-
                             Spacer(minLength: 18)
 
                             Button { vm.changePassword() } label: {
@@ -190,6 +185,14 @@ struct ResetPasswordView: View {
                 }
             }
         }
+        .alert("Password Changed Successfully", isPresented: $showSuccessAlert) {
+            Button("OK") {
+                onPasswordChanged()
+                showFullScreen = false
+            }
+        } message: {
+            Text("Successfully password changed. Please go to the sign in page to sign in.")
+        }
     }
 
     private func fieldLabel(_ label: String) -> some View {
@@ -207,5 +210,5 @@ struct ResetPasswordView: View {
 
 // MARK: - Preview
 #Preview {
-    NavigationStack { ResetPasswordView(email: "test@example.com") }
+    NavigationStack { ResetPasswordView(email: "test@example.com", onPasswordChanged: {}) }
 }
