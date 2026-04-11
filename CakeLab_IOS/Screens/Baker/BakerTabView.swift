@@ -11,8 +11,8 @@ struct BakerTabView: View {
                 switch selectedTab {
                 case 0: BakerHomeView(user: user)
                 case 1: BakerMatchingRequestsView()
-                case 2: BakerOrdersView()
-                case 3: BakerProfileView(user: user)
+                case 2: BakerOrdersView(user: user)
+                case 3: BakerProfileView(user: user, parentTabSelection: $selectedTab)
                 default: BakerHomeView(user: user)
                 }
             }

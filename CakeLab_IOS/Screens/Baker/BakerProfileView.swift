@@ -7,8 +7,12 @@ import FirebaseAuth
 @MainActor
 struct BakerProfileView: View {
     let user: AppUser
+    @Binding var parentTabSelection: Int
     @State private var profileData = BakerProfileData.empty
     @State private var isLoading = true
+    @State private var monthlyOrders: [MonthlyOrderData] = []
+    @State private var earningsData: EarningsData = .empty
+    @State private var reviews: [Review] = []
 
     private var completedOrdersText: String { "\(profileData.completedOrders)" }
     private var reviewsText: String { "\(profileData.reviewCount)" }
@@ -20,55 +24,71 @@ struct BakerProfileView: View {
     }
 
     var body: some View {
-        ZStack {
-            Color.white.ignoresSafeArea()
+        NavigationStack {
+            ZStack {
+                Color.white.ignoresSafeArea()
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 0) {
 
-                    // MARK: Profile Header
-                    profileHeaderSection
-                        .padding(.bottom, 16)
+                        // MARK: Profile Header
+                        profileHeaderSection
+                            .padding(.bottom, 16)
 
-                    // MARK: Stats Row
-                    statsRow
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
+                        // MARK: Stats Row
+                        statsRow
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
 
-                    // MARK: Category Tags
-                    categoryTagsSection
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
+                        // MARK: Category Tags
+                        categoryTagsSection
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
 
-                    // MARK: About / Bio
-                    bioSection
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
+                        // MARK: About / Bio
+                        bioSection
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
 
-                    // MARK: Portfolio Gallery
-                    portfolioSection
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
+                        // MARK: Portfolio Gallery
+                        portfolioSection
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
 
-                    // MARK: Performance Charts
-                    performanceSection
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
+                        // MARK: Performance Charts
+                        performanceSection
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
 
-                    // MARK: Earnings Summary
-                    earningsSection
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
+                        // MARK: Earnings Summary
+                        earningsSection
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
 
-                    // MARK: Settings
-                    settingsSection
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 100)
+                        // MARK: Profile Menu
+                        profileMenuSection
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
+
+                        // MARK: Settings
+                        settingsSection
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 100)
+                    }
                 }
             }
         }
         .task {
             await loadProfileData()
+            await loadMonthlyOrdersData()
+            await loadEarningsData()
+            await loadReviewsData()
+        }
+        .onAppear {
+            // Refresh profile data when returning from Edit Profile
+            Task {
+                await loadProfileData()
+            }
         }
     }
 
@@ -178,10 +198,18 @@ struct BakerProfileView: View {
     // MARK: - Stats Row
     private var statsRow: some View {
         HStack(spacing: 0) {
-            profileStatItem(value: completedOrdersText, label: "Completed \n   Orders")
+            // Completed Orders - Clickable
+            Button(action: { parentTabSelection = 2 }) {
+                profileStatItem(value: completedOrdersText, label: "Completed \n   Orders")
+            }
             Divider().frame(height: 40)
-            profileStatItem(value: reviewsText, label: "Reviews")
+            
+            // Reviews - Clickable
+            NavigationLink(destination: BakerReviewsView(user: user)) {
+                profileStatItem(value: reviewsText, label: "Reviews")
+            }
             Divider().frame(height: 40)
+            
             profileStatItem(value: avgRatingText, label: "Avg Rating")
             Divider().frame(height: 40)
             profileStatItem(value: "98%", label: "On-Time")
@@ -207,7 +235,7 @@ struct BakerProfileView: View {
     // MARK: - Bio Section
     private var bioSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("About Me :")
+            Text("About Me")
                 .font(.urbanistBold(16))
                 .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
 
@@ -241,9 +269,13 @@ struct BakerProfileView: View {
                 Spacer()
             }
 
-    
-
-            PastelTagFlowLayout(tags: profileData.specialties)
+            if profileData.specialties.isEmpty {
+                Text("No specialties added yet")
+                    .font(.urbanistRegular(13))
+                    .foregroundColor(.cakeGrey)
+            } else {
+                PastelTagFlowLayout(tags: profileData.specialties)
+            }
         }
         .padding(18)
         .background(Color.white)
@@ -255,7 +287,7 @@ struct BakerProfileView: View {
     private var portfolioSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("My Portfolio :")
+                Text("My Portfolio")
                     .font(.urbanistBold(16))
                     .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
                 Spacer()
@@ -379,74 +411,232 @@ struct BakerProfileView: View {
         return output
     }
 
-    // MARK: - Performance Charts
-    private var performanceSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Label("Performance", systemImage: "chart.bar.fill")
-                .font(.urbanistBold(16))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+    private var ratingBreakdown: [RatingData] {
+        let totalReviews = reviews.count
+        guard totalReviews > 0 else { return [] }
+        
+        var breakdown: [Int: Int] = [1: 0, 2: 0, 3: 0, 4: 0, 5: 0]
+        for review in reviews {
+            breakdown[review.rating, default: 0] += 1
+        }
+        
+        return (1...5).reversed().map { stars in
+            let count = breakdown[stars] ?? 0
+            let fraction = CGFloat(count) / CGFloat(totalReviews)
+            return RatingData(stars: stars, count: count, fraction: fraction)
+        }
+    }
 
-            // Monthly orders chart
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Monthly Orders")
-                    .font(.urbanistSemiBold(13))
-                    .foregroundColor(.cakeGrey)
-
-                Chart(monthlyOrderData) { item in
-                    BarMark(
-                        x: .value("Month", item.month),
-                        y: .value("Orders", item.count)
-                    )
-                    .foregroundStyle(Color.cakeBrown.gradient)
-                    .cornerRadius(6)
-                }
-                .frame(height: 140)
-                .chartXAxis {
-                    AxisMarks(values: .automatic) { _ in
-                        AxisValueLabel()
-                            .font(.urbanistRegular(10))
-                    }
-                }
-                .chartYAxis {
-                    AxisMarks(values: .automatic) { _ in
-                        AxisGridLine()
-                        AxisValueLabel()
-                            .font(.urbanistRegular(10))
+    private func loadMonthlyOrdersData() async {
+        let db = Firestore.firestore()
+        
+        do {
+            let statuses = ["completed", "delivered", "done"]
+            var allOrders: [CakeOrder] = []
+            
+            for key in ["bakerID", "bakerId", "artisanId"] {
+                let query = db.collection("orders")
+                    .whereField(key, isEqualTo: user.id)
+                    .whereField("status", in: statuses)
+                
+                let snapshot = try await query.getDocuments()
+                for doc in snapshot.documents {
+                    if let order = CakeOrder(document: doc), !allOrders.contains(where: { $0.id == order.id }) {
+                        allOrders.append(order)
                     }
                 }
             }
+            
+            // Group by month
+            let calendar = Calendar.current
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "MMM"
+            
+            var monthCounts: [String: Int] = [:]
+            for order in allOrders {
+                let month = dateFormatter.string(from: order.deliveryDate)
+                monthCounts[month, default: 0] += 1
+            }
+            
+            monthlyOrders = monthCounts.map { MonthlyOrderData(month: $0.key, count: $0.value) }
+                .sorted { (a, b) -> Bool in
+                    let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                    return (months.firstIndex(of: a.month) ?? 0) < (months.firstIndex(of: b.month) ?? 0)
+                }
+        } catch {
+            print("Error loading monthly orders: \(error.localizedDescription)")
+            monthlyOrders = []
+        }
+    }
 
-            // Rating breakdown
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Rating Breakdown")
-                    .font(.urbanistSemiBold(13))
-                    .foregroundColor(.cakeGrey)
+    private func loadEarningsData() async {
+        let db = Firestore.firestore()
+        
+        do {
+            let statuses = ["completed", "delivered", "done"]
+            var allOrders: [CakeOrder] = []
+            
+            for key in ["bakerID", "bakerId", "artisanId"] {
+                let query = db.collection("orders")
+                    .whereField(key, isEqualTo: user.id)
+                    .whereField("status", in: statuses)
+                
+                let snapshot = try await query.getDocuments()
+                for doc in snapshot.documents {
+                    if let order = CakeOrder(document: doc), !allOrders.contains(where: { $0.id == order.id }) {
+                        allOrders.append(order)
+                    }
+                }
+            }
+            
+            // Calculate earnings by period
+            let calendar = Calendar.current
+            let now = Date()
+            
+            let thisMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
+            let lastMonthStart = calendar.date(byAdding: .month, value: -1, to: thisMonthStart)!
+            let lastMonthEnd = calendar.date(byAdding: .day, value: -1, to: thisMonthStart)!
+            let thisYearStart = calendar.date(from: calendar.dateComponents([.year], from: now))!
+            
+            var thisMonthEarnings: Double = 0
+            var lastMonthEarnings: Double = 0
+            var thisYearEarnings: Double = 0
+            
+            for order in allOrders {
+                // Parse amount from artisanRating or estimate based on order (for demo, using fixed values)
+                let amount: Double = 3500 // Default amount per order
+                
+                thisYearEarnings += amount
+                
+                if order.deliveryDate >= thisMonthStart {
+                    thisMonthEarnings += amount
+                } else if order.deliveryDate >= lastMonthStart && order.deliveryDate <= lastMonthEnd {
+                    lastMonthEarnings += amount
+                }
+            }
+            
+            let avgPerOrder = allOrders.isEmpty ? 0 : thisYearEarnings / Double(allOrders.count)
+            
+            earningsData = EarningsData(
+                totalEarningsThisMonth: thisMonthEarnings,
+                totalEarningsLastMonth: lastMonthEarnings,
+                totalEarningsThisYear: thisYearEarnings,
+                avgPerOrder: avgPerOrder
+            )
+        } catch {
+            print("Error loading earnings data: \(error.localizedDescription)")
+            earningsData = .empty
+        }
+    }
 
-                ForEach(ratingBreakdown.reversed(), id: \.stars) { item in
-                    HStack(spacing: 10) {
-                        HStack(spacing: 2) {
-                            Text("\(item.stars)")
-                                .font(.urbanistMedium(12))
-                            Image(systemName: "star.fill")
-                                .font(.system(size: 10))
-                                .foregroundColor(Color(red: 0.95, green: 0.75, blue: 0.2))
-                        }
-                        .frame(width: 30)
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color.cakeBrown.opacity(0.1))
-                                    .frame(height: 8)
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color.cakeBrown)
-                                    .frame(width: geo.size.width * item.fraction, height: 8)
-                            }
-                        }
-                        .frame(height: 8)
-                        Text("\(item.count)")
+    private func loadReviewsData() async {
+        let db = Firestore.firestore()
+        
+        do {
+            let query = db.collection("reviews")
+                .whereField("bakerID", isEqualTo: user.id)
+                .order(by: "createdAt", descending: true)
+            
+            let snapshot = try await query.getDocuments()
+            reviews = snapshot.documents.compactMap { Review(document: $0) }
+        } catch {
+            print("Error loading reviews: \(error.localizedDescription)")
+            reviews = []
+        }
+    }
+
+    // MARK: - Performance Charts
+    private var performanceSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Performance")
+                .font(.urbanistBold(16))
+                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+
+            if monthlyOrders.isEmpty {
+                // Empty state
+                VStack(spacing: 16) {
+                    Image(systemName: "chart.bar")
+                        .font(.system(size: 32))
+                        .foregroundColor(.cakeBrown.opacity(0.3))
+                    VStack(spacing: 6) {
+                        Text("No Performance Data")
+                            .font(.urbanistBold(14))
+                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        Text("Complete orders to see your performance metrics.")
                             .font(.urbanistRegular(12))
                             .foregroundColor(.cakeGrey)
-                            .frame(width: 24, alignment: .trailing)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(20)
+                .background(Color(red: 0.97, green: 0.96, blue: 0.94))
+                .cornerRadius(12)
+            } else {
+                // Monthly orders chart
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Monthly Orders")
+                        .font(.urbanistSemiBold(13))
+                        .foregroundColor(.cakeGrey)
+
+                    Chart(monthlyOrders) { item in
+                        BarMark(
+                            x: .value("Month", item.month),
+                            y: .value("Orders", item.count)
+                        )
+                        .foregroundStyle(Color.cakeBrown.gradient)
+                        .cornerRadius(6)
+                    }
+                    .frame(height: 140)
+                    .chartXAxis {
+                        AxisMarks(values: .automatic) { _ in
+                            AxisValueLabel()
+                                .font(.urbanistRegular(10))
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks(values: .automatic) { _ in
+                            AxisGridLine()
+                            AxisValueLabel()
+                                .font(.urbanistRegular(10))
+                        }
+                    }
+                }
+
+                // Rating breakdown
+                if !reviews.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Rating Breakdown")
+                            .font(.urbanistSemiBold(13))
+                            .foregroundColor(.cakeGrey)
+
+                        ForEach(ratingBreakdown.reversed(), id: \.stars) { item in
+                            HStack(spacing: 10) {
+                                HStack(spacing: 2) {
+                                    Text("\(item.stars)")
+                                        .font(.urbanistMedium(12))
+                                    Image(systemName: "star.fill")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(Color(red: 0.95, green: 0.75, blue: 0.2))
+                                }
+                                .frame(width: 30)
+                                GeometryReader { geo in
+                                    ZStack(alignment: .leading) {
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .fill(Color.cakeBrown.opacity(0.1))
+                                            .frame(height: 8)
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .fill(Color.cakeBrown)
+                                            .frame(width: geo.size.width * item.fraction, height: 8)
+                                    }
+                                }
+                                .frame(height: 8)
+                                Text("\(item.count)")
+                                    .font(.urbanistRegular(12))
+                                    .foregroundColor(.cakeGrey)
+                                    .frame(width: 24, alignment: .trailing)
+                            }
+                        }
                     }
                 }
             }
@@ -460,17 +650,39 @@ struct BakerProfileView: View {
     // MARK: - Earnings Summary
     private var earningsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Earnings Summary", systemImage: "banknote.fill")
+            Text("Earnings Summary")
                 .font(.urbanistBold(16))
                 .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
 
-            HStack(spacing: 12) {
-                earningCard(title: "This Month", value: "LKR 48,500", icon: "calendar", color: Color.cakeBrown)
-                earningCard(title: "Last Month", value: "LKR 38,200", icon: "clock.arrow.circlepath", color: Color(red: 0.3, green: 0.45, blue: 0.8))
-            }
-            HStack(spacing: 12) {
-                earningCard(title: "This Year", value: "LKR 3,24,000", icon: "chart.line.uptrend.xyaxis", color: Color(red: 0.2, green: 0.6, blue: 0.4))
-                earningCard(title: "Avg Per Order", value: "LKR 8,700", icon: "equal.circle.fill", color: Color(red: 0.7, green: 0.45, blue: 0.1))
+            if earningsData.totalEarningsThisMonth == 0 && earningsData.totalEarningsLastMonth == 0 {
+                // Empty state
+                VStack(spacing: 16) {
+                    Image(systemName: "banknote")
+                        .font(.system(size: 32))
+                        .foregroundColor(.cakeBrown.opacity(0.3))
+                    VStack(spacing: 6) {
+                        Text("No Earnings Data")
+                            .font(.urbanistBold(14))
+                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        Text("Complete orders to start earning and see your earnings summary.")
+                            .font(.urbanistRegular(12))
+                            .foregroundColor(.cakeGrey)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(20)
+                .background(Color(red: 0.97, green: 0.96, blue: 0.94))
+                .cornerRadius(12)
+            } else {
+                HStack(spacing: 12) {
+                    earningCard(title: "This Month", value: earningsData.thisMonthFormatted, icon: "calendar", color: Color.cakeBrown)
+                    earningCard(title: "Last Month", value: earningsData.lastMonthFormatted, icon: "clock.arrow.circlepath", color: Color(red: 0.3, green: 0.45, blue: 0.8))
+                }
+                HStack(spacing: 12) {
+                    earningCard(title: "This Year", value: earningsData.thisYearFormatted, icon: "chart.line.uptrend.xyaxis", color: Color(red: 0.2, green: 0.6, blue: 0.4))
+                    earningCard(title: "Avg Per Order", value: earningsData.avgPerOrderFormatted, icon: "equal.circle.fill", color: Color(red: 0.7, green: 0.45, blue: 0.1))
+                }
             }
         }
         .padding(18)
@@ -505,6 +717,49 @@ struct BakerProfileView: View {
         .background(Color(red: 0.97, green: 0.96, blue: 0.94))
         .cornerRadius(14)
         .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Profile Menu
+    private var profileMenuSection: some View {
+        VStack(spacing: 0) {
+            NavigationLink(destination: BakerEditProfileView(user: user)) {
+                menuRow(icon: "person.fill", label: "Edit Profile", color: Color(red: 0.5, green: 0.5, blue: 0.5))
+            }
+            Divider().padding(.leading, 52)
+            menuRow(icon: "chart.bar.fill", label: "Performance Analysis", color: Color(red: 0.3, green: 0.45, blue: 0.8))
+            Divider().padding(.leading, 52)
+            menuRow(icon: "banknote.fill", label: "Earnings Summary", color: Color(red: 0.2, green: 0.6, blue: 0.4))
+            Divider().padding(.leading, 52)
+            menuRow(icon: "lock.fill", label: "Change Password", color: Color(red: 0.7, green: 0.45, blue: 0.1))
+            Divider().padding(.leading, 52)
+            menuRow(icon: "globe", label: "Language", color: Color(red: 0.2, green: 0.5, blue: 0.8))
+            Divider().padding(.leading, 52)
+            menuRow(icon: "photo.stack.fill", label: "Edit Portfolio", color: Color.cakeBrown)
+        }
+        .background(Color.white)
+        .cornerRadius(18)
+        .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
+    }
+
+    private func menuRow(icon: String, label: String, color: Color) -> some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(color.opacity(0.12))
+                    .frame(width: 36, height: 36)
+                Image(systemName: icon)
+                    .font(.system(size: 16))
+                    .foregroundColor(color)
+            }
+            Text(label)
+                .font(.urbanistMedium(15))
+                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(Color(red: 0.7, green: 0.7, blue: 0.7))
+        }
+        .padding(14)
     }
 
     // MARK: - Settings
@@ -570,11 +825,7 @@ struct FlowLayout: View {
     let tags: [String]
 
     var body: some View {
-        var width: CGFloat = 0
-        var rows: [[String]] = [[]]
-
-        // Simple tag layout
-        return VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 ForEach(tags, id: \.self) { tag in
                     Text(tag)
@@ -631,7 +882,7 @@ private struct PortfolioThumbnail: View {
 private struct PastelTagFlowLayout: View {
     let tags: [String]
 
-    private let pastelPalette: [Color] = [
+    let pastelPalette: [Color] = [
         Color(red: 0.95, green: 0.84, blue: 0.92),
         Color(red: 0.98, green: 0.86, blue: 0.82),
         Color(red: 0.97, green: 0.93, blue: 0.78),
@@ -656,6 +907,50 @@ private struct PastelTagFlowLayout: View {
             .flipsForRightToLeftLayoutDirection(false)
         }
     }
+}
+
+// MARK: - Helper Data Structures
+private struct RatingData: Identifiable {
+    let id = UUID()
+    let stars: Int
+    let count: Int
+    let fraction: CGFloat
+}
+
+struct MonthlyOrderData: Identifiable {
+    let id = UUID()
+    let month: String
+    let count: Int
+}
+
+struct EarningsData {
+    let totalEarningsThisMonth: Double
+    let totalEarningsLastMonth: Double
+    let totalEarningsThisYear: Double
+    let avgPerOrder: Double
+    
+    var thisMonthFormatted: String {
+        return String(format: "LKR %.0f", totalEarningsThisMonth)
+    }
+    
+    var lastMonthFormatted: String {
+        return String(format: "LKR %.0f", totalEarningsLastMonth)
+    }
+    
+    var thisYearFormatted: String {
+        return String(format: "LKR %.0f", totalEarningsThisYear)
+    }
+    
+    var avgPerOrderFormatted: String {
+        return String(format: "LKR %.0f", avgPerOrder)
+    }
+    
+    static let empty = EarningsData(
+        totalEarningsThisMonth: 0,
+        totalEarningsLastMonth: 0,
+        totalEarningsThisYear: 0,
+        avgPerOrder: 0
+    )
 }
 
 private struct BakerProfileData {
@@ -699,8 +994,8 @@ struct BakerEditProfileSheet: View {
     @State private var phone = "+94 77 123 4567"
     @State private var selectedTags: Set<String> = ["Wedding Cakes", "Birthday Cakes", "Fondant Art"]
 
-    private let allCategories = ["Wedding Cakes", "Birthday Cakes", "Fondant Art", "Custom Orders",
-                                  "Cupcakes", "Corporate Cakes", "Dessert Platters", "Cheesecakes",
+    let allCategories = ["Wedding Cakes", "Birthday Cakes", "Fondant Art", "Custom Orders",
+                         "Cupcakes", "Corporate Cakes", "Dessert Platters", "Cheesecakes",
                                   "Gluten-Free", "Vegan Cakes", "Kids Cakes", "Fruit Cakes"]
 
     init(user: AppUser) {
@@ -823,36 +1118,7 @@ struct BakerEditProfileSheet: View {
     }
 }
 
-// MARK: - Chart Data Models
-struct MonthlyOrder: Identifiable {
-    let id = UUID()
-    let month: String
-    let count: Int
-}
-
-struct RatingItem {
-    let stars: Int
-    let count: Int
-    let fraction: CGFloat
-}
-
-let monthlyOrderData: [MonthlyOrder] = [
-    MonthlyOrder(month: "Nov", count: 4),
-    MonthlyOrder(month: "Dec", count: 9),
-    MonthlyOrder(month: "Jan", count: 7),
-    MonthlyOrder(month: "Feb", count: 11),
-    MonthlyOrder(month: "Mar", count: 14),
-    MonthlyOrder(month: "Apr", count: 6),
-]
-
-let ratingBreakdown: [RatingItem] = [
-    RatingItem(stars: 5, count: 38, fraction: 0.81),
-    RatingItem(stars: 4, count: 6,  fraction: 0.13),
-    RatingItem(stars: 3, count: 2,  fraction: 0.04),
-    RatingItem(stars: 2, count: 1,  fraction: 0.02),
-    RatingItem(stars: 1, count: 0,  fraction: 0.00),
-]
-
 #Preview {
-    BakerProfileView(user: AppUser.mockBaker)
+    @State var tabSelection = 0
+    return BakerProfileView(user: AppUser.mockBaker, parentTabSelection: $tabSelection)
 }

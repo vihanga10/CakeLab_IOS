@@ -81,7 +81,7 @@ struct BakerHomeView: View {
                 EmptyView()
             }
             .navigationDestination(isPresented: $showAllActive) {
-                BakerOrdersView()
+                BakerOrdersView(user: user)
             }
             .sheet(isPresented: $showLocationSheet) {
                 LocationPickerSheet(selectedCity: $selectedCity, isActive: $isLocationActive)
