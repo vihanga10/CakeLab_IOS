@@ -2,13 +2,70 @@ import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
 
+enum CustomerRequestCollection {
+    case published
+    case draft
+
+    var firestoreName: String {
+        switch self {
+        case .published:
+            return "cakeRequests"
+        case .draft:
+            return "draftRequests"
+        }
+    }
+
+    func includes(_ request: CakeRequestRecord) -> Bool {
+        switch self {
+        case .published:
+            return request.status != "draft"
+        case .draft:
+            return true
+        }
+    }
+}
+
+struct CustomerRequestStore {
+    private let db = Firestore.firestore()
+
+    func fetchRequests(for userID: String, from collection: CustomerRequestCollection) async throws -> [CakeRequestRecord] {
+        async let currentFieldSnapshot = db.collection(collection.firestoreName)
+            .whereField("customerID", isEqualTo: userID)
+            .getDocuments()
+        async let legacyFieldSnapshot = db.collection(collection.firestoreName)
+            .whereField("customerId", isEqualTo: userID)
+            .getDocuments()
+
+        let snapshots = try await [currentFieldSnapshot, legacyFieldSnapshot]
+        var requestsByID: [String: CakeRequestRecord] = [:]
+
+        for snapshot in snapshots {
+            for document in snapshot.documents {
+                guard let request = CakeRequestRecord(document: document) else {
+                    continue
+                }
+
+                guard collection.includes(request), request.ownedBy(userID: userID) else {
+                    continue
+                }
+
+                requestsByID[request.id] = request
+            }
+        }
+
+        return requestsByID.values.sorted { $0.sortDate > $1.sortDate }
+    }
+}
+
 // MARK: - Publish Request View (Customer's published cake requests)
 @MainActor
 struct PublishRequestView: View {
+    let user: AppUser
     @Environment(\.dismiss) private var dismiss
     
     @State private var requests: [CakeRequestRecord] = []
     @State private var isLoading = false
+    private let requestStore = CustomerRequestStore()
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -101,21 +158,17 @@ struct PublishRequestView: View {
     }
     
     private func fetchPublishedRequests() async {
-        guard let userID = Auth.auth().currentUser?.uid else { return }
+        guard let userID = Auth.auth().currentUser?.uid else {
+            print("Error fetching published requests: no authenticated Firebase session")
+            requests = []
+            return
+        }
         
         isLoading = true
         defer { isLoading = false }
         
         do {
-            let snapshot = try await Firestore.firestore()
-                .collection("cakeRequests")
-                .whereField("customerID", isEqualTo: userID)
-                .getDocuments()
-            
-            requests = snapshot.documents
-                .compactMap(CakeRequestRecord.init(document:))
-                .filter { $0.status != "draft" }
-                .sorted { $0.sortDate > $1.sortDate }
+            requests = try await requestStore.fetchRequests(for: userID, from: .published)
         } catch {
             print("Error fetching published requests: \(error)")
         }
@@ -223,8 +276,8 @@ struct CakeRequestRecord: Identifiable {
     let bidCount: Int
     
     init?(document: DocumentSnapshot) {
-        guard let data = document.data(),
-              let customerID = data["customerID"] as? String else {
+                guard let data = document.data(),
+                            let customerID = Self.stringValue(in: data, keys: ["customerID", "customerId"]) else {
             return nil
         }
         
@@ -239,31 +292,26 @@ struct CakeRequestRecord: Identifiable {
         self.categories = data["categories"] as? [String] ?? []
         self.styles = data["styles"] as? [String] ?? []
         self.dietary = data["dietary"] as? [String] ?? []
-        self.tier = data["tier"] as? Int ?? 0
+        self.tier = Self.intValue(in: data, key: "tier")
         self.cakeSize = data["cakeSize"] as? String ?? ""
-        self.sugarLevel = data["sugarLevel"] as? Double ?? 0.5
+        self.sugarLevel = Self.doubleValue(in: data, key: "sugarLevel", defaultValue: 0.5)
         self.flavours = data["flavours"] as? [String] ?? []
         self.fillingFlavour = data["fillingFlavour"] as? String ?? ""
         self.specialInstructions = data["specialInstructions"] as? String ?? ""
-        self.budgetMin = data["budgetMin"] as? Double ?? 0
-        self.budgetMax = data["budgetMax"] as? Double ?? 0
+        self.budgetMin = Self.doubleValue(in: data, key: "budgetMin")
+        self.budgetMax = Self.doubleValue(in: data, key: "budgetMax")
         self.allowNearby = data["allowNearby"] as? Bool ?? false
         self.status = data["status"] as? String ?? "open"
-        self.bidCount = data["bidCount"] as? Int ?? 0
-        
-        let expectedDateValue = data["expectedDate"] as? Double ?? Date().timeIntervalSince1970
-        let expectedTimeValue = data["expectedTime"] as? Double ?? Date().timeIntervalSince1970
-        let createdAtValue = data["createdAt"] as? Double ?? Date().timeIntervalSince1970
-        
-        self.expectedDate = Date(timeIntervalSince1970: expectedDateValue)
-        self.expectedTime = Date(timeIntervalSince1970: expectedTimeValue)
-        self.createdAt = Date(timeIntervalSince1970: createdAtValue)
-        
-        if let savedAtValue = data["savedAt"] as? Double {
-            self.savedAt = Date(timeIntervalSince1970: savedAtValue)
-        } else {
-            self.savedAt = nil
-        }
+        self.bidCount = Self.intValue(in: data, key: "bidCount")
+
+        self.expectedDate = Self.dateValue(in: data, key: "expectedDate") ?? Date()
+        self.expectedTime = Self.dateValue(in: data, key: "expectedTime") ?? Date()
+        self.createdAt = Self.dateValue(in: data, key: "createdAt") ?? Date()
+        self.savedAt = Self.dateValue(in: data, key: "savedAt")
+    }
+
+    func ownedBy(userID: String) -> Bool {
+        customerID == userID
     }
     
     var sortDate: Date {
@@ -350,6 +398,56 @@ struct CakeRequestRecord: Identifiable {
             isMatching: true
         )
     }
+
+    private static func stringValue(in data: [String: Any], keys: [String]) -> String? {
+        for key in keys {
+            if let value = data[key] as? String, !value.isEmpty {
+                return value
+            }
+        }
+
+        return nil
+    }
+
+    private static func intValue(in data: [String: Any], key: String) -> Int {
+        if let value = data[key] as? Int {
+            return value
+        }
+
+        if let value = data[key] as? NSNumber {
+            return value.intValue
+        }
+
+        return 0
+    }
+
+    private static func doubleValue(in data: [String: Any], key: String, defaultValue: Double = 0) -> Double {
+        if let value = data[key] as? Double {
+            return value
+        }
+
+        if let value = data[key] as? NSNumber {
+            return value.doubleValue
+        }
+
+        return defaultValue
+    }
+
+    private static func dateValue(in data: [String: Any], key: String) -> Date? {
+        if let value = data[key] as? Timestamp {
+            return value.dateValue()
+        }
+
+        if let value = data[key] as? Date {
+            return value
+        }
+
+        if let value = data[key] as? NSNumber {
+            return Date(timeIntervalSince1970: value.doubleValue)
+        }
+
+        return nil
+    }
 }
 
 func categoryIcon(for category: String) -> String {
@@ -401,5 +499,5 @@ func postedTimeText(from date: Date) -> String {
 }
 
 #Preview {
-    NavigationStack { PublishRequestView() }
+    NavigationStack { PublishRequestView(user: .mock) }
 }

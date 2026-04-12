@@ -15,6 +15,7 @@ final class BiometricAuthViewModel: ObservableObject {
     
     private let authService: AuthServiceProtocol
     private let context = LAContext()
+    private let credentialStore = CredentialStore()
     
     init(authService: AuthServiceProtocol = AuthService()) {
         self.authService = authService
@@ -70,6 +71,15 @@ final class BiometricAuthViewModel: ObservableObject {
             // Fetch user by email from Firestore
             let user = try await authService.fetchUserByEmail(email.trimmingCharacters(in: .whitespaces))
             print("✅ DEBUG: User verified - Email: \(user.email), Role: \(user.role.rawValue)")
+
+            let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            guard credentialStore.hasPassword(for: normalizedEmail) else {
+                errorMessage = "No saved credentials for this email. Sign in once with Email & Password and enable Remember Me."
+                isUserValid = false
+                isLoading = false
+                return
+            }
+
             authenticatedUser = user
             isUserValid = true
             isLoading = false
@@ -88,7 +98,7 @@ final class BiometricAuthViewModel: ObservableObject {
             return
         }
         
-        guard let user = authenticatedUser else {
+        guard authenticatedUser != nil else {
             errorMessage = "User information not found"
             return
         }
@@ -104,6 +114,7 @@ final class BiometricAuthViewModel: ObservableObject {
         
         do {
             print("🔐 DEBUG: Attempting Face ID authentication for \(email)")
+            let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             
             let success = try await context.evaluatePolicy(
                 .deviceOwnerAuthenticationWithBiometrics,
@@ -111,8 +122,12 @@ final class BiometricAuthViewModel: ObservableObject {
             )
             
             if success {
+                let savedPassword = try credentialStore.password(for: normalizedEmail)
+                let signedInUser = try await authService.signIn(email: normalizedEmail, password: savedPassword)
+                authenticatedUser = signedInUser
+
                 print("✅ DEBUG: Face ID authentication successful for \(email)")
-                print("✅ DEBUG: User role: \(user.role.rawValue)")
+                print("✅ DEBUG: User role: \(signedInUser.role.rawValue)")
                 // Successfully authenticated - the view will handle navigation via binding
                 isLoading = false
             } else {

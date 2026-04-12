@@ -4,6 +4,7 @@ import MapKit
 // MARK: - Artisans Near You View
 @MainActor
 struct ArtisansNearYouView: View {
+    let user: AppUser
     @Environment(\.dismiss) var dismiss
     @State private var position: MapCameraPosition = .automatic
     @State private var selectedArtisan: ArtisanProfile?
@@ -241,7 +242,7 @@ struct ArtisansNearYouView: View {
                                     .cornerRadius(10)
                             }
 
-                            NavigationLink(destination: CreateCakeRequestView()) {
+                            NavigationLink(destination: CreateCakeRequestView(user: user)) {
                                 Text("Send Request")
                                     .font(.urbanistSemiBold(14))
                                     .frame(maxWidth: .infinity)
@@ -336,6 +337,6 @@ struct ArtisanNearCard: View {
 
 #Preview {
     NavigationStack {
-        ArtisansNearYouView()
+        ArtisansNearYouView(user: .mock)
     }
 }

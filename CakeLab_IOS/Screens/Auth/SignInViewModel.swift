@@ -18,6 +18,7 @@ final class SignInViewModel: ObservableObject {
     @Published var navigateToFaceID = false
 
     private let authService: AuthServiceProtocol
+    private let credentialStore = CredentialStore()
 
     init(authService: AuthServiceProtocol = AuthService()) {
         self.authService = authService
@@ -45,6 +46,17 @@ final class SignInViewModel: ObservableObject {
                     errorMessage = "Role mismatch. Please select '\(user.role.rawValue.capitalized)' to continue."
                     isLoading = false
                     return
+                }
+
+                let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                if rememberMe {
+                    do {
+                        try credentialStore.save(email: normalizedEmail, password: password)
+                    } catch {
+                        print("WARNING: Failed to save credentials for Face ID: \(error.localizedDescription)")
+                    }
+                } else {
+                    credentialStore.delete(email: normalizedEmail)
                 }
                 
                 print("✅ DEBUG: Role validation passed - User is: \(user.role.rawValue)")

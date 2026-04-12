@@ -5,6 +5,7 @@ import FirebaseFirestore
 
 // MARK: - Create Cake Request View
 struct CreateCakeRequestView: View {
+    let user: AppUser
     
     @Environment(\.dismiss) private var dismiss
     
@@ -557,7 +558,10 @@ struct CreateCakeRequestView: View {
         isSaving = true
         defer { isSaving = false }
         
-        guard let userID = Auth.auth().currentUser?.uid else { return }
+        guard let userID = Auth.auth().currentUser?.uid else {
+            print("Error saving request: no authenticated Firebase session")
+            return
+        }
         let db = Firestore.firestore()
         let customerProfile = await fetchCurrentUserProfile(from: db, userID: userID)
         
@@ -593,7 +597,10 @@ struct CreateCakeRequestView: View {
         isSaving = true
         defer { isSaving = false }
         
-        guard let userID = Auth.auth().currentUser?.uid else { return }
+        guard let userID = Auth.auth().currentUser?.uid else {
+            print("Error saving draft: no authenticated Firebase session")
+            return
+        }
         let db = Firestore.firestore()
         let customerProfile = await fetchCurrentUserProfile(from: db, userID: userID)
         
@@ -664,15 +671,16 @@ struct CreateCakeRequestView: View {
         timestampField: String
     ) -> [String: Any] {
         let profileName = (customerProfile["name"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        let customerName = profileName.isEmpty ? (Auth.auth().currentUser?.email ?? "Customer") : profileName
+        let customerName = profileName.isEmpty ? user.email : profileName
         
         var data: [String: Any] = [
             "id": documentID,
             "title": title,
             "description": description,
             "customerID": customerID,
+            "customerId": customerID,
             "customerName": customerName,
-            "customerEmail": customerProfile["email"] as? String ?? (Auth.auth().currentUser?.email ?? ""),
+            "customerEmail": customerProfile["email"] as? String ?? user.email,
             "customerCity": customerProfile["city"] as? String ?? "",
             "customerAddress": customerProfile["address"] as? String ?? "",
             "category": selectedCategories.first ?? "",
@@ -886,7 +894,7 @@ struct CreateCakeRequestView: View {
 struct CreateCakeRequestView_Previews: PreviewProvider {
     static var previews: some View {
         NavigationStack {
-            CreateCakeRequestView()
+            CreateCakeRequestView(user: .mock)
         }
     }
 }

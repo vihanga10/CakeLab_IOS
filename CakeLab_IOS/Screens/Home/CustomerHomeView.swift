@@ -1,4 +1,5 @@
 import SwiftUI
+import FirebaseAuth
 import FirebaseFirestore
 
 // MARK: - Customer Home View
@@ -110,7 +111,7 @@ struct CustomerHomeView: View {
                             
                             Spacer().frame(height: 18)
                             
-                            NavigationLink(destination: CreateCakeRequestView()) {
+                            NavigationLink(destination: CreateCakeRequestView(user: user)) {
                                  HStack(spacing: 8) {
                                     ZStack {
                                         Circle()
@@ -274,7 +275,7 @@ struct CustomerHomeView: View {
                                     .font(.urbanistBold(15))
                                     .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
                                 Spacer()
-                                NavigationLink(destination: ArtisansNearYouView()) {
+                                NavigationLink(destination: ArtisansNearYouView(user: user)) {
                                     Text("See all")
                                         .font(.urbanistSemiBold(13))
                                         .foregroundColor(.cakeBrown)
@@ -325,7 +326,8 @@ struct CustomerHomeView: View {
                 await refreshUserFromFirestore()
                 
                 // Run both fetches concurrently when the screen loads
-                async let orders: ()   = viewModel.fetchActiveOrders(for: user.id)
+                let currentUID = Auth.auth().currentUser?.uid ?? user.id
+                async let orders: ()   = viewModel.fetchActiveOrders(for: currentUID)
                 async let artisans: () = viewModel.fetchArtisans()
                 await orders
                 await artisans
@@ -337,7 +339,8 @@ struct CustomerHomeView: View {
     /// Fetches the latest user data from Firestore to reflect profile edits
     private func refreshUserFromFirestore() async {
         do {
-            let snapshot = try await db.collection("users").document(user.id).getDocument()
+            let currentUID = Auth.auth().currentUser?.uid ?? user.id
+            let snapshot = try await db.collection("users").document(currentUID).getDocument()
             do {
                 let updatedUser = try snapshot.data(as: AppUser.self)
                 self.user = updatedUser

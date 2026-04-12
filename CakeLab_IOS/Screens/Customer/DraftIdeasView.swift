@@ -5,10 +5,12 @@ import FirebaseFirestore
 // MARK: - Draft Ideas View (Customer's saved but unpublished cake requests)
 @MainActor
 struct DraftIdeasView: View {
+    let user: AppUser
     @Environment(\.dismiss) private var dismiss
     
     @State private var drafts: [CakeRequestRecord] = []
     @State private var isLoading = false
+    private let requestStore = CustomerRequestStore()
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -116,20 +118,17 @@ struct DraftIdeasView: View {
     }
     
     private func fetchDrafts() async {
-        guard let userID = Auth.auth().currentUser?.uid else { return }
+        guard let userID = Auth.auth().currentUser?.uid else {
+            print("Error fetching draft requests: no authenticated Firebase session")
+            drafts = []
+            return
+        }
         
         isLoading = true
         defer { isLoading = false }
         
         do {
-            let snapshot = try await Firestore.firestore()
-                .collection("draftRequests")
-                .whereField("customerID", isEqualTo: userID)
-                .getDocuments()
-            
-            drafts = snapshot.documents
-                .compactMap(CakeRequestRecord.init(document:))
-                .sorted { $0.sortDate > $1.sortDate }
+            drafts = try await requestStore.fetchRequests(for: userID, from: .draft)
         } catch {
             print("Error fetching draft requests: \(error)")
         }
@@ -218,5 +217,5 @@ private struct DraftRequestCard: View {
 }
 
 #Preview {
-    NavigationStack { DraftIdeasView() }
+    NavigationStack { DraftIdeasView(user: .mock) }
 }

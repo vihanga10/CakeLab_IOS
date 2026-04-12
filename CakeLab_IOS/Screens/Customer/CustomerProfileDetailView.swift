@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import FirebaseAuth
 
 // MARK: - Customer Profile Detail View
 @MainActor
@@ -11,6 +12,7 @@ struct CustomerProfileDetailView: View {
     @State private var showEditSheet = false
     @State private var showImagePicker = false
     @State private var selectedPhotoPickerItem: PhotosPickerItem?
+    @State private var navigateToSignIn = false
 
     init(user: AppUser) {
         self.user = user
@@ -137,10 +139,10 @@ struct CustomerProfileDetailView: View {
                                 title: "Change Password",
                                 action: {}
                             )
-                            NavigationLink(destination: PublishRequestView()) {
+                            NavigationLink(destination: PublishRequestView(user: user)) {
                                 MenuItemRow(icon: "paperplane.fill", title: "Publish Request")
                             }
-                            NavigationLink(destination: DraftIdeasView()) {
+                            NavigationLink(destination: DraftIdeasView(user: user)) {
                                 MenuItemRow(icon: "pencil.and.scribble", title: "Draft Ideas")
                             }
                         }
@@ -161,7 +163,14 @@ struct CustomerProfileDetailView: View {
                         .padding(.horizontal, 16)
 
                         // ── Log Out ───────────────────────────────────────
-                        Button(action: {}) {
+                        Button(action: {
+                            do {
+                                try Auth.auth().signOut()
+                                navigateToSignIn = true
+                            } catch {
+                                print("Logout failed: \(error.localizedDescription)")
+                            }
+                        }) {
                             Text("Log Out")
                                 .font(.urbanistSemiBold(15))
                                 .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.28))
@@ -182,6 +191,9 @@ struct CustomerProfileDetailView: View {
         .navigationBarHidden(true)
         .sheet(isPresented: $showEditSheet) {
             EditProfileSheet(viewModel: viewModel, isPresented: $showEditSheet)
+        }
+        .navigationDestination(isPresented: $navigateToSignIn) {
+            SignInView()
         }
         .task {
             await viewModel.fetchProfile()
