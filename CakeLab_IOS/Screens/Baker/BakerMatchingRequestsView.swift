@@ -5,27 +5,28 @@ import FirebaseFirestore
 @MainActor
 struct BakerMatchingRequestsView: View {
     @State private var searchText = ""
-    @State private var selectedFilter: RequestFilter = .all
-    @State private var publishedRequests: [CakeRequestRecord] = []
-    @State private var isLoading = false
-    
-    enum RequestFilter: String, CaseIterable {
-        case all = "All"
-        case wedding = "Wedding"
-        case birthday = "Birthday"
-        case anniversary = "Anniversary"
-        case cupcakes = "Cupcakes"
-        case babyShower = "Baby Shower"
-    }
+    @State private var selectedSpecialty: String = "All"
+    @StateObject private var viewModel = BakerMatchingRequestsViewModel()
     
     private var filtered: [CakeRequestRecord] {
-        publishedRequests.filter { request in
-            let matchesSearch = searchText.isEmpty || request.displayTitle.localizedCaseInsensitiveContains(searchText)
-            let matchesFilter = selectedFilter == .all ||
-                request.categories.contains { $0.localizedCaseInsensitiveContains(selectedFilter.rawValue) } ||
-                request.displayCategory.localizedCaseInsensitiveContains(selectedFilter.rawValue)
-            return matchesSearch && matchesFilter
+        let baseRequests = viewModel.matchingRequests
+        
+        let afterSearch = searchText.isEmpty ? baseRequests : baseRequests.filter { request in
+            request.displayTitle.localizedCaseInsensitiveContains(searchText)
         }
+        
+        if selectedSpecialty == "All" {
+            return afterSearch
+        } else {
+            return afterSearch.filter { request in
+                let requestCategories = request.categories.isEmpty ? [request.category] : request.categories
+                return requestCategories.contains { $0.localizedCaseInsensitiveContains(selectedSpecialty) }
+            }
+        }
+    }
+    
+    private var filterOptions: [String] {
+        ["All"] + viewModel.bakerSpecialties
     }
     
     var body: some View {
@@ -51,16 +52,16 @@ struct BakerMatchingRequestsView: View {
                     
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 10) {
-                            ForEach(RequestFilter.allCases, id: \.self) { filter in
+                            ForEach(filterOptions, id: \.self) { specialty in
                                 Button {
-                                    withAnimation { selectedFilter = filter }
+                                    withAnimation { selectedSpecialty = specialty }
                                 } label: {
-                                    Text(filter.rawValue)
+                                    Text(specialty)
                                         .font(.urbanistSemiBold(13))
-                                        .foregroundColor(selectedFilter == filter ? .white : Color(red: 0.1, green: 0.1, blue: 0.1))
+                                        .foregroundColor(selectedSpecialty == specialty ? .white : Color(red: 0.1, green: 0.1, blue: 0.1))
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 8)
-                                        .background(selectedFilter == filter ? Color.cakeBrown : Color.white)
+                                        .background(selectedSpecialty == specialty ? Color.cakeBrown : Color.white)
                                         .cornerRadius(20)
                                         .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 1)
                                 }
@@ -70,12 +71,12 @@ struct BakerMatchingRequestsView: View {
                     }
                     .padding(.bottom, 14)
                     
-                    if isLoading {
+                    if viewModel.isLoading {
                         Spacer()
-                        ProgressView("Loading requests...")
+                        ProgressView("Loading matching requests...")
                             .tint(.cakeBrown)
                         Spacer()
-                    } else if filtered.isEmpty {
+                    } else if !viewModel.bakerSpecialties.isEmpty && filtered.isEmpty {
                         VStack(spacing: 16) {
                             Image(systemName: "tray")
                                 .font(.system(size: 48))
@@ -83,17 +84,33 @@ struct BakerMatchingRequestsView: View {
                             Text("No matching requests")
                                 .font(.urbanistSemiBold(16))
                                 .foregroundColor(.cakeGrey)
-                            Text("Published customer requests will appear here once they match your search or category filter")
+                            Text("We'll show customer requests that match your specialties: \(viewModel.bakerSpecialties.joined(separator: ", "))")
                                 .font(.urbanistRegular(13))
                                 .foregroundColor(.cakeGrey.opacity(0.7))
                                 .multilineTextAlignment(.center)
+                                .padding(.horizontal, 20)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if viewModel.bakerSpecialties.isEmpty {
+                        VStack(spacing: 16) {
+                            Image(systemName: "exclamationmark.circle")
+                                .font(.system(size: 48))
+                                .foregroundColor(Color.orange)
+                            Text("Complete Your Profile")
+                                .font(.urbanistSemiBold(16))
+                                .foregroundColor(.cakeGrey)
+                            Text("Add your specialties to see matching cake requests from customers")
+                                .font(.urbanistRegular(13))
+                                .foregroundColor(.cakeGrey.opacity(0.7))
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 20)
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
                         ScrollView(showsIndicators: false) {
                             VStack(spacing: 14) {
                                 HStack {
-                                    Text("\(filtered.count) published requests")
+                                    Text("\(filtered.count) matching request\(filtered.count == 1 ? "" : "s")")
                                         .font(.urbanistRegular(13))
                                         .foregroundColor(.cakeGrey)
                                     Spacer()
@@ -116,29 +133,11 @@ struct BakerMatchingRequestsView: View {
             .navigationTitle("Matching Requests")
             .navigationBarTitleDisplayMode(.large)
             .task {
-                await fetchPublishedRequests()
+                await viewModel.loadMatchingRequests()
             }
             .refreshable {
-                await fetchPublishedRequests()
+                await viewModel.loadMatchingRequests()
             }
-        }
-    }
-    
-    private func fetchPublishedRequests() async {
-        isLoading = true
-        defer { isLoading = false }
-        
-        do {
-            let snapshot = try await Firestore.firestore()
-                .collection("cakeRequests")
-                .whereField("status", isEqualTo: "open")
-                .getDocuments()
-            
-            publishedRequests = snapshot.documents
-                .compactMap(CakeRequestRecord.init(document:))
-                .sorted { $0.createdAt > $1.createdAt }
-        } catch {
-            print("Error fetching published requests: \(error)")
         }
     }
 }

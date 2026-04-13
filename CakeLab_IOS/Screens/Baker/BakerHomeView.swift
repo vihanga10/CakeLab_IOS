@@ -11,12 +11,16 @@ struct BakerHomeView: View {
     @State private var showAllMatching = false
     @State private var showAllOpen = false
     @State private var showAllActive = false
+    @StateObject private var matchingRequestsVM = BakerMatchingRequestsViewModel()
 
     // Mock stats
     private let activeOrders = 3
-    private let newRequests = 7
     private let upcomingDeliveries = 2
     private let earnings = "LKR 48,500"
+    
+    private var newRequests: Int {
+        matchingRequestsVM.matchingRequests.count
+    }
 
     var body: some View {
         NavigationStack {
@@ -85,6 +89,9 @@ struct BakerHomeView: View {
             }
             .sheet(isPresented: $showLocationSheet) {
                 LocationPickerSheet(selectedCity: $selectedCity, isActive: $isLocationActive)
+            }
+            .task {
+                await matchingRequestsVM.loadMatchingRequests()
             }
         }
     }
@@ -232,11 +239,63 @@ struct BakerHomeView: View {
     // MARK: - Matching Requests Preview
     private var matchingRequestsPreview: some View {
         VStack(spacing: 12) {
-            ForEach(mockMatchingRequests.prefix(2)) { req in
-                NavigationLink(destination: BakerBidDetailView(request: req)) {
-                    MatchingRequestCard(request: req)
+            if matchingRequestsVM.isLoading {
+                VStack(spacing: 12) {
+                    ProgressView()
+                        .tint(.cakeBrown)
+                    Text("Loading matching requests...")
+                        .font(.urbanistRegular(13))
+                        .foregroundColor(.cakeGrey)
                 }
-                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(20)
+            } else if matchingRequestsVM.bakerSpecialties.isEmpty {
+                VStack(spacing: 12) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.orange)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Complete Your Profile")
+                                .font(.urbanistSemiBold(14))
+                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                            Text("Add specialties to see matching requests")
+                                .font(.urbanistRegular(12))
+                                .foregroundColor(.cakeGrey)
+                        }
+                        Spacer()
+                    }
+                    .padding(16)
+                    .background(Color(red: 1, green: 0.95, blue: 0.88))
+                    .cornerRadius(12)
+                }
+            } else if matchingRequestsVM.matchingRequests.isEmpty {
+                VStack(spacing: 12) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "tray.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.cakeGrey.opacity(0.5))
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("No Matching Requests")
+                                .font(.urbanistSemiBold(14))
+                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                            Text("Check back soon for requests matching your specialties")
+                                .font(.urbanistRegular(12))
+                                .foregroundColor(.cakeGrey)
+                        }
+                        Spacer()
+                    }
+                    .padding(16)
+                    .background(Color(red: 0.97, green: 0.96, blue: 0.94))
+                    .cornerRadius(12)
+                }
+            } else {
+                ForEach(matchingRequestsVM.matchingRequests.prefix(2)) { cakeReq in
+                    NavigationLink(destination: BakerBidDetailView(request: cakeReq.toCakeRequest())) {
+                        MatchingRequestCard(request: cakeReq.toCakeRequest())
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
     }
