@@ -6,6 +6,8 @@ import FirebaseFirestore
 struct BakerMatchingRequestsView: View {
     @State private var searchText = ""
     @State private var selectedSpecialty: String = "All"
+    @State private var selectedRequest: CakeRequest?
+    @State private var showBidDetail = false
     @StateObject private var viewModel = BakerMatchingRequestsViewModel()
     
     private var filtered: [CakeRequestRecord] {
@@ -115,10 +117,11 @@ struct BakerMatchingRequestsView: View {
                                 .padding(.horizontal, 20)
                                 
                                 ForEach(filtered) { request in
-                                    NavigationLink(destination: BakerBidDetailView(request: request.toCakeRequest())) {
-                                        MatchingRequestCard(request: request.toCakeRequest())
+                                    let cakeRequest = request.toCakeRequest()
+                                    MatchingRequestCard(request: cakeRequest) {
+                                        selectedRequest = cakeRequest
+                                        showBidDetail = true
                                     }
-                                    .buttonStyle(.plain)
                                     .padding(.horizontal, 20)
                                 }
                             }
@@ -126,6 +129,18 @@ struct BakerMatchingRequestsView: View {
                         }
                     }
                 }
+                
+                NavigationLink(
+                    destination: Group {
+                        if let req = selectedRequest {
+                            BakerBidDetailView(request: req)
+                        }
+                    },
+                    isActive: $showBidDetail
+                ) {
+                    EmptyView()
+                }
+                .hidden()
             }
             .navigationTitle("Matching Requests")
             .navigationBarTitleDisplayMode(.large)

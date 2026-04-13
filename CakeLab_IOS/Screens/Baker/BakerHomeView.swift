@@ -11,6 +11,8 @@ struct BakerHomeView: View {
     @State private var showAllMatching = false
     @State private var showAllOpen = false
     @State private var showAllActive = false
+    @State private var selectedRequest: CakeRequest?
+    @State private var showBidDetail = false
     @StateObject private var matchingRequestsVM = BakerMatchingRequestsViewModel()
 
     // Mock stats
@@ -77,6 +79,18 @@ struct BakerHomeView: View {
                             .padding(.bottom, 100)
                     }
                 }
+                
+                NavigationLink(
+                    destination: Group {
+                        if let req = selectedRequest {
+                            BakerBidDetailView(request: req)
+                        }
+                    },
+                    isActive: $showBidDetail
+                ) {
+                    EmptyView()
+                }
+                .hidden()
             }
             .navigationDestination(isPresented: $showAllMatching) {
                 BakerMatchingRequestsView()
@@ -291,10 +305,11 @@ struct BakerHomeView: View {
                 }
             } else {
                 ForEach(matchingRequestsVM.matchingRequests.prefix(2)) { cakeReq in
-                    NavigationLink(destination: BakerBidDetailView(request: cakeReq.toCakeRequest())) {
-                        MatchingRequestCard(request: cakeReq.toCakeRequest())
+                    let req = cakeReq.toCakeRequest()
+                    MatchingRequestCard(request: req) {
+                        selectedRequest = req
+                        showBidDetail = true
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
@@ -418,63 +433,138 @@ struct LocationPickerSheet: View {
 // MARK: - Matching Request Card (used on Home + Matching screen)
 struct MatchingRequestCard: View {
     let request: CakeRequest
+    var onPlaceBid: (() -> Void)? = nil
+
+    private let pastelPalette: [Color] = [
+        Color(red: 0.95, green: 0.84, blue: 0.92),
+        Color(red: 0.98, green: 0.86, blue: 0.82),
+        Color(red: 0.97, green: 0.93, blue: 0.78),
+        Color(red: 0.86, green: 0.93, blue: 0.98),
+        Color(red: 0.87, green: 0.95, blue: 0.88),
+        Color(red: 0.91, green: 0.88, blue: 0.98)
+    ]
+
+    private var chipColor: Color {
+        let index = abs(request.category.name.hashValue) % pastelPalette.count
+        return pastelPalette[index]
+    }
 
     var body: some View {
-        HStack(spacing: 14) {
-            // Category icon
-            ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.cakeBrown.opacity(0.1))
-                    .frame(width: 56, height: 56)
-                Image(systemName: request.category.icon)
-                    .font(.system(size: 24))
-                    .foregroundColor(.cakeBrown)
-            }
-            VStack(alignment: .leading, spacing: 5) {
-                HStack {
+        VStack(spacing: 0) {
+            // ── Top Section ──────────────────────────────
+            HStack(alignment: .top, spacing: 12) {
+                // Category icon
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(chipColor.opacity(0.8))
+                        .frame(width: 48, height: 48)
+                    Image(systemName: request.category.icon)
+                        .font(.system(size: 22))
+                        .foregroundColor(Color(red: 0.32, green: 0.23, blue: 0.16))
+                }
+
+                VStack(alignment: .leading, spacing: 5) {
                     Text(request.title)
-                        .font(.urbanistSemiBold(15))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                    Spacer()
+                        .font(.urbanistBold(14))
+                        .foregroundColor(Color(red: 0.12, green: 0.12, blue: 0.12))
+                        .lineLimit(1)
+
+                    // Category chip + Date on same row
+                    HStack(spacing: 6) {
+                        Text(request.category.name)
+                            .font(.urbanistMedium(10))
+                            .foregroundColor(Color(red: 0.32, green: 0.23, blue: 0.16))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(chipColor)
+                            .cornerRadius(6)
+
+                        HStack(spacing: 3) {
+                            Image(systemName: "calendar")
+                                .font(.system(size: 10))
+                            Text(request.deliveryDate)
+                                .font(.urbanistRegular(10))
+                        }
+                        .foregroundColor(.cakeGrey)
+                    }
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+
+            // ── Location + Bid Count Row ──────────────────
+            HStack(spacing: 6) {
+                Image(systemName: "mappin.and.ellipse")
+                    .font(.system(size: 11))
+                    .foregroundColor(.cakeGrey)
+                Text(request.location)
+                    .font(.urbanistRegular(11))
+                    .foregroundColor(.cakeGrey)
+                    .lineLimit(1)
+
+                Spacer()
+
+                HStack(spacing: 4) {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 10))
+                    Text("\(request.bidCount) bids")
+                        .font(.urbanistMedium(10))
+                }
+                .foregroundColor(.cakeBrown)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Color.cakeBrown.opacity(0.10))
+                .cornerRadius(6)
+            }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 8)
+
+            // ── Divider ──────────────────────────────────
+            Rectangle()
+                .fill(Color.black.opacity(0.06))
+                .frame(height: 1)
+                .padding(.horizontal, 14)
+
+            // ── Bottom Bar ───────────────────────────────
+            HStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Budget (LKR)")
+                        .font(.urbanistRegular(10))
+                        .foregroundColor(.cakeGrey)
                     Text(request.budgetRange)
                         .font(.urbanistBold(13))
-                        .foregroundColor(.cakeBrown)
+                        .foregroundColor(Color(red: 0.12, green: 0.12, blue: 0.12))
                 }
-                HStack(spacing: 6) {
-                    Image(systemName: "location")
-                        .font(.system(size: 10))
-                    Text(request.location)
-                        .font(.urbanistRegular(12))
-                }
-                .foregroundColor(.cakeGrey)
 
-                HStack(spacing: 6) {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 10))
-                    Text(request.deliveryDate)
-                        .font(.urbanistRegular(12))
+                Spacer()
 
-                    Spacer()
-
-                    // Bid count badge
-                    HStack(spacing: 3) {
-                        Image(systemName: "person.2")
-                            .font(.system(size: 10))
-                        Text("\(request.bidCount) bids")
-                            .font(.urbanistMedium(11))
+                if let onPlaceBid = onPlaceBid {
+                    Button(action: onPlaceBid) {
+                        Text("Place Bid")
+                            .font(.urbanistSemiBold(15))
+                            .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.082))
+                            .frame(width: 120)
+                            .padding(.vertical, 8)
+                            .background(Color(red: 0.906, green: 0.871, blue: 0.847))
+                            .cornerRadius(9)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Color.cakeBrown.opacity(0.1))
-                    .cornerRadius(8)
-                    .foregroundColor(.cakeBrown)
                 }
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
         }
-        .padding(14)
-        .background(Color.white)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
+        .frame(height: 155)
+        .background(Color(red: 0.98, green: 0.98, blue: 0.98))
+        .cornerRadius(14)
+        .shadow(color: Color.black.opacity(0.09), radius: 10, x: 0, y: 4)
+        .shadow(color: Color.black.opacity(0.04), radius: 2, x: 0, y: 1)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.black.opacity(0.05), lineWidth: 1)
+        )
     }
 }
 
