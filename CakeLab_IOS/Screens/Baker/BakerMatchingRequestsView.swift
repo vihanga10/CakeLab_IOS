@@ -18,10 +18,7 @@ struct BakerMatchingRequestsView: View {
         if selectedSpecialty == "All" {
             return afterSearch
         } else {
-            return afterSearch.filter { request in
-                let requestCategories = request.categories.isEmpty ? [request.category] : request.categories
-                return requestCategories.contains { $0.localizedCaseInsensitiveContains(selectedSpecialty) }
-            }
+            return afterSearch.filter { viewModel.matches(request: $0, specialty: selectedSpecialty) }
         }
     }
     

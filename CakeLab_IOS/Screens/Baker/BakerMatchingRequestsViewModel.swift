@@ -54,7 +54,7 @@ final class BakerMatchingRequestsViewModel: ObservableObject {
             
             // Step 3: Filter requests that match baker's specialties
             self.matchingRequests = allRequests.filter { request in
-                isMatchingRequest(request, with: bakerSpecialties)
+                matchesAnySpecialty(request: request, specialties: bakerSpecialties)
             }
             
             print("✅ Matching requests filtered: \(self.matchingRequests.count) out of \(allRequests.count)")
@@ -67,33 +67,41 @@ final class BakerMatchingRequestsViewModel: ObservableObject {
         isLoading = false
     }
     
-    // MARK: - Filter Logic: Check if request matches baker's specialties
-    private func isMatchingRequest(_ request: CakeRequestRecord, with specialties: [String]) -> Bool {
-        // Check if any of the request categories match any baker specialty
-        // Categories can be in both `category` and `categories` array
-        
-        let requestCategories = request.categories.isEmpty ? [request.category] : request.categories
-        
-        for requestCategory in requestCategories {
-            // Normalize for comparison (lowercase, trim whitespace)
-            let normalizedRequestCategory = requestCategory
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-                .lowercased()
-            
-            for specialty in specialties {
-                let normalizedSpecialty = specialty
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                    .lowercased()
-                
-                // Check if they match exactly or contain each other (partial matches)
-                if normalizedRequestCategory == normalizedSpecialty ||
-                   normalizedRequestCategory.contains(normalizedSpecialty) ||
-                   normalizedSpecialty.contains(normalizedRequestCategory) {
-                    return true
-                }
-            }
+    // MARK: - Filter Logic
+    func matches(request: CakeRequestRecord, specialty: String) -> Bool {
+        let normalizedSpecialty = normalizedCategory(specialty)
+        guard !normalizedSpecialty.isEmpty else { return false }
+
+        return requestCategories(for: request).contains { normalizedCategory($0) == normalizedSpecialty }
+    }
+
+    private func matchesAnySpecialty(request: CakeRequestRecord, specialties: [String]) -> Bool {
+        let normalizedSpecialties = Set(specialties.map(normalizedCategory).filter { !$0.isEmpty })
+        guard !normalizedSpecialties.isEmpty else { return false }
+
+        let requestSet = Set(requestCategories(for: request).map(normalizedCategory).filter { !$0.isEmpty })
+        return !requestSet.isDisjoint(with: normalizedSpecialties)
+    }
+
+    private func requestCategories(for request: CakeRequestRecord) -> [String] {
+        let categoryList = request.categories.isEmpty ? [request.category] : request.categories
+        if categoryList.isEmpty, !request.displayCategory.isEmpty {
+            return [request.displayCategory]
         }
-        
-        return false
+        return categoryList
+    }
+
+    private func normalizedCategory(_ raw: String) -> String {
+        let cleaned = raw
+            .lowercased()
+            .replacingOccurrences(of: "&", with: " and ")
+            .replacingOccurrences(of: "cakes", with: "")
+            .replacingOccurrences(of: "cake", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return cleaned
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
     }
 }
