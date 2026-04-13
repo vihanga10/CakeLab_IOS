@@ -1,8 +1,10 @@
 import SwiftUI
+import Combine
+import FirebaseFirestore
 
 // MARK: - Mock Order
 struct CustomerOrder: Identifiable {
-    let id               = UUID()
+    let id: String
     let cakeName: String
     let status: String
     let statusColor: Color
@@ -12,35 +14,84 @@ struct CustomerOrder: Identifiable {
     let bakerRating: String
     let bakerAddress: String
     let imageName: String
+
+    init(id: String, cakeName: String, status: String, statusColor: Color, deliveryDate: String, currentStep: Int, bakerName: String, bakerRating: String, bakerAddress: String, imageName: String = "") {
+        self.id = id
+        self.cakeName = cakeName
+        self.status = status
+        self.statusColor = statusColor
+        self.deliveryDate = deliveryDate
+        self.currentStep = currentStep
+        self.bakerName = bakerName
+        self.bakerRating = bakerRating
+        self.bakerAddress = bakerAddress
+        self.imageName = imageName
+    }
+
+    init(from order: CakeOrder) {
+        self.id = order.id
+        self.cakeName = order.cakeName
+        self.status = order.statusLabel
+        self.statusColor = order.statusColor
+        self.deliveryDate = order.formattedDeliveryDate
+        self.currentStep = max(1, min(5, order.currentStep))
+        self.bakerName = order.artisanName
+        self.bakerRating = order.artisanRating
+        self.bakerAddress = order.artisanAddress
+        self.imageName = ""
+    }
+}
+
+@MainActor
+final class CustomerOrdersViewModel: ObservableObject {
+    @Published var activeOrders: [CustomerOrder] = []
+    @Published var completedOrders: [CustomerOrder] = []
+    @Published var isLoading = false
+
+    private let db = Firestore.firestore()
+
+    func loadOrders(customerID: String) async {
+        isLoading = true
+
+        do {
+            let activeStatuses = ["confirmed", "baking", "decorating", "quality_check"]
+            let completedStatuses = ["delivered", "completed", "done"]
+
+            async let activeSnapshot = db.collection("orders")
+                .whereField("customerId", isEqualTo: customerID)
+                .whereField("status", in: activeStatuses)
+                .getDocuments()
+
+            async let completedSnapshot = db.collection("orders")
+                .whereField("customerId", isEqualTo: customerID)
+                .whereField("status", in: completedStatuses)
+                .getDocuments()
+
+            let (activeDocs, completedDocs) = try await (activeSnapshot, completedSnapshot)
+
+            activeOrders = activeDocs.documents
+                .compactMap(CakeOrder.init(document:))
+                .sorted { $0.deliveryDate < $1.deliveryDate }
+                .map(CustomerOrder.init(from:))
+
+            completedOrders = completedDocs.documents
+                .compactMap(CakeOrder.init(document:))
+                .sorted { $0.deliveryDate > $1.deliveryDate }
+                .map(CustomerOrder.init(from:))
+        } catch {
+            print("Error loading customer orders: \(error.localizedDescription)")
+        }
+
+        isLoading = false
+    }
 }
 
 // MARK: - Customer Orders View
 struct CustomerOrdersView: View {
+    let user: AppUser
 
     @State private var selectedTab = 0   // 0 = Active, 1 = Completed
-
-    private let activeOrders: [CustomerOrder] = [
-        CustomerOrder(
-            cakeName: "Rainbow Unicorn Birthday Cake for 7 Year Old",
-            status: "In Progress", statusColor: Color(red: 1.0, green: 0.55, blue: 0.1),
-            deliveryDate: "09/ 04/ 2026", currentStep: 3,
-            bakerName: "Cake Haven by Dinithi",
-            bakerRating: "5.0 (41 reviews)",
-            bakerAddress: "23/A, Flower Road, Colombo 02",
-            imageName: "unicorn_cake"
-        ),
-        CustomerOrder(
-            cakeName: "Baby Shower Cake with Teddy Bear Theme",
-            status: "Baking", statusColor: Color(red: 0.95, green: 0.7, blue: 0.1),
-            deliveryDate: "12/ 04/ 2026", currentStep: 2,
-            bakerName: "Malini Bakers",
-            bakerRating: "5.0 (41 reviews)",
-            bakerAddress: "09/6 B, Medial Road, Colombo 03",
-            imageName: "babycake"
-        )
-    ]
-
-    private let completedOrders: [CustomerOrder] = []
+    @StateObject private var viewModel = CustomerOrdersViewModel()
 
     private let stepLabels = ["Confirmed", "Baking", "Decorating", "Quality\nChecking", "Delivered"]
 
@@ -65,14 +116,18 @@ struct CustomerOrdersView: View {
 
                     // ── Content ────────────────────────────────────────────
                     if selectedTab == 0 {
-                        if activeOrders.isEmpty {
+                        if viewModel.isLoading {
+                            ProgressView("Loading orders...")
+                                .tint(.cakeBrown)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else if viewModel.activeOrders.isEmpty {
                             emptyState(message: "No active orders")
                         } else {
                             ScrollView(showsIndicators: false) {
                                 VStack(spacing: 0) {
-                                    ForEach(Array(activeOrders.enumerated()), id: \.element.id) { idx, order in
+                                    ForEach(Array(viewModel.activeOrders.enumerated()), id: \.element.id) { idx, order in
                                         OrderCard(order: order, stepLabels: stepLabels)
-                                        if idx < activeOrders.count - 1 {
+                                        if idx < viewModel.activeOrders.count - 1 {
                                             Divider()
                                                 .padding(.horizontal, 16)
                                         }
@@ -86,7 +141,26 @@ struct CustomerOrdersView: View {
                             }
                         }
                     } else {
-                        emptyState(message: "No completed orders yet")
+                        if viewModel.completedOrders.isEmpty {
+                            emptyState(message: "No completed orders yet")
+                        } else {
+                            ScrollView(showsIndicators: false) {
+                                VStack(spacing: 0) {
+                                    ForEach(Array(viewModel.completedOrders.enumerated()), id: \.element.id) { idx, order in
+                                        OrderCard(order: order, stepLabels: stepLabels)
+                                        if idx < viewModel.completedOrders.count - 1 {
+                                            Divider()
+                                                .padding(.horizontal, 16)
+                                        }
+                                    }
+                                }
+                                .background(Color.white)
+                                .cornerRadius(14)
+                                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, 20)
+                            }
+                        }
                     }
                 }
             }
@@ -97,6 +171,14 @@ struct CustomerOrdersView: View {
                         .font(.urbanistBold(18))
                         .foregroundColor(Color(red: 93/255, green: 55/255, blue: 20/255))
                 }
+            }
+        }
+        .task {
+            await viewModel.loadOrders(customerID: user.id)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .orderDidChange)) { _ in
+            Task {
+                await viewModel.loadOrders(customerID: user.id)
             }
         }
     }
@@ -314,5 +396,5 @@ struct OrderProgressTracker: View {
 }
 
 #Preview {
-    CustomerOrdersView()
+    CustomerOrdersView(user: AppUser.mock)
 }

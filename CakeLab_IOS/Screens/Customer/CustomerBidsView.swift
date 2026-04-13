@@ -2,6 +2,21 @@ import SwiftUI
 import Combine
 import FirebaseFirestore
 
+extension Notification.Name {
+    static let orderDidChange = Notification.Name("orderDidChange")
+}
+
+enum PaymentMethod: String, CaseIterable {
+    case card = "Card"
+    case applePay = "Apple Pay"
+}
+
+struct PaymentPayload {
+    let method: PaymentMethod
+    let cardholderName: String
+    let cardLast4: String
+}
+
 struct CustomerBidRequest: Identifiable {
     let id: String
     let customerID: String
@@ -26,6 +41,20 @@ struct CustomerBidOffer: Identifiable {
     let canDeliverOnTime: Bool
     let deliveryDate: Date?
     let submittedAt: Date
+}
+
+enum BidsReceivedSheet: Identifiable {
+    case payment(CustomerBidOffer)
+    case bidDetails(CustomerBidOffer)
+
+    var id: String {
+        switch self {
+        case .payment(let bid):
+            return "payment_\(bid.id)"
+        case .bidDetails(let bid):
+            return "details_\(bid.id)"
+        }
+    }
 }
 
 @MainActor
@@ -332,6 +361,10 @@ struct CustomerBidRequestCard: View {
 struct BidsReceivedView: View {
     let request: CustomerBidRequest
     @StateObject private var viewModel = BidsReceivedViewModel()
+    @State private var activeSheet: BidsReceivedSheet?
+    @State private var isSubmittingPayment = false
+    @State private var successMessage: String?
+    @State private var errorMessage: String?
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -368,7 +401,15 @@ struct BidsReceivedView: View {
                         .padding(.top, 20)
                     } else {
                         ForEach(viewModel.bids) { bid in
-                            BakerBidOfferCard(bid: bid)
+                            BakerBidOfferCard(
+                                bid: bid,
+                                onAcceptBid: {
+                                    activeSheet = .payment(bid)
+                                },
+                                onViewBidDetails: {
+                                    activeSheet = .bidDetails(bid)
+                                }
+                            )
                                 .padding(.horizontal, 16)
                         }
                     }
@@ -378,11 +419,136 @@ struct BidsReceivedView: View {
         }
         .navigationTitle("Bids Received")
         .navigationBarTitleDisplayMode(.inline)
+        .overlay {
+            if isSubmittingPayment {
+                ZStack {
+                    Color.black.opacity(0.22).ignoresSafeArea()
+                    ProgressView("Processing payment...")
+                        .padding(22)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(16)
+                }
+            }
+        }
         .task {
             await viewModel.loadBids(requestID: request.id, customerID: request.customerID)
         }
         .refreshable {
             await viewModel.loadBids(requestID: request.id, customerID: request.customerID)
+        }
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .payment(let bid):
+                PaymentCheckoutView(request: request, bid: bid) { payload in
+                    Task {
+                        await processAcceptedBid(bid: bid, payment: payload)
+                    }
+                }
+            case .bidDetails(let bid):
+                BidFullDetailsSheet(request: request, bid: bid)
+            }
+        }
+        .alert("Payment Successful", isPresented: Binding(
+            get: { successMessage != nil },
+            set: { if !$0 { successMessage = nil } }
+        )) {
+            Button("OK") {
+                successMessage = nil
+            }
+        } message: {
+            Text(successMessage ?? "")
+        }
+        .alert("Payment Failed", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {
+                errorMessage = nil
+            }
+        } message: {
+            Text(errorMessage ?? "")
+        }
+    }
+
+    private func processAcceptedBid(bid: CustomerBidOffer, payment: PaymentPayload) async {
+        isSubmittingPayment = true
+        defer { isSubmittingPayment = false }
+
+        let db = Firestore.firestore()
+        let orderID = "\(request.id)_\(bid.bakerID)"
+        let orderRef = db.collection("orders").document(orderID)
+        let paymentRef = db.collection("payments").document()
+        let requestRef = db.collection("cakeRequests").document(request.id)
+        let bidRef = db.collection("bids").document(bid.id)
+
+        let finalDeliveryDate = bid.canDeliverOnTime ? request.expectedDate : (bid.deliveryDate ?? request.expectedDate)
+        let serviceFee = 250.0
+        let totalPaid = bid.amount + serviceFee
+
+        let orderData: [String: Any] = [
+            "customerId": request.customerID,
+            "artisanId": bid.bakerID,
+            "bakerID": bid.bakerID,
+            "bakerId": bid.bakerID,
+            "cakeName": request.title,
+            "status": "confirmed",
+            "currentStep": 1,
+            "deliveryDate": Timestamp(date: finalDeliveryDate),
+            "artisanName": bid.bakerName,
+            "artisanRating": "New baker",
+            "artisanAddress": "Address not provided",
+            "imageURL": "",
+            "createdAt": Timestamp(date: Date()),
+            "requestDocumentID": request.id,
+            "bidID": bid.id,
+            "amount": bid.amount,
+            "paymentStatus": "paid",
+            "selected": true
+        ]
+
+        let paymentData: [String: Any] = [
+            "orderID": orderID,
+            "requestDocumentID": request.id,
+            "bidID": bid.id,
+            "customerId": request.customerID,
+            "bakerId": bid.bakerID,
+            "bakerName": bid.bakerName,
+            "amount": bid.amount,
+            "serviceFee": serviceFee,
+            "total": totalPaid,
+            "method": payment.method.rawValue,
+            "cardholderName": payment.cardholderName,
+            "cardLast4": payment.cardLast4,
+            "status": "success",
+            "createdAt": Timestamp(date: Date())
+        ]
+
+        do {
+            let batch = db.batch()
+            batch.setData(orderData, forDocument: orderRef, merge: true)
+            batch.setData(paymentData, forDocument: paymentRef)
+            batch.updateData([
+                "status": "confirmed",
+                "acceptedBidID": bid.id,
+                "acceptedBakerID": bid.bakerID,
+                "selectedPrice": bid.amount,
+                "updatedAt": Timestamp(date: Date())
+            ], forDocument: requestRef)
+            batch.updateData([
+                "status": "accepted",
+                "orderID": orderID,
+                "updatedAt": Timestamp(date: Date())
+            ], forDocument: bidRef)
+
+            try await batch.commit()
+
+            activeSheet = nil
+            NotificationCenter.default.post(name: .orderDidChange, object: nil)
+            successMessage = "Payment completed. Your order is now active for both customer and baker."
+
+            await viewModel.loadBids(requestID: request.id, customerID: request.customerID)
+        } catch {
+            errorMessage = "Could not complete payment. \(error.localizedDescription)"
         }
     }
 
@@ -418,6 +584,8 @@ struct BidsReceivedView: View {
 
 struct BakerBidOfferCard: View {
     let bid: CustomerBidOffer
+    let onAcceptBid: () -> Void
+    let onViewBidDetails: () -> Void
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -477,8 +645,7 @@ struct BakerBidOfferCard: View {
             }
 
             HStack(spacing: 12) {
-                Button {
-                } label: {
+                Button(action: onAcceptBid) {
                     Text("Accept Bid")
                         .font(.urbanistSemiBold(13))
                         .foregroundColor(.white)
@@ -488,8 +655,7 @@ struct BakerBidOfferCard: View {
                         .clipShape(Capsule())
                 }
 
-                Button {
-                } label: {
+                Button(action: onViewBidDetails) {
                     Text("View Bid Details")
                         .font(.urbanistSemiBold(13))
                         .foregroundColor(Color(red: 93/255, green: 55/255, blue: 20/255))
@@ -521,6 +687,234 @@ struct BakerBidOfferCard: View {
                 .foregroundColor(Color(red: 93/255, green: 55/255, blue: 20/255))
             Spacer()
         }
+    }
+}
+
+struct PaymentCheckoutView: View {
+    let request: CustomerBidRequest
+    let bid: CustomerBidOffer
+    let onPay: (PaymentPayload) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedMethod: PaymentMethod = .card
+    @State private var cardNumber = ""
+    @State private var cardholderName = ""
+    @State private var expiry = ""
+    @State private var cvv = ""
+
+    private var serviceFee: Double { 250 }
+    private var totalAmount: Double { bid.amount + serviceFee }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                LinearGradient(
+                    colors: [Color(red: 0.98, green: 0.98, blue: 0.99), Color(red: 0.96, green: 0.96, blue: 0.97)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 16) {
+                        paymentSummaryCard
+                        paymentMethodCard
+
+                        if selectedMethod == .card {
+                            cardDetailsCard
+                        }
+
+                        Button {
+                            onPay(
+                                PaymentPayload(
+                                    method: selectedMethod,
+                                    cardholderName: cardholderName.isEmpty ? "Cardholder" : cardholderName,
+                                    cardLast4: String(cardNumber.suffix(4))
+                                )
+                            )
+                        } label: {
+                            Text("Pay LKR \(Int(totalAmount).formatted())")
+                                .font(.urbanistBold(16))
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 15)
+                                .background(Color.cakeBrown)
+                                .cornerRadius(14)
+                        }
+                        .disabled(!isValidPayment)
+                        .opacity(isValidPayment ? 1 : 0.45)
+                    }
+                    .padding(16)
+                    .padding(.bottom, 24)
+                }
+            }
+            .navigationTitle("Checkout")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundColor(.cakeBrown)
+                }
+            }
+        }
+    }
+
+    private var isValidPayment: Bool {
+        switch selectedMethod {
+        case .applePay:
+            return true
+        case .card:
+            return cardNumber.count >= 12 && !cardholderName.isEmpty && expiry.count >= 4 && cvv.count >= 3
+        }
+    }
+
+    private var paymentSummaryCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(request.title)
+                .font(.urbanistBold(17))
+                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .lineLimit(2)
+
+            Divider()
+
+            summaryRow(label: "Bid Amount", value: "LKR \(Int(bid.amount).formatted())")
+            summaryRow(label: "Service Fee", value: "LKR \(Int(serviceFee).formatted())")
+            summaryRow(label: "Total", value: "LKR \(Int(totalAmount).formatted())", isBold: true)
+        }
+        .padding(16)
+        .background(Color.white)
+        .cornerRadius(18)
+        .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
+    }
+
+    private var paymentMethodCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Payment Method")
+                .font(.urbanistBold(15))
+                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+
+            HStack(spacing: 10) {
+                methodChip(.card, icon: "creditcard.fill")
+                methodChip(.applePay, icon: "applelogo")
+            }
+        }
+        .padding(16)
+        .background(Color.white)
+        .cornerRadius(18)
+        .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
+    }
+
+    private var cardDetailsCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Card Details")
+                .font(.urbanistBold(15))
+                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+
+            formField(title: "Card Number", placeholder: "4000 1234 5678 9010", text: $cardNumber)
+            formField(title: "Cardholder Name", placeholder: "Your name", text: $cardholderName)
+
+            HStack(spacing: 10) {
+                formField(title: "Expiry", placeholder: "MM/YY", text: $expiry)
+                formField(title: "CVV", placeholder: "123", text: $cvv)
+            }
+        }
+        .padding(16)
+        .background(Color.white)
+        .cornerRadius(18)
+        .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
+    }
+
+    private func methodChip(_ method: PaymentMethod, icon: String) -> some View {
+        Button {
+            selectedMethod = method
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .semibold))
+                Text(method.rawValue)
+                    .font(.urbanistSemiBold(13))
+            }
+            .foregroundColor(selectedMethod == method ? .white : Color(red: 0.2, green: 0.2, blue: 0.2))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(selectedMethod == method ? Color.cakeBrown : Color(red: 0.94, green: 0.94, blue: 0.95))
+            .cornerRadius(10)
+        }
+    }
+
+    private func summaryRow(label: String, value: String, isBold: Bool = false) -> some View {
+        HStack {
+            Text(label)
+                .font(isBold ? .urbanistSemiBold(14) : .urbanistRegular(13))
+                .foregroundColor(Color(red: 0.32, green: 0.32, blue: 0.32))
+            Spacer()
+            Text(value)
+                .font(isBold ? .urbanistBold(15) : .urbanistSemiBold(14))
+                .foregroundColor(Color(red: 93/255, green: 55/255, blue: 20/255))
+        }
+    }
+
+    private func formField(title: String, placeholder: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.urbanistRegular(12))
+                .foregroundColor(.cakeGrey)
+            TextField(placeholder, text: text)
+                .font(.urbanistMedium(14))
+                .padding(12)
+                .background(Color(red: 0.97, green: 0.97, blue: 0.98))
+                .cornerRadius(10)
+        }
+    }
+}
+
+struct BidFullDetailsSheet: View {
+    let request: CustomerBidRequest
+    let bid: CustomerBidOffer
+
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd/MM/yyyy"
+        return formatter
+    }()
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 14) {
+                    detailCard(title: "Cake Request", value: request.title)
+                    detailCard(title: "Baker", value: bid.bakerName)
+                    detailCard(title: "Bid Amount", value: "LKR \(Int(bid.amount).formatted())")
+                    detailCard(
+                        title: "Delivery Commitment",
+                        value: bid.canDeliverOnTime
+                        ? "Can deliver on requested date"
+                        : "Alternative: \(bid.deliveryDate.map { Self.dateFormatter.string(from: $0) } ?? "Not provided")"
+                    )
+                    detailCard(title: "Message", value: bid.message.isEmpty ? "No message provided." : bid.message)
+                }
+                .padding(16)
+            }
+            .background(Color(red: 0.97, green: 0.97, blue: 0.97).ignoresSafeArea())
+            .navigationTitle("Bid Details")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    private func detailCard(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.urbanistSemiBold(12))
+                .foregroundColor(.cakeGrey)
+            Text(value)
+                .font(.urbanistMedium(15))
+                .foregroundColor(Color(red: 0.12, green: 0.12, blue: 0.12))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .background(Color.white)
+        .cornerRadius(14)
+        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 3)
     }
 }
 

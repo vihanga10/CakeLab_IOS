@@ -7,10 +7,12 @@ import FirebaseAuth
 struct BakerOrdersView: View {
     let user: AppUser
     @State private var selectedTab: OrderTab = .active
+    @State private var activeOrders: [CakeOrder] = []
     @State private var completedOrders: [CakeOrder] = []
     @State private var totalEarnings: Double = 0
     @State private var completedCount: Int = 0
     @State private var isLoading = true
+    @State private var isLoadingActive = true
 
     enum OrderTab: String, CaseIterable {
         case active = "Active Orders"
@@ -62,7 +64,43 @@ struct BakerOrdersView: View {
             .navigationBarTitleDisplayMode(.large)
         }
         .task {
+            await loadActiveOrdersData()
             await loadCompletedOrdersData()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .orderDidChange)) { _ in
+            Task {
+                await loadActiveOrdersData()
+                await loadCompletedOrdersData()
+            }
+        }
+    }
+
+    private func loadActiveOrdersData() async {
+        isLoadingActive = true
+        let db = Firestore.firestore()
+
+        do {
+            let statuses = ["confirmed", "baking", "decorating", "quality_check"]
+            var allOrders: [CakeOrder] = []
+
+            for key in ["artisanId", "bakerID", "bakerId"] {
+                let query = db.collection("orders")
+                    .whereField(key, isEqualTo: user.id)
+                    .whereField("status", in: statuses)
+
+                let snapshot = try await query.getDocuments()
+                for doc in snapshot.documents {
+                    if let order = CakeOrder(document: doc), !allOrders.contains(where: { $0.id == order.id }) {
+                        allOrders.append(order)
+                    }
+                }
+            }
+
+            activeOrders = allOrders.sorted { $0.deliveryDate < $1.deliveryDate }
+            isLoadingActive = false
+        } catch {
+            print("Error loading active baker orders: \(error.localizedDescription)")
+            isLoadingActive = false
         }
     }
     
@@ -104,12 +142,25 @@ struct BakerOrdersView: View {
     private var activeOrdersList: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 14) {
-                ForEach(mockActiveOrdersFull) { order in
-                    NavigationLink(destination: BakerOrderDetailView(order: order)) {
-                        BakerOrderFullCard(order: order)
+                if isLoadingActive {
+                    ProgressView("Loading active orders...")
+                        .tint(.cakeBrown)
+                        .padding(.top, 24)
+                } else if activeOrders.isEmpty {
+                    VStack(spacing: 10) {
+                        Image(systemName: "tray")
+                            .font(.system(size: 34))
+                            .foregroundColor(.cakeGrey.opacity(0.6))
+                        Text("No active orders yet")
+                            .font(.urbanistRegular(14))
+                            .foregroundColor(.cakeGrey)
                     }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 20)
+                    .padding(.top, 40)
+                } else {
+                    ForEach(activeOrders) { order in
+                        BakerActiveOrderCardFromCakeOrder(order: order)
+                            .padding(.horizontal, 20)
+                    }
                 }
             }
             .padding(.top, 16)
@@ -573,6 +624,71 @@ struct BakerCompletedOrderCardFromCakeOrder: View {
         .background(Color.white)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.04), radius: 5, x: 0, y: 2)
+    }
+}
+
+struct BakerActiveOrderCardFromCakeOrder: View {
+    let order: CakeOrder
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(red: 0.95, green: 0.93, blue: 0.90))
+                        .frame(width: 52, height: 52)
+                    Image(systemName: "birthday.cake")
+                        .font(.system(size: 20))
+                        .foregroundColor(.cakeBrown.opacity(0.75))
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(order.cakeName)
+                        .font(.urbanistSemiBold(14))
+                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .lineLimit(2)
+                    Text(order.statusLabel)
+                        .font(.urbanistSemiBold(11))
+                        .foregroundColor(order.statusColor)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(order.statusColor.opacity(0.12))
+                        .cornerRadius(8)
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 3) {
+                    Text("Delivery")
+                        .font(.urbanistRegular(10))
+                        .foregroundColor(.cakeGrey)
+                    Text(order.formattedDeliveryDate)
+                        .font(.urbanistSemiBold(12))
+                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                }
+            }
+            .padding(14)
+
+            Divider().padding(.horizontal, 14)
+
+            HStack(spacing: 8) {
+                Image(systemName: "person.crop.circle")
+                    .foregroundColor(.cakeBrown)
+                Text(order.artisanName)
+                    .font(.urbanistRegular(12))
+                    .foregroundColor(.cakeGrey)
+                Spacer()
+                Text(order.artisanAddress)
+                    .font(.urbanistRegular(11))
+                    .foregroundColor(.cakeGrey)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+        }
+        .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.05), radius: 7, x: 0, y: 2)
     }
 }
 
