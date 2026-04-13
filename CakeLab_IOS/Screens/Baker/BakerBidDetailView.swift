@@ -2,6 +2,10 @@ import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
 
+extension Notification.Name {
+    static let bidDidChange = Notification.Name("bidDidChange")
+}
+
 // MARK: - Baker Bid Detail View
 @MainActor
 struct BakerBidDetailView: View {
@@ -466,8 +470,8 @@ struct BakerBidDetailView: View {
                 "message": bidMessage,
                 "deliveryNote": deliveryNote,
                 "canDeliverOnTime": canDeliverOnTime,
-                "alternativeDate": canDeliverOnTime ? NSNull() : alternativeDate.timeIntervalSince1970,
-                "submittedAt": Date().timeIntervalSince1970
+                "alternativeDate": canDeliverOnTime ? NSNull() : Timestamp(date: alternativeDate),
+                "submittedAt": Timestamp(date: Date())
             ]
             
             try await bidRef.setData(bidPayload, merge: true)
@@ -484,6 +488,7 @@ struct BakerBidDetailView: View {
             bidSubmitted = true
             showConfirmation = false
             isSubmittingBid = false
+            NotificationCenter.default.post(name: .bidDidChange, object: nil)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 dismiss()
             }

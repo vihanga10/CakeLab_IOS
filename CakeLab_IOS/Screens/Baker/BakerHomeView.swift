@@ -107,6 +107,11 @@ struct BakerHomeView: View {
             .task {
                 await matchingRequestsVM.loadMatchingRequests()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .bidDidChange)) { _ in
+                Task {
+                    await matchingRequestsVM.loadMatchingRequests()
+                }
+            }
         }
     }
 

@@ -150,6 +150,11 @@ struct BakerMatchingRequestsView: View {
             .refreshable {
                 await viewModel.loadMatchingRequests()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .bidDidChange)) { _ in
+                Task {
+                    await viewModel.loadMatchingRequests()
+                }
+            }
         }
     }
 }

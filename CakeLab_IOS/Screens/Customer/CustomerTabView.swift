@@ -11,7 +11,7 @@ struct CustomerTabView: View {
             Group {
                 switch selectedTab {
                 case 0: CustomerHomeView(user: user, selectedTab: $selectedTab)
-                case 1: CustomerBidsView()
+                case 1: CustomerBidsView(user: user)
                 case 2: CustomerOrdersView()
                 case 3: CustomerProfileDetailView(user: user)
                 default: CustomerHomeView(user: user, selectedTab: $selectedTab)
