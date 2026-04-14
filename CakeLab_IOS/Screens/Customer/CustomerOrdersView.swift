@@ -126,7 +126,12 @@ struct CustomerOrdersView: View {
                             ScrollView(showsIndicators: false) {
                                 VStack(spacing: 0) {
                                     ForEach(Array(viewModel.activeOrders.enumerated()), id: \.element.id) { idx, order in
-                                        OrderCard(order: order, stepLabels: stepLabels)
+                                        NavigationLink {
+                                            CustomerOrderStatusView(orderID: order.id, fallbackOrder: order)
+                                        } label: {
+                                            OrderCard(order: order, stepLabels: stepLabels)
+                                        }
+                                        .buttonStyle(.plain)
                                         if idx < viewModel.activeOrders.count - 1 {
                                             Divider()
                                                 .padding(.horizontal, 16)

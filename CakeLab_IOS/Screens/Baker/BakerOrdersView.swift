@@ -158,8 +158,13 @@ struct BakerOrdersView: View {
                     .padding(.top, 40)
                 } else {
                     ForEach(activeOrders) { order in
-                        BakerActiveOrderCardFromCakeOrder(order: order)
-                            .padding(.horizontal, 20)
+                        NavigationLink {
+                            BakerOrderStatusView(orderID: order.id)
+                        } label: {
+                            BakerActiveOrderCardFromCakeOrder(order: order)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 20)
                     }
                 }
             }
