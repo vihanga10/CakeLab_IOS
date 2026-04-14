@@ -13,6 +13,7 @@ struct CustomerProfileDetailView: View {
     @State private var showImagePicker = false
     @State private var selectedPhotoPickerItem: PhotosPickerItem?
     @State private var navigateToSignIn = false
+    @State private var showPaymentHistory = false
 
     init(user: AppUser) {
         self.user = user
@@ -132,7 +133,7 @@ struct CustomerProfileDetailView: View {
                             MenuItem(
                                 icon: "clock.arrow.circlepath",
                                 title: "Payment History",
-                                action: {}
+                                action: { showPaymentHistory = true }
                             )
                             MenuItem(
                                 icon: "lock.fill",
@@ -194,6 +195,9 @@ struct CustomerProfileDetailView: View {
         }
         .navigationDestination(isPresented: $navigateToSignIn) {
             SignInView()
+        }
+        .navigationDestination(isPresented: $showPaymentHistory) {
+            PaymentHistoryView(user: user)
         }
         .task {
             await viewModel.fetchProfile()

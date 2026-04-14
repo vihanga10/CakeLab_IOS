@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update: if request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    match /cakeRequests/{requestId} {
+      allow create: if request.auth != null && 
+        (request.resource.data.customerID == request.auth.uid || 
+         request.resource.data.customerId == request.auth.uid);
+      allow read: if request.auth != null && 
+        (resource.data.customerID == request.auth.uid || 
+         resource.data.customerId == request.auth.uid ||
+         resource.data.status == "open");
+      allow update: if request.auth != null && (
+        (resource.data.customerID == request.auth.uid || 
+         resource.data.customerId == request.auth.uid)
+        ||
+        (
+          resource.data.status == "open" &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly(["bidCount"]) &&
+          request.resource.data.bidCount == resource.data.bidCount + 1
+        )
+      );
+      allow delete: if request.auth != null && 
+        (resource.data.customerID == request.auth.uid || 
+         resource.data.customerId == request.auth.uid);
+    }
+
+    match /draftRequests/{requestId} {
+      allow create: if request.auth != null && 
+        (request.resource.data.customerID == request.auth.uid || 
+         request.resource.data.customerId == request.auth.uid);
+      allow read, update, delete: if request.auth != null && 
+        (resource.data.customerID == request.auth.uid || 
+         resource.data.customerId == request.auth.uid);
+    }
+
+    match /artisans/{artisanId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth.uid == artisanId;
+      allow delete: if false;
+    }
+
+    match /orders/{orderId} {
+      allow read: if request.auth != null &&
+        (resource.data.customerId == request.auth.uid ||
+         resource.data.bakerID == request.auth.uid ||
+         resource.data.bakerId == request.auth.uid ||
+         resource.data.artisanId == request.auth.uid);
+      allow create, update: if request.auth != null &&
+        (request.resource.data.customerId == request.auth.uid ||
+         request.resource.data.bakerID == request.auth.uid ||
+         request.resource.data.bakerId == request.auth.uid ||
+         request.resource.data.artisanId == request.auth.uid);
+      allow delete: if false;
+    }
+
+    match /otps/{email} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /bids/{bidId} {
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.bakerID;
+      allow read: if request.auth != null &&
+        (resource == null ||
+         request.auth.uid == resource.data.bakerID ||
+         request.auth.uid == resource.data.customerID);
+      allow update: if request.auth != null &&
+        (request.auth.uid == resource.data.bakerID ||
+         request.auth.uid == resource.data.customerID);
+      allow delete: if false;
+    }
+
+    match /payments/{paymentId} {
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.customerId;
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.customerId ||
+         request.auth.uid == resource.data.bakerId);
+      allow update, delete: if false;
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && 
+        request.auth.uid == request.resource.data.customerId;
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
