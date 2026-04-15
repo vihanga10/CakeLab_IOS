@@ -482,6 +482,7 @@ struct BidsReceivedView: View {
         let bidRef = db.collection("bids").document(bid.id)
 
         let finalDeliveryDate = bid.canDeliverOnTime ? request.expectedDate : (bid.deliveryDate ?? request.expectedDate)
+        let deliveryDateTime = mergeDateAndTime(date: finalDeliveryDate, time: request.expectedTime)
         let serviceFee = 250.0
         let totalPaid = bid.amount + serviceFee
 
@@ -494,6 +495,8 @@ struct BidsReceivedView: View {
             "status": "confirmed",
             "currentStep": 1,
             "deliveryDate": Timestamp(date: finalDeliveryDate),
+            "deliveryTime": Timestamp(date: request.expectedTime),
+            "deliveryDateTime": Timestamp(date: deliveryDateTime),
             "artisanName": bid.bakerName,
             "artisanRating": "New baker",
             "artisanAddress": "Address not provided",
@@ -550,6 +553,24 @@ struct BidsReceivedView: View {
         } catch {
             errorMessage = "Could not complete payment. \(error.localizedDescription)"
         }
+    }
+
+    private func mergeDateAndTime(date: Date, time: Date) -> Date {
+        var calendar = Calendar.current
+        calendar.timeZone = .current
+
+        let dateComponents = calendar.dateComponents([.year, .month, .day], from: date)
+        let timeComponents = calendar.dateComponents([.hour, .minute, .second], from: time)
+
+        var merged = DateComponents()
+        merged.year = dateComponents.year
+        merged.month = dateComponents.month
+        merged.day = dateComponents.day
+        merged.hour = timeComponents.hour ?? 10
+        merged.minute = timeComponents.minute ?? 0
+        merged.second = timeComponents.second ?? 0
+
+        return calendar.date(from: merged) ?? date
     }
 
     private var requestSummaryCard: some View {

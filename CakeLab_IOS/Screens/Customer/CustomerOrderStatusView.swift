@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import FirebaseFirestore
+import UIKit
 
 @MainActor
 final class CustomerOrderStatusViewModel: ObservableObject {
@@ -73,6 +74,7 @@ struct CustomerOrderStatusView: View {
     let fallbackOrder: CustomerOrder
 
     @StateObject private var viewModel = CustomerOrderStatusViewModel()
+    @State private var calendarAlert: CalendarAlert?
 
     private let steps: [(step: Int, statusKey: String, title: String)] = [
         (1, "confirmed", "Confirmed"),
@@ -149,6 +151,29 @@ struct CustomerOrderStatusView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             viewModel.startListening(orderID: orderID)
+        }
+        .alert(item: $calendarAlert) { alert in
+            switch alert {
+            case .success(let message):
+                return Alert(
+                    title: Text("Added to Calendar"),
+                    message: Text(message),
+                    dismissButton: .default(Text("OK"))
+                )
+            case .error(let message):
+                return Alert(
+                    title: Text("Calendar Error"),
+                    message: Text(message),
+                    dismissButton: .default(Text("OK"))
+                )
+            case .permissionDenied:
+                return Alert(
+                    title: Text("Calendar Permission Needed"),
+                    message: Text("Please allow Calendar access in Settings to add delivery reminders."),
+                    primaryButton: .default(Text("Open Settings"), action: openAppSettings),
+                    secondaryButton: .cancel()
+                )
+            }
         }
     }
 
@@ -292,7 +317,7 @@ struct CustomerOrderStatusView: View {
                     Text("Expected Time")
                         .font(.urbanistSemiBold(12))
                         .foregroundColor(accent)
-                    Text("10:00 AM")
+                    Text(expectedTimeText())
                         .font(.urbanistMedium(13))
                         .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
                 }
@@ -302,7 +327,9 @@ struct CustomerOrderStatusView: View {
             .padding(.top, 10)
 
             Button {
-                // Calendar integration can be wired later.
+                Task {
+                    await addDeliveryEventToCalendar(deliveryDateText: deliveryDateText)
+                }
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "calendar")
@@ -409,6 +436,104 @@ struct CustomerOrderStatusView: View {
             return accent
         }
         return Color(red: 0.78, green: 0.78, blue: 0.78)
+    }
+
+    private func expectedTimeText() -> String {
+        if let dateTime = viewModel.order?.deliveryDateTime {
+            return Self.timeFmt.string(from: dateTime)
+        }
+        if let time = viewModel.order?.deliveryTime {
+            return Self.timeFmt.string(from: time)
+        }
+        return "10:00 AM"
+    }
+
+    private func resolvedDeliveryStartDate(deliveryDateText: String) -> Date {
+        if let order = viewModel.order {
+            if let dateTime = order.deliveryDateTime {
+                return dateTime
+            }
+
+            if let deliveryTime = order.deliveryTime {
+                var calendar = Calendar.current
+                calendar.timeZone = .current
+
+                let day = calendar.dateComponents([.year, .month, .day], from: order.deliveryDate)
+                let time = calendar.dateComponents([.hour, .minute, .second], from: deliveryTime)
+
+                var merged = DateComponents()
+                merged.year = day.year
+                merged.month = day.month
+                merged.day = day.day
+                merged.hour = time.hour ?? 10
+                merged.minute = time.minute ?? 0
+                merged.second = time.second ?? 0
+                return calendar.date(from: merged) ?? order.deliveryDate
+            }
+
+            return order.deliveryDate
+        }
+
+        return Self.dateFmt.date(from: deliveryDateText) ?? Date()
+    }
+
+    private func addDeliveryEventToCalendar(deliveryDateText: String) async {
+        let liveOrder = viewModel.order
+        let startDate = resolvedDeliveryStartDate(deliveryDateText: deliveryDateText)
+        let title = "Cake Delivery - \(liveOrder?.cakeName ?? fallbackOrder.cakeName)"
+        let bakerName = liveOrder?.artisanName ?? fallbackOrder.bakerName
+        let address = liveOrder?.artisanAddress ?? fallbackOrder.bakerAddress
+
+        let noteLines = [
+            "Order ID: \(orderID)",
+            "Baker: \(bakerName)",
+            "Address: \(address)"
+        ]
+
+        do {
+            let appUserID = liveOrder?.customerId ?? "customer_unknown"
+            _ = try await CalendarEventManager.shared.addOrUpdateDeliveryEvent(
+                appUserID: appUserID,
+                appUserName: "Customer",
+                orderID: orderID,
+                eventTitle: title,
+                startDate: startDate,
+                endDate: startDate.addingTimeInterval(60 * 60),
+                location: address,
+                notes: noteLines.joined(separator: "\n")
+            )
+            calendarAlert = .success("Delivery reminder has been added to your phone calendar.")
+        } catch let error as CalendarEventManager.CalendarError {
+            if error == .accessDenied {
+                calendarAlert = .permissionDenied
+            } else {
+                calendarAlert = .error(error.localizedDescription)
+            }
+        } catch {
+            calendarAlert = .error(error.localizedDescription)
+        }
+    }
+
+    private func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+}
+
+private enum CalendarAlert: Identifiable {
+    case success(String)
+    case error(String)
+    case permissionDenied
+
+    var id: String {
+        switch self {
+        case .success(let msg):
+            return "success_\(msg)"
+        case .error(let msg):
+            return "error_\(msg)"
+        case .permissionDenied:
+            return "permissionDenied"
+        }
     }
 }
 

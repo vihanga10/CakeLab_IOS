@@ -346,6 +346,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "CakeLab needs calendar access to add and update delivery reminders for your orders.";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "CakeLab needs calendar access to add delivery reminders for your orders.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We need your location to show nearby bakers";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to show nearby bakers";
 				INFOPLIST_KEY_UIAppFonts = "Urbanist-Regular.ttf Urbanist-Medium.ttf Urbanist-SemiBold.ttf Urbanist-Bold.ttf";
@@ -380,6 +382,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "CakeLab needs calendar access to add and update delivery reminders for your orders.";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "CakeLab needs calendar access to add delivery reminders for your orders.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We need your location to show nearby bakers";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to show nearby bakers";
 				INFOPLIST_KEY_UIAppFonts = "Urbanist-Regular.ttf Urbanist-Medium.ttf Urbanist-SemiBold.ttf Urbanist-Bold.ttf";

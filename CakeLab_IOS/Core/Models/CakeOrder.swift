@@ -27,6 +27,8 @@ struct CakeOrder: Identifiable, Sendable {
     let status: String
     let currentStep: Int
     let deliveryDate: Date
+    let deliveryTime: Date?
+    let deliveryDateTime: Date?
     let artisanName: String
     let artisanRating: String
     let artisanAddress: String
@@ -82,6 +84,8 @@ struct CakeOrder: Identifiable, Sendable {
         self.status         = status
         self.currentStep    = currentStep
         self.deliveryDate   = ts.dateValue()
+        self.deliveryTime   = (data["deliveryTime"] as? Timestamp)?.dateValue()
+        self.deliveryDateTime = (data["deliveryDateTime"] as? Timestamp)?.dateValue()
         self.artisanName    = artisanName
         self.artisanRating  = artisanRating
         self.artisanAddress = artisanAddress

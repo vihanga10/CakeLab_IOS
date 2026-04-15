@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import FirebaseFirestore
+import UIKit
 
 struct OrderPartyDetails {
     let name: String
@@ -171,6 +172,7 @@ struct BakerOrderStatusView: View {
     let orderID: String
 
     @StateObject private var viewModel = BakerOrderStatusViewModel()
+    @State private var calendarAlert: BakerCalendarAlert?
 
     private let screenBackground = Color(red: 0.96, green: 0.96, blue: 0.96)
     private let surface = Color.white
@@ -245,6 +247,29 @@ struct BakerOrderStatusView: View {
             Button("OK", role: .cancel) { viewModel.errorMessage = nil }
         } message: {
             Text(viewModel.errorMessage ?? "")
+        }
+        .alert(item: $calendarAlert) { alert in
+            switch alert {
+            case .success(let message):
+                return Alert(
+                    title: Text("Added to Calendar"),
+                    message: Text(message),
+                    dismissButton: .default(Text("OK"))
+                )
+            case .error(let message):
+                return Alert(
+                    title: Text("Calendar Error"),
+                    message: Text(message),
+                    dismissButton: .default(Text("OK"))
+                )
+            case .permissionDenied:
+                return Alert(
+                    title: Text("Calendar Permission Needed"),
+                    message: Text("Please allow Calendar access in Settings to add delivery reminders."),
+                    primaryButton: .default(Text("Open Settings"), action: openAppSettings),
+                    secondaryButton: .cancel()
+                )
+            }
         }
     }
 
@@ -399,7 +424,7 @@ struct BakerOrderStatusView: View {
                         Text("Expected Time")
                             .font(.urbanistSemiBold(12))
                             .foregroundColor(accent)
-                        Text("10:00 AM")
+                        Text(expectedTimeText(for: order))
                             .font(.urbanistMedium(13))
                             .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
                     }
@@ -409,7 +434,9 @@ struct BakerOrderStatusView: View {
                 .padding(.top, 10)
 
                 Button {
-                    // Calendar integration can be wired later.
+                    Task {
+                        await addDeliveryEventToCalendar(order: order)
+                    }
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "calendar")
@@ -513,6 +540,92 @@ struct BakerOrderStatusView: View {
                     .font(.urbanistMedium(14))
                     .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
             }
+        }
+    }
+
+    private func resolvedDeliveryStartDate(for order: CakeOrder) -> Date {
+        if let dateTime = order.deliveryDateTime {
+            return dateTime
+        }
+
+        if let deliveryTime = order.deliveryTime {
+            var calendar = Calendar.current
+            calendar.timeZone = .current
+
+            let day = calendar.dateComponents([.year, .month, .day], from: order.deliveryDate)
+            let time = calendar.dateComponents([.hour, .minute, .second], from: deliveryTime)
+
+            var merged = DateComponents()
+            merged.year = day.year
+            merged.month = day.month
+            merged.day = day.day
+            merged.hour = time.hour ?? 10
+            merged.minute = time.minute ?? 0
+            merged.second = time.second ?? 0
+            return calendar.date(from: merged) ?? order.deliveryDate
+        }
+
+        return order.deliveryDate
+    }
+
+    private func addDeliveryEventToCalendar(order: CakeOrder) async {
+        let startDate = resolvedDeliveryStartDate(for: order)
+        let noteLines = [
+            "Order ID: \(order.id)",
+            "Customer: \(viewModel.partyDetails.name)",
+            "Address: \(viewModel.partyDetails.address)",
+            "Notes: \(viewModel.partyDetails.notes)"
+        ]
+
+        do {
+            _ = try await CalendarEventManager.shared.addOrUpdateDeliveryEvent(
+                appUserID: order.artisanId.isEmpty ? "baker_unknown" : order.artisanId,
+                appUserName: order.artisanName,
+                orderID: order.id,
+                eventTitle: "Cake Delivery - \(order.cakeName)",
+                startDate: startDate,
+                endDate: startDate.addingTimeInterval(60 * 60),
+                location: viewModel.partyDetails.address,
+                notes: noteLines.joined(separator: "\n")
+            )
+            calendarAlert = .success("Delivery reminder has been added to your phone calendar.")
+        } catch let error as CalendarEventManager.CalendarError {
+            if error == .accessDenied {
+                calendarAlert = .permissionDenied
+            } else {
+                calendarAlert = .error(error.localizedDescription)
+            }
+        } catch {
+            calendarAlert = .error(error.localizedDescription)
+        }
+    }
+
+    private func expectedTimeText(for order: CakeOrder) -> String {
+        if let dateTime = order.deliveryDateTime {
+            return Self.timeFmt.string(from: dateTime)
+        }
+        if let time = order.deliveryTime {
+            return Self.timeFmt.string(from: time)
+        }
+        return "10:00 AM"
+    }
+
+    private func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+}
+
+private enum BakerCalendarAlert: Identifiable {
+    case success(String)
+    case error(String)
+    case permissionDenied
+
+    var id: String {
+        switch self {
+        case .success(let msg): return "success_\(msg)"
+        case .error(let msg): return "error_\(msg)"
+        case .permissionDenied: return "permissionDenied"
         }
     }
 }
