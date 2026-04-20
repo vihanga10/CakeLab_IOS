@@ -62,6 +62,7 @@ final class SignInViewModel: ObservableObject {
                 print("✅ DEBUG: Role validation passed - User is: \(user.role.rawValue)")
                 signedInUser    = user
                 navigateToFaceID = true
+                WidgetDataSyncManager.shared.refreshFromCurrentSession()
             } catch {
                 errorMessage = error.localizedDescription
             }

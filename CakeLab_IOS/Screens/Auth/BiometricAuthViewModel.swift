@@ -125,6 +125,7 @@ final class BiometricAuthViewModel: ObservableObject {
                 let savedPassword = try credentialStore.password(for: normalizedEmail)
                 let signedInUser = try await authService.signIn(email: normalizedEmail, password: savedPassword)
                 authenticatedUser = signedInUser
+                WidgetDataSyncManager.shared.refreshFromCurrentSession()
 
                 print("✅ DEBUG: Face ID authentication successful for \(email)")
                 print("✅ DEBUG: User role: \(signedInUser.role.rawValue)")

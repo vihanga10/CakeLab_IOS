@@ -8,6 +8,7 @@ import FirebaseAuth
 struct BakerProfileView: View {
     let user: AppUser
     @Binding var parentTabSelection: Int
+    @State private var navigateToSignIn = false
     @State private var profileData = BakerProfileData.empty
     @State private var isLoading = true
     @State private var monthlyOrders: [MonthlyOrderData] = []
@@ -89,6 +90,9 @@ struct BakerProfileView: View {
             Task {
                 await loadProfileData()
             }
+        }
+        .navigationDestination(isPresented: $navigateToSignIn) {
+            SignInView()
         }
     }
 
@@ -774,7 +778,13 @@ struct BakerProfileView: View {
             settingsRow(icon: "questionmark.circle.fill", label: "Help & Support", color: Color(red: 0.7, green: 0.45, blue: 0.1))
             Divider().padding(.leading, 52)
             Button {
-                // TODO: Sign out
+                do {
+                    try Auth.auth().signOut()
+                    WidgetDataSyncManager.shared.clearWidgetData()
+                    navigateToSignIn = true
+                } catch {
+                    print("Logout failed: \(error.localizedDescription)")
+                }
             } label: {
                 HStack(spacing: 14) {
                     ZStack {

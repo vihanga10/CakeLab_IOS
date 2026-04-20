@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - Baker Tab View
 struct BakerTabView: View {
     let user: AppUser
+    @Binding var widgetRoute: WidgetDeepLinkRoute?
     @State private var selectedTab: Int = 0
 
     var body: some View {
@@ -21,6 +22,20 @@ struct BakerTabView: View {
             BakerTabBar(selectedTab: $selectedTab)
         }
         .ignoresSafeArea(.keyboard)
+        .onChange(of: widgetRoute) { _, newRoute in
+            guard let newRoute else { return }
+
+            switch newRoute {
+            case .bakerStatus:
+                selectedTab = 2
+            case .bakerMatching:
+                selectedTab = 1
+            default:
+                break
+            }
+
+            widgetRoute = nil
+        }
     }
 }
 
@@ -90,5 +105,5 @@ struct BakerTabBar: View {
 }
 
 #Preview {
-    BakerTabView(user: AppUser.mockBaker)
+    BakerTabView(user: AppUser.mockBaker, widgetRoute: .constant(nil))
 }

@@ -167,6 +167,7 @@ struct CustomerProfileDetailView: View {
                         Button(action: {
                             do {
                                 try Auth.auth().signOut()
+                                WidgetDataSyncManager.shared.clearWidgetData()
                                 navigateToSignIn = true
                             } catch {
                                 print("Logout failed: \(error.localizedDescription)")

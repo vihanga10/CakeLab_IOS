@@ -547,6 +547,7 @@ struct BidsReceivedView: View {
 
             activeSheet = nil
             NotificationCenter.default.post(name: .orderDidChange, object: nil)
+            WidgetDataSyncManager.shared.refreshFromCurrentSession()
             successMessage = "Payment completed. Your order is now active for both customer and baker."
 
             await viewModel.loadBids(requestID: request.id, customerID: request.customerID)

@@ -21,12 +21,18 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 struct CakeLab_IOSApp: App {
   // register app delegate for Firebase setup
   @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+  @Environment(\.scenePhase) private var scenePhase
 
 
   var body: some Scene {
     WindowGroup {
       SplashView()
         .preferredColorScheme(.light)
+        .onChange(of: scenePhase) { _, phase in
+          if phase == .active {
+            WidgetDataSyncManager.shared.refreshFromCurrentSession()
+          }
+        }
     }
   }
 }

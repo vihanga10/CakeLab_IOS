@@ -11,6 +11,7 @@
 		B28ECF512F7F8597002345B5 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = B28ECF502F7F8597002345B5 /* FirebaseFirestore */; };
 		B28ECF532F7F8597002345B5 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = B28ECF522F7F8597002345B5 /* FirebaseMessaging */; };
 		B28ECF552F7F8597002345B5 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = B28ECF542F7F8597002345B5 /* FirebaseStorage */; };
+		C10000102F900001002345B5 /* CakeLabWidgetsExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = C10000012F900001002345B5 /* CakeLabWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -21,11 +22,33 @@
 			remoteGlobalIDString = B28ECF3A2F7F77B9002345B5;
 			remoteInfo = CakeLab_IOS;
 		};
+		C10000132F900001002345B5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B28ECF332F7F77B9002345B5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C10000032F900001002345B5;
+			remoteInfo = CakeLabWidgetsExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		C10000112F900001002345B5 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				C10000102F900001002345B5 /* CakeLabWidgetsExtension.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		B28ECF3B2F7F77BA002345B5 /* CakeLab_IOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CakeLab_IOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B28ED02E2F80C908002345B5 /* CakeLab_IOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CakeLab_IOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C10000012F900001002345B5 /* CakeLabWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CakeLabWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -37,6 +60,11 @@
 		B28ED02F2F80C908002345B5 /* CakeLab_IOSTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = CakeLab_IOSTests;
+			sourceTree = "<group>";
+		};
+		C10000022F900001002345B5 /* CakeLabWidgetsExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CakeLabWidgetsExtension;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -60,6 +88,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C10000052F900001002345B5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -68,6 +103,7 @@
 			children = (
 				B28ECF3D2F7F77BA002345B5 /* CakeLab_IOS */,
 				B28ED02F2F80C908002345B5 /* CakeLab_IOSTests */,
+				C10000022F900001002345B5 /* CakeLabWidgetsExtension */,
 				B28ECF3C2F7F77BA002345B5 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -77,6 +113,7 @@
 			children = (
 				B28ECF3B2F7F77BA002345B5 /* CakeLab_IOS.app */,
 				B28ED02E2F80C908002345B5 /* CakeLab_IOSTests.xctest */,
+				C10000012F900001002345B5 /* CakeLabWidgetsExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -91,10 +128,12 @@
 				B28ECF372F7F77B9002345B5 /* Sources */,
 				B28ECF382F7F77B9002345B5 /* Frameworks */,
 				B28ECF392F7F77B9002345B5 /* Resources */,
+				C10000112F900001002345B5 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				C10000122F900001002345B5 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				B28ECF3D2F7F77BA002345B5 /* CakeLab_IOS */,
@@ -133,6 +172,28 @@
 			productReference = B28ED02E2F80C908002345B5 /* CakeLab_IOSTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		C10000032F900001002345B5 /* CakeLabWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C10000072F900001002345B5 /* Build configuration list for PBXNativeTarget "CakeLabWidgetsExtension" */;
+			buildPhases = (
+				C10000042F900001002345B5 /* Sources */,
+				C10000052F900001002345B5 /* Frameworks */,
+				C10000062F900001002345B5 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C10000022F900001002345B5 /* CakeLabWidgetsExtension */,
+			);
+			name = CakeLabWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = CakeLabWidgetsExtension;
+			productReference = C10000012F900001002345B5 /* CakeLabWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -149,6 +210,9 @@
 					B28ED02D2F80C908002345B5 = {
 						CreatedOnToolsVersion = 26.2;
 						TestTargetID = B28ECF3A2F7F77B9002345B5;
+					};
+					C10000032F900001002345B5 = {
+						CreatedOnToolsVersion = 26.2;
 					};
 				};
 			};
@@ -171,6 +235,7 @@
 			targets = (
 				B28ECF3A2F7F77B9002345B5 /* CakeLab_IOS */,
 				B28ED02D2F80C908002345B5 /* CakeLab_IOSTests */,
+				C10000032F900001002345B5 /* CakeLabWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -184,6 +249,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		B28ED02C2F80C908002345B5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C10000062F900001002345B5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -207,6 +279,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C10000042F900001002345B5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -215,6 +294,11 @@
 			target = B28ECF3A2F7F77B9002345B5 /* CakeLab_IOS */;
 			targetProxy = B28ED0322F80C908002345B5 /* PBXContainerItemProxy */;
 		};
+		C10000122F900001002345B5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C10000032F900001002345B5 /* CakeLabWidgetsExtension */;
+			targetProxy = C10000132F900001002345B5 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -222,6 +306,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				APP_BUNDLE_IDENTIFIER = com.vihanga.cakelabios;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -285,6 +370,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				APP_BUNDLE_IDENTIFIER = com.vihanga.cakelabios;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -342,10 +428,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = CakeLab_IOS/CakeLab_IOS.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = QSRK26H9NJ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleURLTypes = "[{CFBundleURLName=com.vihanga.CakeLab-IOS;CFBundleURLSchemes=(cakelab);} ]";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "CakeLab needs calendar access to add and update delivery reminders for your orders.";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "CakeLab needs calendar access to add delivery reminders for your orders.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We need your location to show nearby bakers";
@@ -361,7 +450,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.vihanga.CakeLab-IOS";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.vihanga.cakelabios";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -378,10 +467,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = CakeLab_IOS/CakeLab_IOS.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = QSRK26H9NJ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleURLTypes = "[{CFBundleURLName=com.vihanga.CakeLab-IOS;CFBundleURLSchemes=(cakelab);} ]";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "CakeLab needs calendar access to add and update delivery reminders for your orders.";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "CakeLab needs calendar access to add delivery reminders for your orders.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We need your location to show nearby bakers";
@@ -397,7 +489,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.vihanga.CakeLab-IOS";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.vihanga.cakelabios";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -418,7 +510,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.vihanga.CakeLab-IOSTests";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.vihanga.cakelabios.tests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -439,7 +531,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.vihanga.CakeLab-IOSTests";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.vihanga.cakelabios.tests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -448,6 +540,48 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CakeLab_IOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CakeLab_IOS";
+			};
+			name = Release;
+		};
+		C10000082F900001002345B5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = CakeLabWidgetsExtension/CakeLabWidgetsExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = QSRK26H9NJ;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CakeLabWidgetsExtension/WidgetExtensionInfo.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.vihanga.cakelabios.widget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C10000092F900001002345B5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = CakeLabWidgetsExtension/CakeLabWidgetsExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = QSRK26H9NJ;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CakeLabWidgetsExtension/WidgetExtensionInfo.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.vihanga.cakelabios.widget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -477,6 +611,15 @@
 			buildConfigurations = (
 				B28ED0342F80C908002345B5 /* Debug */,
 				B28ED0352F80C908002345B5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C10000072F900001002345B5 /* Build configuration list for PBXNativeTarget "CakeLabWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C10000082F900001002345B5 /* Debug */,
+				C10000092F900001002345B5 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

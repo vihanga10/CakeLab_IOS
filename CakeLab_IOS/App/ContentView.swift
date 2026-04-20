@@ -10,14 +10,23 @@ import SwiftUI
 // MARK: - Wrapper for navigation
 struct ContentViewWrapper: View {
     let user: AppUser
+    @State private var widgetRoute: WidgetDeepLinkRoute?
     
     var body: some View {
-        if user.role == .customer {
-            CustomerTabView(user: user)
-        } else if user.role == .baker {
-            BakerTabView(user: user)
-        } else {
-            Text("Unknown role")
+        Group {
+            if user.role == .customer {
+                CustomerTabView(user: user, widgetRoute: $widgetRoute)
+            } else if user.role == .baker {
+                BakerTabView(user: user, widgetRoute: $widgetRoute)
+            } else {
+                Text("Unknown role")
+            }
+        }
+        .onOpenURL { url in
+            widgetRoute = WidgetDeepLinkRoute(url: url)
+        }
+        .task {
+            WidgetDataSyncManager.shared.refreshFromCurrentSession()
         }
     }
 }

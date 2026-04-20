@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - Customer Tab View
 struct CustomerTabView: View {
     let user: AppUser
+    @Binding var widgetRoute: WidgetDeepLinkRoute?
     @State private var selectedTab: Int = 0
 
     var body: some View {
@@ -23,6 +24,20 @@ struct CustomerTabView: View {
             CustomerTabBar(selectedTab: $selectedTab)
         }
         .ignoresSafeArea(.keyboard)
+        .onChange(of: widgetRoute) { _, newRoute in
+            guard let newRoute else { return }
+
+            switch newRoute {
+            case .customerStatus:
+                selectedTab = 2
+            case .customerActiveList:
+                selectedTab = 0
+            default:
+                break
+            }
+
+            widgetRoute = nil
+        }
     }
 }
 
@@ -82,5 +97,5 @@ struct CustomerTabBar: View {
 }
 
 #Preview {
-    CustomerTabView(user: AppUser.mock)
+    CustomerTabView(user: AppUser.mock, widgetRoute: .constant(nil))
 }

@@ -98,6 +98,7 @@ final class BakerOrderStatusViewModel: ObservableObject {
 
             try await db.collection("orders").document(orderID).updateData(updates)
             NotificationCenter.default.post(name: .orderDidChange, object: nil)
+            WidgetDataSyncManager.shared.refreshFromCurrentSession()
             successMessage = "Order status updated to \(stepInfo.title)."
         } catch {
             errorMessage = "Failed to update order status. \(error.localizedDescription)"
