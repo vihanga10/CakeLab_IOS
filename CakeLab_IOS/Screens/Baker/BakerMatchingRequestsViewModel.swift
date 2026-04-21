@@ -54,7 +54,10 @@ final class BakerMatchingRequestsViewModel: ObservableObject {
             
             // Step 3: Filter requests that match baker's specialties
             self.matchingRequests = allRequests.filter { request in
-                matchesAnySpecialty(request: request, specialties: bakerSpecialties)
+                if request.isDirectRequest {
+                    return request.targetArtisanId == bakerUID
+                }
+                return matchesAnySpecialty(request: request, specialties: bakerSpecialties)
             }
             
             print("✅ Matching requests filtered: \(self.matchingRequests.count) out of \(allRequests.count)")

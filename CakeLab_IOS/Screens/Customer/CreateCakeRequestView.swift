@@ -6,6 +6,7 @@ import FirebaseFirestore
 // MARK: - Create Cake Request View
 struct CreateCakeRequestView: View {
     let user: AppUser
+    let selectedArtisan: ArtisanProfile?
     
     @Environment(\.dismiss) private var dismiss
     
@@ -33,6 +34,12 @@ struct CreateCakeRequestView: View {
     @State private var fillingFlavour     = ""
     @State private var specialInstructions = ""
     @State private var allowNearby        = false
+
+    init(user: AppUser, selectedArtisan: ArtisanProfile? = nil) {
+        self.user = user
+        self.selectedArtisan = selectedArtisan
+        _allowNearby = State(initialValue: selectedArtisan == nil)
+    }
     
     private let categories  = ["Wedding Cake", "Anniversary Cake", "Cupcakes", "Birthday Cake",
                                "Baby Shower", "3D Cake", "Engagement Cake"]
@@ -702,6 +709,15 @@ struct CreateCakeRequestView: View {
             "status": status,
             timestampField: Date().timeIntervalSince1970
         ]
+
+        if let artisan = selectedArtisan {
+            data["targetArtisanId"] = artisan.id
+            data["targetArtisanName"] = artisan.name
+            data["targetArtisanAddress"] = artisan.location
+            data["targetArtisanRating"] = artisan.rating
+            data["isDirectRequest"] = true
+            data["allowNearby"] = false
+        }
         
         if timestampField != "createdAt", data["createdAt"] == nil {
             data["createdAt"] = Date().timeIntervalSince1970

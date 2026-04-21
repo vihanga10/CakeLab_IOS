@@ -1,60 +1,38 @@
 import SwiftUI
 import MapKit
+import CoreLocation
+import Combine
+import FirebaseFirestore
 
 // MARK: - Artisans Near You View
 @MainActor
 struct ArtisansNearYouView: View {
     let user: AppUser
     @Environment(\.dismiss) var dismiss
-    @State private var position: MapCameraPosition = .automatic
+
+    @StateObject private var viewModel = ArtisansNearYouViewModel()
+    @State private var position: MapCameraPosition = .region(
+        MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 7.8731, longitude: 80.7718),
+            span: MKCoordinateSpan(latitudeDelta: 5.0, longitudeDelta: 5.0)
+        )
+    )
     @State private var selectedArtisan: ArtisanProfile?
     @State private var showConfirmation = false
     @State private var searchText = ""
-    
-    // Mock artisans data — in production, fetch from Firestore
-    private let artisans: [ArtisanProfile] = [
-        ArtisanProfile(
-            id: "artisan-001",
-            name: "Butter Boutique",
-            rating: 5.0,
-            reviewCount: 41,
-            specialties: ["Cupcakes", "Vegan", "3D Cakes"],
-            location: "70 Rosmead Place, Colombo 07, Sri Lanka",
-            isOnline: true,
-            imageURL: nil,
-            latitude: 6.9271,
-            longitude: 80.7789
-        ),
-        ArtisanProfile(
-            id: "artisan-002",
-            name: "Patisserie",
-            rating: 4.7,
-            reviewCount: 33,
-            specialties: ["Birthday", "Vegan", "Wedding Cakes"],
-            location: "379 R.A. De Mel Mawatha, Colombo 03",
-            isOnline: true,
-            imageURL: nil,
-            latitude: 6.9182,
-            longitude: 80.7654
-        ),
-        ArtisanProfile(
-            id: "artisan-003",
-            name: "Frost & Crumb",
-            rating: 4.8,
-            reviewCount: 79,
-            specialties: ["Cupcakes", "Lava Cakes"],
-            location: "493 Dematagoda Road, Colombo 09",
-            isOnline: true,
-            imageURL: nil,
-            latitude: 6.9089,
-            longitude: 80.7456
-        )
-    ]
+    @State private var showDistrictPicker = false
+
+    private var filteredArtisans: [ArtisanProfile] {
+        viewModel.filteredArtisans(searchText: searchText)
+    }
+
+    private var mapArtisans: [ArtisanProfile] {
+        filteredArtisans.filter(\.hasValidCoordinates)
+    }
 
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                // MARK: - Header
                 HStack {
                     Button(action: { dismiss() }) {
                         Image(systemName: "chevron.left")
@@ -78,30 +56,48 @@ struct ArtisansNearYouView: View {
                 .shadow(color: Color.black.opacity(0.04), radius: 2)
 
                 VStack(spacing: 0) {
-                    // MARK: - Map
                     Map(position: $position) {
-                        ForEach(artisans, id: \.id) { artisan in
+                        ForEach(mapArtisans, id: \.id) { artisan in
                             Annotation("", coordinate: CLLocationCoordinate2D(latitude: artisan.latitude, longitude: artisan.longitude)) {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.cakeBrown)
-                                        .frame(width: 32, height: 32)
-                                    Image(systemName: "fork.knife")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundColor(.white)
-                                }
-                                .onTapGesture {
+                                Button {
                                     selectedArtisan = artisan
+                                } label: {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color.cakeBrown)
+                                            .frame(width: 32, height: 32)
+                                        Image(systemName: "fork.knife")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundColor(.white)
+                                    }
                                 }
                             }
                         }
                     }
                     .mapStyle(.standard)
                     .frame(height: 280)
+                    .overlay(alignment: .topLeading) {
+                        if let artisan = selectedArtisan {
+                            mapPinPopup(for: artisan)
+                                .padding(.top, 12)
+                                .padding(.leading, 12)
+                        }
+                    }
+                    .overlay(alignment: .bottomLeading) {
+                        if let district = viewModel.selectedDistrict {
+                            Label("District: \(district)", systemImage: "mappin.and.ellipse")
+                                .font(.urbanistRegular(11))
+                                .foregroundColor(.cakeBrown)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.white.opacity(0.92))
+                                .clipShape(Capsule())
+                                .padding(10)
+                        }
+                    }
 
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 12) {
-                            // MARK: - Search Bar
                             HStack(spacing: 10) {
                                 Image(systemName: "magnifyingglass")
                                     .font(.system(size: 15))
@@ -117,12 +113,13 @@ struct ArtisansNearYouView: View {
                             .clipShape(Capsule())
                             .padding(.horizontal, 20)
 
-                            // MARK: - Location Button
-                            Button(action: {}) {
+                            Button {
+                                showDistrictPicker = true
+                            } label: {
                                 HStack(spacing: 8) {
-                                    Image(systemName: "location.fill")
+                                    Image(systemName: "list.bullet.circle.fill")
                                         .font(.system(size: 14))
-                                    Text("Use my current location")
+                                    Text(viewModel.selectedDistrict == nil ? "Select district" : "Change district")
                                         .font(.urbanistRegular(13))
                                 }
                                 .foregroundColor(Color(red: 0.7, green: 0.5, blue: 0.2))
@@ -133,14 +130,47 @@ struct ArtisansNearYouView: View {
                             }
                             .padding(.horizontal, 20)
 
-                            // MARK: - Artisans List
+                            if viewModel.selectedDistrict != nil {
+                                Button {
+                                    viewModel.clearDistrictFilter()
+                                    moveToBestVisibleRegion()
+                                } label: {
+                                    Text("Show all districts")
+                                        .font(.urbanistRegular(12))
+                                        .foregroundColor(.cakeGrey)
+                                }
+                            }
+
+                            if let errorMessage = viewModel.errorMessage {
+                                Text(errorMessage)
+                                    .font(.urbanistRegular(12))
+                                    .foregroundColor(.red.opacity(0.75))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 20)
+                            }
+
+                            if viewModel.isLoading {
+                                ProgressView("Loading bakers from database...")
+                                    .font(.urbanistRegular(12))
+                                    .padding(.top, 12)
+                            }
+
+                            if !viewModel.isLoading && filteredArtisans.isEmpty {
+                                Text("No bakers found for this district.")
+                                    .font(.urbanistRegular(13))
+                                    .foregroundColor(.cakeGrey)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .padding(.vertical, 16)
+                            }
+
                             VStack(spacing: 12) {
-                                ForEach(artisans, id: \.id) { artisan in
+                                ForEach(filteredArtisans, id: \.id) { artisan in
                                     ArtisanNearCard(
                                         artisan: artisan,
                                         onTap: {
                                             selectedArtisan = artisan
                                             showConfirmation = true
+                                            centerMap(on: artisan)
                                         }
                                     )
                                 }
@@ -153,82 +183,72 @@ struct ArtisansNearYouView: View {
                 }
             }
 
-            // MARK: - Confirmation Popup
-            if showConfirmation && selectedArtisan != nil {
+            if showConfirmation, let artisan = selectedArtisan {
                 ZStack {
-                    // Background blur
                     Color.black.opacity(0.4)
                         .ignoresSafeArea()
                         .onTapGesture {
                             showConfirmation = false
                         }
 
-                    // Popup Card
                     VStack(spacing: 0) {
-                        // Title
                         Text("Send Cake Request?")
                             .font(.urbanistBold(18))
                             .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
                             .padding(.top, 24)
                             .padding(.bottom, 16)
 
-                        // Artisan Card Details
-                        if let artisan = selectedArtisan {
-                            VStack(spacing: 12) {
-                                HStack(spacing: 12) {
-                                    ZStack {
-                                        RoundedRectangle(cornerRadius: 10)
-                                            .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
-                                            .frame(width: 60, height: 60)
-                                        Image(systemName: "storefront.fill")
-                                            .font(.system(size: 24))
-                                            .foregroundColor(.cakeBrown.opacity(0.5))
-                                    }
-
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(artisan.name)
-                                            .font(.urbanistBold(14))
-                                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "star.fill")
-                                                .font(.system(size: 11))
-                                                .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.1))
-                                            Text("\(String(format: "%.1f", artisan.rating)) (\(artisan.reviewCount) reviews)")
-                                                .font(.urbanistRegular(11))
-                                                .foregroundColor(.cakeGrey)
-                                        }
-
-                                        HStack(spacing: 5) {
-                                            Image(systemName: "mappin.circle.fill")
-                                                .font(.system(size: 10))
-                                                .foregroundColor(.cakeGrey)
-                                            Text(artisan.location)
-                                                .font(.urbanistRegular(10))
-                                                .foregroundColor(.cakeGrey)
-                                                .lineLimit(1)
-                                        }
-                                    }
-
-                                    Spacer()
-
-                                    Circle()
-                                        .fill(Color(red: 0.15, green: 0.72, blue: 0.25))
-                                        .frame(width: 10, height: 10)
+                        VStack(spacing: 12) {
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+                                        .frame(width: 60, height: 60)
+                                    Image(systemName: "storefront.fill")
+                                        .font(.system(size: 24))
+                                        .foregroundColor(.cakeBrown.opacity(0.5))
                                 }
-                                .padding(12)
-                                .background(Color.white)
-                                .cornerRadius(12)
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(artisan.name)
+                                        .font(.urbanistBold(14))
+                                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "star.fill")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.1))
+                                        Text("\(String(format: "%.1f", artisan.rating)) (\(artisan.reviewCount) reviews)")
+                                            .font(.urbanistRegular(11))
+                                            .foregroundColor(.cakeGrey)
+                                    }
+
+                                    HStack(spacing: 5) {
+                                        Image(systemName: "mappin.circle.fill")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.cakeGrey)
+                                        Text(artisan.location)
+                                            .font(.urbanistRegular(10))
+                                            .foregroundColor(.cakeGrey)
+                                            .lineLimit(1)
+                                    }
+                                }
+
+                                Spacer()
+
+                                Circle()
+                                    .fill(Color(red: 0.15, green: 0.72, blue: 0.25))
+                                    .frame(width: 10, height: 10)
                             }
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 20)
+                            .padding(12)
+                            .background(Color.white)
+                            .cornerRadius(12)
                         }
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 20)
 
-                        // Divider
                         Divider()
-                            .padding(.horizontal, 0)
 
-                        // Action Buttons
                         HStack(spacing: 12) {
                             Button(action: {
                                 showConfirmation = false
@@ -242,7 +262,7 @@ struct ArtisansNearYouView: View {
                                     .cornerRadius(10)
                             }
 
-                            NavigationLink(destination: CreateCakeRequestView(user: user)) {
+                            NavigationLink(destination: CreateCakeRequestView(user: user, selectedArtisan: artisan)) {
                                 Text("Send Request")
                                     .font(.urbanistSemiBold(14))
                                     .frame(maxWidth: .infinity)
@@ -263,6 +283,335 @@ struct ArtisansNearYouView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .task {
+            await viewModel.loadArtisansFromDatabase()
+            moveToBestVisibleRegion()
+        }
+        .onChange(of: filteredArtisans.map(\.id)) { _, _ in
+            moveToBestVisibleRegion(onlyIfAutomatic: true)
+        }
+        .sheet(isPresented: $showDistrictPicker) {
+            DistrictPickerSheet(
+                districts: viewModel.sriLankanDistricts,
+                selectedDistrict: viewModel.selectedDistrict,
+                onSelect: { district in
+                    viewModel.applyDistrictFilter(district)
+                    moveToBestVisibleRegion()
+                    showDistrictPicker = false
+                }
+            )
+            .presentationDetents([.medium, .large])
+        }
+    }
+
+    private func centerMap(on artisan: ArtisanProfile) {
+        guard artisan.hasValidCoordinates else { return }
+        withAnimation {
+            position = .region(
+                MKCoordinateRegion(
+                    center: CLLocationCoordinate2D(latitude: artisan.latitude, longitude: artisan.longitude),
+                    span: MKCoordinateSpan(latitudeDelta: 0.06, longitudeDelta: 0.06)
+                )
+            )
+        }
+    }
+
+    private func moveToBestVisibleRegion(onlyIfAutomatic: Bool = false) {
+        guard let first = mapArtisans.first else { return }
+        if onlyIfAutomatic,
+           case .automatic = position {
+            centerMap(on: first)
+            return
+        }
+        if !onlyIfAutomatic {
+            centerMap(on: first)
+        }
+    }
+
+    @ViewBuilder
+    private func mapPinPopup(for artisan: ArtisanProfile) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(artisan.name)
+                .font(.urbanistSemiBold(12))
+                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+
+            HStack(spacing: 4) {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 10))
+                    .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.1))
+                Text("\(artisan.ratingText)  \(artisan.reviewsText)")
+                    .font(.urbanistRegular(10))
+                    .foregroundColor(.cakeGrey)
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color.white)
+        .cornerRadius(10)
+        .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 2)
+    }
+}
+
+@MainActor
+private final class ArtisansNearYouViewModel: ObservableObject {
+    @Published var artisans: [ArtisanProfile] = []
+    @Published var scopedArtisans: [ArtisanProfile] = []
+    @Published var isLoading = false
+    @Published var selectedDistrict: String?
+    @Published var errorMessage: String?
+
+    private let db = Firestore.firestore()
+    private let geocoder = CLGeocoder()
+    private var geocodeCache: [String: CLLocationCoordinate2D] = [:]
+
+    let sriLankanDistricts: [String] = [
+        "Ampara", "Anuradhapura", "Badulla", "Batticaloa", "Colombo", "Galle", "Gampaha", "Hambantota", "Jaffna", "Kalutara", "Kandy", "Kegalle", "Kilinochchi", "Kurunegala", "Mannar", "Matale", "Matara", "Monaragala", "Mullaitivu", "Nuwara Eliya", "Polonnaruwa", "Puttalam", "Ratnapura", "Trincomalee", "Vavuniya"
+    ]
+
+    func loadArtisansFromDatabase() async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            let snapshot = try await db.collection("artisans")
+                .order(by: "rating", descending: true)
+                .limit(to: 100)
+                .getDocuments()
+
+            let rawArtisans = snapshot.documents.compactMap(ArtisanProfile.init(document:))
+            let userFallback = try await fetchBakersFromUsersCollection()
+            let merged = mergeProfiles(primary: rawArtisans, fallback: userFallback)
+            let hydrated = await hydrateMissingCoordinates(for: merged)
+
+            artisans = hydrated
+            scopedArtisans = hydrated
+
+            if hydrated.isEmpty {
+                errorMessage = "No artisan profiles available in database."
+            }
+        } catch {
+            errorMessage = "Could not load bakers from database."
+            print("ERROR ArtisansNearYouViewModel.loadArtisansFromDatabase: \(error.localizedDescription)")
+        }
+    }
+
+    func filteredArtisans(searchText: String) -> [ArtisanProfile] {
+        let text = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !text.isEmpty else { return scopedArtisans }
+
+        return scopedArtisans.filter { artisan in
+            artisan.name.lowercased().contains(text)
+            || artisan.location.lowercased().contains(text)
+            || artisan.specialties.contains(where: { $0.lowercased().contains(text) })
+        }
+    }
+
+    func applyDistrictFilter(_ district: String) {
+        selectedDistrict = district
+        errorMessage = nil
+
+        let normalizedDistrict = normalize(district)
+        let districtCompact = normalizedDistrict.replacingOccurrences(of: " ", with: "")
+        let matches = artisans.filter { artisan in
+            let locationText = normalize(artisan.location)
+            if locationText.contains(normalizedDistrict) {
+                return true
+            }
+            if locationText.contains("\(normalizedDistrict) district") {
+                return true
+            }
+            let compactLocationText = locationText.replacingOccurrences(of: " ", with: "")
+            if compactLocationText.contains(districtCompact) {
+                return true
+            }
+            return false
+        }
+
+        scopedArtisans = matches
+        if matches.isEmpty {
+            errorMessage = "No bakers found in \(district)."
+        }
+    }
+
+    func clearDistrictFilter() {
+        selectedDistrict = nil
+        errorMessage = nil
+        scopedArtisans = artisans
+    }
+
+    private func normalize(_ text: String) -> String {
+        text
+            .lowercased()
+            .replacingOccurrences(of: ",", with: " ")
+            .replacingOccurrences(of: ".", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
+    private func fetchBakersFromUsersCollection() async throws -> [ArtisanProfile] {
+        let snapshot = try await db.collection("users")
+            .whereField("role", isEqualTo: "baker")
+            .limit(to: 200)
+            .getDocuments()
+
+        return snapshot.documents.compactMap { document in
+            guard let data = document.data() as? [String: Any] else { return nil }
+
+            let name = [
+                data["name"] as? String,
+                data["shopName"] as? String,
+                data["email"] as? String
+            ]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first(where: { !$0.isEmpty })
+
+            guard let resolvedName = name else { return nil }
+
+            let address = [
+                data["address"] as? String,
+                data["city"] as? String,
+                data["location"] as? String
+            ]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first(where: { !$0.isEmpty }) ?? ""
+
+            let latitude = asDouble(data["latitude"]) ?? 0
+            let longitude = asDouble(data["longitude"]) ?? 0
+            let rating = asDouble(data["rating"]) ?? 0
+            let reviewCount = asInt(data["reviewCount"]) ?? 0
+
+            return ArtisanProfile(
+                id: document.documentID,
+                name: resolvedName,
+                rating: rating,
+                reviewCount: reviewCount,
+                specialties: data["specialties"] as? [String] ?? [],
+                location: address,
+                isOnline: data["isOnline"] as? Bool ?? true,
+                imageURL: data["imageURL"] as? String,
+                latitude: latitude,
+                longitude: longitude
+            )
+        }
+    }
+
+    private func mergeProfiles(primary: [ArtisanProfile], fallback: [ArtisanProfile]) -> [ArtisanProfile] {
+        var map = Dictionary(uniqueKeysWithValues: primary.map { ($0.id, $0) })
+        for profile in fallback where map[profile.id] == nil {
+            map[profile.id] = profile
+        }
+
+        return map.values.sorted {
+            if $0.rating == $1.rating {
+                return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
+            return $0.rating > $1.rating
+        }
+    }
+
+    private func asDouble(_ value: Any?) -> Double? {
+        if let value = value as? Double { return value }
+        if let value = value as? Int { return Double(value) }
+        if let value = value as? NSNumber { return value.doubleValue }
+        if let value = value as? String { return Double(value) }
+        return nil
+    }
+
+    private func asInt(_ value: Any?) -> Int? {
+        if let value = value as? Int { return value }
+        if let value = value as? Double { return Int(value) }
+        if let value = value as? NSNumber { return value.intValue }
+        if let value = value as? String { return Int(value) }
+        return nil
+    }
+
+    private func hydrateMissingCoordinates(for source: [ArtisanProfile]) async -> [ArtisanProfile] {
+        var output: [ArtisanProfile] = []
+        output.reserveCapacity(source.count)
+
+        for artisan in source {
+            if artisan.hasValidCoordinates || artisan.location.isEmpty {
+                output.append(artisan)
+                continue
+            }
+
+            if let cached = geocodeCache[artisan.location] {
+                output.append(
+                    ArtisanProfile(
+                        id: artisan.id,
+                        name: artisan.name,
+                        rating: artisan.rating,
+                        reviewCount: artisan.reviewCount,
+                        specialties: artisan.specialties,
+                        location: artisan.location,
+                        isOnline: artisan.isOnline,
+                        imageURL: artisan.imageURL,
+                        latitude: cached.latitude,
+                        longitude: cached.longitude
+                    )
+                )
+                continue
+            }
+
+            do {
+                let placemarks = try await geocoder.geocodeAddressString(artisan.location)
+                if let coordinate = placemarks.first?.location?.coordinate {
+                    geocodeCache[artisan.location] = coordinate
+                    output.append(
+                        ArtisanProfile(
+                            id: artisan.id,
+                            name: artisan.name,
+                            rating: artisan.rating,
+                            reviewCount: artisan.reviewCount,
+                            specialties: artisan.specialties,
+                            location: artisan.location,
+                            isOnline: artisan.isOnline,
+                            imageURL: artisan.imageURL,
+                            latitude: coordinate.latitude,
+                            longitude: coordinate.longitude
+                        )
+                    )
+                    continue
+                }
+            } catch {
+                print("WARN geocode artisan failed: \(artisan.id) - \(error.localizedDescription)")
+            }
+
+            output.append(artisan)
+        }
+
+        return output
+    }
+}
+
+private struct DistrictPickerSheet: View {
+    let districts: [String]
+    let selectedDistrict: String?
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        NavigationStack {
+            List(districts, id: \.self) { district in
+                Button {
+                    onSelect(district)
+                } label: {
+                    HStack {
+                        Text(district)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        if selectedDistrict == district {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.cakeBrown)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Select District")
+            .navigationBarTitleDisplayMode(.inline)
+        }
     }
 }
 

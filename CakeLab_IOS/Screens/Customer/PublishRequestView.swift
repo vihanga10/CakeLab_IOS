@@ -274,6 +274,9 @@ struct CakeRequestRecord: Identifiable {
     let savedAt: Date?
     let status: String
     let bidCount: Int
+    let isDirectRequest: Bool
+    let targetArtisanId: String?
+    let targetArtisanName: String?
     
     init?(document: DocumentSnapshot) {
                 guard let data = document.data(),
@@ -303,6 +306,9 @@ struct CakeRequestRecord: Identifiable {
         self.allowNearby = data["allowNearby"] as? Bool ?? false
         self.status = data["status"] as? String ?? "open"
         self.bidCount = Self.intValue(in: data, key: "bidCount")
+        self.isDirectRequest = data["isDirectRequest"] as? Bool ?? false
+        self.targetArtisanId = data["targetArtisanId"] as? String
+        self.targetArtisanName = data["targetArtisanName"] as? String
 
         self.expectedDate = Self.dateValue(in: data, key: "expectedDate") ?? Date()
         self.expectedTime = Self.dateValue(in: data, key: "expectedTime") ?? Date()
