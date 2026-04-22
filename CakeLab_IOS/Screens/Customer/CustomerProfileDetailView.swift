@@ -7,11 +7,7 @@ import FirebaseAuth
 struct CustomerProfileDetailView: View {
     let user: AppUser
     @StateObject private var viewModel: ProfileViewModel
-    @Environment(\.dismiss) var dismiss
-    
-    @State private var showEditSheet = false
-    @State private var showImagePicker = false
-    @State private var selectedPhotoPickerItem: PhotosPickerItem?
+
     @State private var navigateToSignIn = false
     @State private var showPaymentHistory = false
 
@@ -20,190 +16,235 @@ struct CustomerProfileDetailView: View {
         _viewModel = StateObject(wrappedValue: ProfileViewModel(user: user))
     }
 
+    private var displayName: String {
+        viewModel.user.name.isEmpty ? "Sunadi Perera" : viewModel.user.name
+    }
+
+    private var locationText: String {
+        let address = viewModel.user.address?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let city = viewModel.user.city?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let parts = [address, city].filter { !$0.isEmpty }
+
+        if !parts.isEmpty {
+            return parts.joined(separator: ", ")
+        }
+
+        return "Colombo, Sri Lanka"
+    }
+
     var body: some View {
         NavigationStack {
-        ZStack {
-            Color.white.ignoresSafeArea()
+            ZStack {
+                Color.white.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                // MARK: - Header
-                HStack {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.cakeBrown)
-                    }
-                    Spacer()
+                VStack(spacing: 0) {
                     Text("My Profile")
                         .font(.urbanistBold(18))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                    Spacer()
-                    Button(action: {}) {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 18))
-                            .foregroundColor(.cakeBrown)
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .background(Color.white)
-                .shadow(color: Color.black.opacity(0.04), radius: 2)
+                        .foregroundColor(Color(hex: "5D3714"))
+                        .padding(.top, 18)
+                        .padding(.bottom, 10)
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 24) {
-                        // MARK: - Profile Section
-                        VStack(spacing: 16) {
-                            ZStack(alignment: .bottomTrailing) {
-                                if let urlString = viewModel.user.avatarURL, let url = URL(string: urlString) {
-                                    AsyncImage(url: url) { phase in
-                                        switch phase {
-                                        case .empty:
-                                            Circle()
-                                                .fill(Color(red: 0.90, green: 0.86, blue: 0.82))
-                                                .frame(width: 100, height: 100)
-                                        case .success(let image):
-                                            image
-                                                .resizable()
-                                                .scaledToFill()
-                                                .frame(width: 100, height: 100)
-                                                .clipShape(Circle())
-                                        case .failure:
-                                            Circle()
-                                                .fill(Color(red: 0.90, green: 0.86, blue: 0.82))
-                                                .frame(width: 100, height: 100)
-                                                .overlay(
-                                                    Image(systemName: "person.fill")
-                                                        .font(.system(size: 45))
-                                                        .foregroundColor(.cakeBrown)
-                                                )
-                                        @unknown default:
-                                            EmptyView()
-                                        }
-                                    }
-                                } else {
-                                    Circle()
-                                        .fill(Color(red: 0.90, green: 0.86, blue: 0.82))
-                                        .frame(width: 100, height: 100)
-                                        .overlay(
-                                            Image(systemName: "person.fill")
-                                                .font(.system(size: 45))
-                                                .foregroundColor(.cakeBrown)
-                                        )
-                                }
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 26) {
+                            VStack(spacing: 10) {
+                                profileAvatar(size: 138)
+                                    .padding(.top, 8)
 
-                                // Camera button
-                                Button(action: { showEditSheet = true }) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(Color.cakeBrown)
-                                            .frame(width: 36, height: 36)
-                                        Image(systemName: "camera.fill")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(.white)
-                                    }
+                                Text(displayName)
+                                    .font(.urbanistBold(22))
+                                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+
+                                HStack(spacing: 7) {
+                                    Image(systemName: "location.fill")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(Color.gray)
+
+                                    Text(locationText)
+                                        .font(.urbanistRegular(14))
+                                        .foregroundColor(Color(hex: "7B7B7B"))
                                 }
+                                .padding(.top, -2)
                             }
                             .frame(maxWidth: .infinity)
+                            .padding(.top, 8)
 
-                            Text(viewModel.user.name.isEmpty ? viewModel.user.email : viewModel.user.name)
-                                .font(.urbanistBold(18))
-                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-
-                            if let city = viewModel.user.city, !city.isEmpty {
-                                Text("\(city), Sri Lanka")
-                                    .font(.urbanistRegular(13))
-                                    .foregroundColor(.cakeGrey)
-                            } else {
-                                Text(viewModel.user.email)
-                                    .font(.urbanistRegular(13))
-                                    .foregroundColor(.cakeGrey)
+                            ProfileSection(title: "Account") {
+                                NavigationLink(destination: EditProfileView(viewModel: viewModel)) {
+                                    MenuItemRow(
+                                        icon: "person.fill",
+                                        title: "Edit Profile",
+                                        iconColor: Color(hex: "111111"),
+                                        iconBackground: Color(hex: "EFEAE2")
+                                    )
+                                }
+                                MenuItem(
+                                    icon: "clock.arrow.circlepath",
+                                    title: "Payment History",
+                                    iconColor: Color(hex: "2F3C8F"),
+                                    iconBackground: Color(hex: "E6F8F9"),
+                                    action: { showPaymentHistory = true }
+                                )
+                                MenuItem(
+                                    icon: "eye.slash.fill",
+                                    title: "Change Password",
+                                    iconColor: Color(hex: "92711B"),
+                                    iconBackground: Color(hex: "FFF8DB"),
+                                    action: {}
+                                )
+                                NavigationLink(destination: PublishRequestView(user: user)) {
+                                    MenuItemRow(
+                                        icon: "briefcase.fill",
+                                        title: "Publish Request",
+                                        iconColor: Color(hex: "8A3A63"),
+                                        iconBackground: Color(hex: "F8E8F5")
+                                    )
+                                }
+                                NavigationLink(destination: DraftIdeasView(user: user)) {
+                                    MenuItemRow(
+                                        icon: "lightbulb.fill",
+                                        title: "Draft Ideas",
+                                        iconColor: Color(hex: "6B56A5"),
+                                        iconBackground: Color(hex: "EEE8FF"),
+                                        showDivider: false
+                                    )
+                                }
                             }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
+                            .padding(.horizontal, 16)
 
-                        // MARK: - Menu Items
-                        // ── Account ──────────────────────────────────────
-                        ProfileSection(title: "Account") {
-                            MenuItem(
-                                icon: "person.fill",
-                                title: "Edit Profile",
-                                action: { showEditSheet = true }
-                            )
-                            MenuItem(
-                                icon: "clock.arrow.circlepath",
-                                title: "Payment History",
-                                action: { showPaymentHistory = true }
-                            )
-                            MenuItem(
-                                icon: "lock.fill",
-                                title: "Change Password",
-                                action: {}
-                            )
-                            NavigationLink(destination: PublishRequestView(user: user)) {
-                                MenuItemRow(icon: "paperplane.fill", title: "Publish Request")
+                            ProfileSection(title: "Preferences") {
+                                MenuItem(
+                                    icon: "globe",
+                                    title: "Language",
+                                    iconColor: Color(hex: "4C8B35"),
+                                    iconBackground: Color(hex: "E9F9E1"),
+                                    action: {}
+                                )
+                                MenuItem(
+                                    icon: "shield.fill",
+                                    title: "Privacy & Security",
+                                    iconColor: Color(hex: "F44336"),
+                                    iconBackground: Color(hex: "FFE9E7"),
+                                    showDivider: false,
+                                    action: {}
+                                )
                             }
-                            NavigationLink(destination: DraftIdeasView(user: user)) {
-                                MenuItemRow(icon: "pencil.and.scribble", title: "Draft Ideas")
+                            .padding(.horizontal, 16)
+
+                            ProfileSection(title: "Support") {
+                                MenuItem(
+                                    icon: "questionmark.circle.fill",
+                                    title: "Help & Support",
+                                    iconColor: Color(hex: "4F4F4F"),
+                                    iconBackground: Color(hex: "ECECEC"),
+                                    action: {}
+                                )
+                                MenuItem(
+                                    icon: "lock.shield.fill",
+                                    title: "Terms & Privacy Policy",
+                                    iconColor: Color(hex: "4F4F4F"),
+                                    iconBackground: Color(hex: "ECECEC"),
+                                    showDivider: false,
+                                    action: {}
+                                )
                             }
-                        }
-                        .padding(.horizontal, 16)
+                            .padding(.horizontal, 16)
 
-                        // ── Preferences ───────────────────────────────────
-                        ProfileSection(title: "Preferences") {
-                            MenuItem(icon: "globe", title: "Language", action: {})
-                            MenuItem(icon: "hand.raised.fill", title: "Privacy & Security", action: {})
-                        }
-                        .padding(.horizontal, 16)
-
-                        // ── Support ───────────────────────────────────────
-                        ProfileSection(title: "Support") {
-                            MenuItem(icon: "questionmark.circle.fill", title: "Help & Support", action: {})
-                            MenuItem(icon: "doc.text.fill", title: "Terms & Privacy Policy", action: {})
-                        }
-                        .padding(.horizontal, 16)
-
-                        // ── Log Out ───────────────────────────────────────
-                        Button(action: {
-                            do {
-                                try Auth.auth().signOut()
-                                WidgetDataSyncManager.shared.clearWidgetData()
-                                navigateToSignIn = true
-                            } catch {
-                                print("Logout failed: \(error.localizedDescription)")
+                            Button(action: {
+                                do {
+                                    try Auth.auth().signOut()
+                                    WidgetDataSyncManager.shared.clearWidgetData()
+                                    navigateToSignIn = true
+                                } catch {
+                                    print("Logout failed: \(error.localizedDescription)")
+                                }
+                            }) {
+                                Text("Log Out")
+                                    .font(.urbanistSemiBold(16))
+                                    .foregroundColor(Color(hex: "F0483E"))
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 54)
+                                    .background(Color(hex: "FFE1E4"))
+                                    .cornerRadius(27)
+                                    .shadow(color: Color.black.opacity(0.08), radius: 10, y: 5)
                             }
-                        }) {
-                            Text("Log Out")
-                                .font(.urbanistSemiBold(15))
-                                .foregroundColor(Color(red: 0.85, green: 0.30, blue: 0.28))
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 50)
-                                .background(Color(red: 1.0, green: 0.92, blue: 0.92))
-                                .cornerRadius(12)
-                        }
-                        .padding(.horizontal, 16)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 8)
 
-                        Spacer().frame(height: 20)
+                            Spacer().frame(height: 20)
+                        }
+                        .padding(.top, 12)
+                        .padding(.bottom, 24)
                     }
-                    .padding(.vertical, 20)
                 }
             }
+            .navigationBarBackButtonHidden(true)
+            .navigationBarHidden(true)
+            .navigationDestination(isPresented: $navigateToSignIn) {
+                SignInView()
+            }
+            .navigationDestination(isPresented: $showPaymentHistory) {
+                PaymentHistoryView(user: user)
+            }
+            .task {
+                await viewModel.fetchProfile()
+            }
         }
-        .navigationBarBackButtonHidden(true)
-        .navigationBarHidden(true)
-        .sheet(isPresented: $showEditSheet) {
-            EditProfileSheet(viewModel: viewModel, isPresented: $showEditSheet)
+    }
+
+    @ViewBuilder
+    private func profileAvatar(size: CGFloat) -> some View {
+        if let selectedPhoto = viewModel.selectedPhoto {
+            Image(uiImage: selectedPhoto)
+                .resizable()
+                .scaledToFill()
+                .frame(width: size, height: size)
+                .clipShape(Circle())
+                .overlay(
+                    Circle()
+                        .stroke(Color.white, lineWidth: 5)
+                )
+                .shadow(color: Color.black.opacity(0.12), radius: 16, y: 8)
+        } else if let urlString = viewModel.user.avatarURL, let url = URL(string: urlString) {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                case .empty, .failure:
+                    Image(systemName: "person.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .padding(size * 0.24)
+                        .foregroundColor(Color(hex: "7C5A38"))
+                        .background(Color(hex: "D8D0C8"))
+                @unknown default:
+                    EmptyView()
+                }
+            }
+            .frame(width: size, height: size)
+            .background(Color(hex: "D8D0C8"))
+            .clipShape(Circle())
+            .overlay(
+                Circle()
+                    .stroke(Color.white, lineWidth: 5)
+            )
+            .shadow(color: Color.black.opacity(0.12), radius: 16, y: 8)
+        } else {
+            Image(systemName: "person.fill")
+                .resizable()
+                .scaledToFit()
+                .padding(size * 0.24)
+                .frame(width: size, height: size)
+                .foregroundColor(Color(hex: "7C5A38"))
+                .background(Color(hex: "D8D0C8"))
+                .clipShape(Circle())
+                .overlay(
+                    Circle()
+                        .stroke(Color.white, lineWidth: 5)
+                )
+                .shadow(color: Color.black.opacity(0.12), radius: 16, y: 8)
         }
-        .navigationDestination(isPresented: $navigateToSignIn) {
-            SignInView()
-        }
-        .navigationDestination(isPresented: $showPaymentHistory) {
-            PaymentHistoryView(user: user)
-        }
-        .task {
-            await viewModel.fetchProfile()
-        }
-        } // end NavigationStack
     }
 }
 
@@ -213,17 +254,21 @@ struct ProfileSection<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 12) {
             Text(title)
-                .font(.urbanistSemiBold(13))
-                .foregroundColor(.cakeGrey)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .font(.urbanistMedium(16))
+                .foregroundColor(Color(hex: "676767"))
+                .padding(.horizontal, 4)
             VStack(spacing: 0) {
                 content()
             }
-            .background(Color.white)
-            .cornerRadius(12)
+            .background(Color.white.opacity(0.95))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.black.opacity(0.03), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.03), radius: 12, y: 6)
         }
     }
 }
@@ -232,16 +277,19 @@ struct ProfileSection<Content: View>: View {
 struct MenuItemRow: View {
     let icon: String
     let title: String
+    let iconColor: Color
+    let iconBackground: Color
+    var showDivider: Bool = true
 
     var body: some View {
         HStack(spacing: 14) {
             ZStack {
-                Circle()
-                    .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
-                    .frame(width: 44, height: 44)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(iconBackground)
+                    .frame(width: 34, height: 34)
                 Image(systemName: icon)
-                    .font(.system(size: 18))
-                    .foregroundColor(.cakeBrown)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(iconColor)
             }
             Text(title)
                 .font(.urbanistRegular(15))
@@ -249,10 +297,16 @@ struct MenuItemRow: View {
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.cakeGrey)
+                .foregroundColor(Color.black)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 16)
+        .overlay(alignment: .bottom) {
+            if showDivider {
+                Divider()
+                    .padding(.leading, 58)
+            }
+        }
     }
 }
 
@@ -260,45 +314,77 @@ struct MenuItemRow: View {
 struct MenuItem: View {
     let icon: String
     let title: String
+    let iconColor: Color
+    let iconBackground: Color
+    var showDivider: Bool = true
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 14) {
                 ZStack {
-                    Circle()
-                        .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
-                        .frame(width: 44, height: 44)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(iconBackground)
+                        .frame(width: 34, height: 34)
                     Image(systemName: icon)
-                        .font(.system(size: 18))
-                        .foregroundColor(.cakeBrown)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(iconColor)
                 }
-                
+
                 Text(title)
                     .font(.urbanistRegular(15))
                     .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                
+
                 Spacer()
-                
+
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.cakeGrey)
+                    .foregroundColor(Color.black)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 16)
+            .overlay(alignment: .bottom) {
+                if showDivider {
+                    Divider()
+                        .padding(.leading, 58)
+                }
+            }
         }
     }
 }
 
-// MARK: - Edit Profile Sheet
-struct EditProfileSheet: View {
+private extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+
+        let r, g, b: UInt64
+        switch hex.count {
+        case 6:
+            (r, g, b) = ((int >> 16) & 0xFF, (int >> 8) & 0xFF, int & 0xFF)
+        default:
+            (r, g, b) = (0, 0, 0)
+        }
+
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: 1
+        )
+    }
+}
+
+// MARK: - Edit Profile View
+struct EditProfileView: View {
     @ObservedObject var viewModel: ProfileViewModel
-    @Binding var isPresented: Bool
-    
+    @Environment(\.dismiss) private var dismiss
+
     @State private var showImagePicker = false
     @State private var selectedPhotoPickerItem: PhotosPickerItem?
-    
-    // Local form state - NOT bound to viewModel to prevent auto-save
+
     @State private var localFullName = ""
     @State private var localPhoneNumber = ""
     @State private var localAddress = ""
@@ -307,76 +393,30 @@ struct EditProfileSheet: View {
     @State private var localDateOfBirth: Date? = nil
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color(red: 0.97, green: 0.97, blue: 0.97).ignoresSafeArea()
+        ZStack {
+            Color.white.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                headerBar
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 16) {
-                        // Profile Picture Preview
-                        if let selectedPhoto = viewModel.selectedPhoto {
-                            VStack(spacing: 8) {
-                                Image(uiImage: selectedPhoto)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(height: 120)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                                Text("New profile photo selected")
-                                    .font(.urbanistRegular(12))
-                                    .foregroundColor(.cakeGrey)
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                        }
-
-                        // Upload Photo Button
+                    VStack(spacing: 26) {
                         Button(action: { showImagePicker = true }) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "photo.on.rectangle.angled")
-                                Text("Choose Profile Photo")
-                                    .font(.urbanistSemiBold(14))
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(Color(red: 0.92, green: 0.88, blue: 0.83))
-                            .foregroundColor(.cakeBrown)
-                            .cornerRadius(10)
+                            profileEditorAvatar
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 4)
+                        .buttonStyle(.plain)
+                        .padding(.top, 22)
 
-                        // Form Fields - using local state to prevent auto-save
-                        VStack(spacing: 16) {
+                        VStack(spacing: 18) {
                             formField(label: "Full Name", placeholder: "Enter your full name", text: $localFullName)
-                            formField(label: "Phone Number", placeholder: "e.g. +94 77 123 4567", text: $localPhoneNumber)
-                            formField(label: "Address", placeholder: "e.g. 123 Main Street", text: $localAddress)
-                            formField(label: "City", placeholder: "e.g. Colombo", text: $localCity)
-                            formField(label: "Postal Code", placeholder: "e.g. 07", text: $localPostalCode)
-
-                            // Date of Birth
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Date of Birth")
-                                    .font(.urbanistSemiBold(13))
-                                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                                DatePicker(
-                                    "Select Date",
-                                    selection: Binding(
-                                        get: { localDateOfBirth ?? Date() },
-                                        set: { localDateOfBirth = $0 }
-                                    ),
-                                    displayedComponents: .date
-                                )
-                                .font(.urbanistRegular(14))
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 12)
-                                .background(Color(red: 0.94, green: 0.94, blue: 0.94))
-                                .cornerRadius(10)
-                            }
+                            readOnlyField(label: "Email Address", value: viewModel.user.email)
+                            formField(label: "Phone Number", placeholder: "+94 74 234 5436", text: $localPhoneNumber)
+                            formField(label: "Address", placeholder: "e.g No 8, Flower Road", text: $localAddress)
+                            formField(label: "City", placeholder: "e.g colombo", text: $localCity)
+                            formField(label: "Postal Code", placeholder: "e.g 403848", text: $localPostalCode)
                         }
                         .padding(.horizontal, 20)
-                        .padding(.vertical, 16)
 
-                        // Error Message
                         if let error = viewModel.errorMessage {
                             HStack(spacing: 10) {
                                 Image(systemName: "exclamationmark.circle.fill")
@@ -388,11 +428,10 @@ struct EditProfileSheet: View {
                             .padding(.horizontal, 16)
                             .padding(.vertical, 12)
                             .background(Color.red.opacity(0.1))
-                            .cornerRadius(8)
+                            .cornerRadius(12)
                             .padding(.horizontal, 20)
                         }
 
-                        // Update Button - NOW calls updateProfile with form data
                         Button(action: {
                             Task {
                                 await viewModel.updateProfile(
@@ -403,54 +442,39 @@ struct EditProfileSheet: View {
                                     postalCode: localPostalCode,
                                     dob: localDateOfBirth
                                 )
-                                isPresented = false
+                                dismiss()
                             }
                         }) {
-                            if viewModel.isSaving {
-                                HStack(spacing: 8) {
-                                    ProgressView()
-                                        .tint(.white)
-                                    Text("Updating...")
-                                        .font(.urbanistSemiBold(15))
+                            Group {
+                                if viewModel.isSaving {
+                                    HStack(spacing: 8) {
+                                        ProgressView()
+                                            .tint(.white)
+                                        Text("Updating...")
+                                            .font(.urbanistSemiBold(15))
+                                    }
+                                } else {
+                                    Text("Update")
+                                        .font(.urbanistSemiBold(17))
                                 }
-                            } else {
-                                Text("Update Profile")
-                                    .font(.urbanistSemiBold(15))
                             }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 46)
+                            .background(Color(hex: "7A4A18"))
+                            .clipShape(Capsule())
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.cakeBrown)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
                         .disabled(viewModel.isSaving)
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, 14)
                         .padding(.top, 8)
 
                         Spacer().frame(height: 20)
                     }
-                    .padding(.vertical, 20)
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { isPresented = false }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 16, weight: .semibold))
-                            Text("Back")
-                        }
-                        .foregroundColor(.cakeBrown)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("Edit Profile")
-                        .font(.urbanistBold(18))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .padding(.bottom, 28)
                 }
             }
         }
+        .navigationBarBackButtonHidden(true)
         .photosPicker(
             isPresented: $showImagePicker,
             selection: $selectedPhotoPickerItem,
@@ -459,15 +483,13 @@ struct EditProfileSheet: View {
         )
         .onChange(of: selectedPhotoPickerItem) { item in
             Task {
-                if let data = try await item?.loadTransferable(type: Data.self) {
-                    if let uiImage = UIImage(data: data) {
-                        viewModel.selectedPhoto = uiImage
-                    }
+                if let data = try await item?.loadTransferable(type: Data.self),
+                   let uiImage = UIImage(data: data) {
+                    viewModel.selectedPhoto = uiImage
                 }
             }
         }
         .onAppear {
-            // Initialize local form state from current user data
             localFullName = viewModel.user.name
             localPhoneNumber = viewModel.user.phoneNumber ?? ""
             localAddress = viewModel.user.address ?? ""
@@ -477,18 +499,126 @@ struct EditProfileSheet: View {
         }
     }
 
+    private var headerBar: some View {
+        HStack {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.cakeBrown)
+            }
+            Spacer()
+            VStack(spacing: 2) {
+                Text("Edit Profile")
+                    .font(.urbanistBold(18))
+                    .foregroundColor(Color(hex: "5D3714"))
+            }
+            Spacer()
+            Color.clear.frame(width: 24)
+        }
+        .padding(.horizontal, 20)
+        .frame(height: 56)
+        .background(Color.white)
+    }
+
+    private var profileEditorAvatar: some View {
+        ZStack(alignment: .bottomTrailing) {
+            profileImage(size: 148)
+
+            ZStack {
+                Circle()
+                    .fill(Color(hex: "D9D9D9"))
+                    .frame(width: 34, height: 34)
+                Image(systemName: "camera.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(Color(hex: "5B5B5B"))
+            }
+            .overlay(
+                Circle()
+                    .stroke(Color.white, lineWidth: 3)
+            )
+            .offset(x: -2, y: -2)
+        }
+        .shadow(color: Color.black.opacity(0.12), radius: 16, y: 8)
+    }
+
+    @ViewBuilder
+    private func profileImage(size: CGFloat) -> some View {
+        if let selectedPhoto = viewModel.selectedPhoto {
+            Image(uiImage: selectedPhoto)
+                .resizable()
+                .scaledToFill()
+                .frame(width: size, height: size)
+                .clipShape(Circle())
+        } else if let urlString = viewModel.user.avatarURL, let url = URL(string: urlString) {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                case .empty, .failure:
+                    Image(systemName: "person.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .padding(size * 0.24)
+                        .foregroundColor(Color(hex: "7C5A38"))
+                        .background(Color(hex: "D8D0C8"))
+                @unknown default:
+                    EmptyView()
+                }
+            }
+            .frame(width: size, height: size)
+            .background(Color(hex: "D8D0C8"))
+            .clipShape(Circle())
+        } else {
+            Image(systemName: "person.fill")
+                .resizable()
+                .scaledToFit()
+                .padding(size * 0.24)
+                .frame(width: size, height: size)
+                .foregroundColor(Color(hex: "7C5A38"))
+                .background(Color(hex: "D8D0C8"))
+                .clipShape(Circle())
+        }
+    }
+
     @ViewBuilder
     private func formField(label: String, placeholder: String, text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(label)
-                .font(.urbanistSemiBold(13))
+                .font(.urbanistMedium(15))
                 .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
             TextField(placeholder, text: text)
                 .font(.urbanistRegular(14))
                 .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .background(Color(red: 0.94, green: 0.94, blue: 0.94))
-                .cornerRadius(10)
+                .frame(height: 46)
+                .background(Color.white)
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Color.black.opacity(0.35), lineWidth: 1)
+                )
+        }
+    }
+
+    @ViewBuilder
+    private func readOnlyField(label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(label)
+                .font(.urbanistMedium(15))
+                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+            Text(value)
+                .font(.urbanistRegular(14))
+                .foregroundColor(Color(hex: "7D7D7D"))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 14)
+                .frame(height: 46)
+                .background(Color.white)
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Color.black.opacity(0.35), lineWidth: 1)
+                )
         }
     }
 }

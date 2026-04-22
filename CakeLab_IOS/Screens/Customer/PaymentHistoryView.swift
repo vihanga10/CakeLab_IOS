@@ -128,92 +128,101 @@ struct PaymentHistoryView: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.97, green: 0.97, blue: 0.97).ignoresSafeArea()
+            Color(red: 1.0, green: 1.0, blue: 1.0).ignoresSafeArea()
 
-            if vm.isLoading {
-                ProgressView("Loading payments...")
-                    .tint(.cakeBrown)
-            } else if vm.payments.isEmpty && vm.errorMessage == nil {
-                emptyState
-            } else if let error = vm.errorMessage {
-                VStack(spacing: 14) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 40))
-                        .foregroundColor(.orange.opacity(0.7))
-                    Text(error)
-                        .font(.urbanistRegular(14))
-                        .foregroundColor(.cakeGrey)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 40)
-                    Button("Retry") {
-                        Task { await vm.load(customerID: user.id) }
+            VStack(spacing: 0) {
+                headerBar
+
+                if vm.isLoading {
+                    ProgressView("Loading payments...")
+                        .tint(.cakeBrown)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if vm.payments.isEmpty && vm.errorMessage == nil {
+                    emptyState
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let error = vm.errorMessage {
+                    VStack(spacing: 14) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(.orange.opacity(0.7))
+                        Text(error)
+                            .font(.urbanistRegular(14))
+                            .foregroundColor(.cakeGrey)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                        Button("Retry") {
+                            Task { await vm.load(customerID: user.id) }
+                        }
+                        .font(.urbanistSemiBold(14))
+                        .foregroundColor(.cakeBrown)
                     }
-                    .font(.urbanistSemiBold(14))
-                    .foregroundColor(.cakeBrown)
-                }
-            } else {
-                ScrollView(showsIndicators: false) {
-                    LazyVStack(spacing: 20, pinnedViews: []) {
-                        summaryCard
-                            .padding(.horizontal, 16)
-                            .padding(.top, 16)
-
-                        ForEach(vm.groupedByMonth, id: \.month) { section in
-                            VStack(alignment: .leading, spacing: 12) {
-                                // Month header
-                                HStack(spacing: 10) {
-                                    Text(section.month.uppercased())
-                                        .font(.urbanistSemiBold(11))
-                                        .foregroundColor(.cakeGrey)
-                                        .tracking(1)
-                                    Rectangle()
-                                        .fill(Color(red: 0.85, green: 0.85, blue: 0.85))
-                                        .frame(height: 1)
-                                }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView(showsIndicators: false) {
+                        LazyVStack(spacing: 20, pinnedViews: []) {
+                            summaryCard
                                 .padding(.horizontal, 16)
+                                .padding(.top, 16)
 
-                                ForEach(section.records) { record in
-                                    PaymentRecordCard(
-                                        record: record,
-                                        dateFmt: Self.cardDateFmt,
-                                        currencyFmt: Self.currencyFmt
-                                    )
+                            ForEach(vm.groupedByMonth, id: \.month) { section in
+                                VStack(alignment: .leading, spacing: 12) {
+                                    // Month header
+                                    HStack(spacing: 10) {
+                                        Text(section.month.uppercased())
+                                            .font(.urbanistSemiBold(11))
+                                            .foregroundColor(.cakeGrey)
+                                            .tracking(1)
+                                        Rectangle()
+                                            .fill(Color(red: 0.85, green: 0.85, blue: 0.85))
+                                            .frame(height: 1)
+                                    }
                                     .padding(.horizontal, 16)
+
+                                    ForEach(section.records) { record in
+                                        PaymentRecordCard(
+                                            record: record,
+                                            dateFmt: Self.cardDateFmt,
+                                            currencyFmt: Self.currencyFmt
+                                        )
+                                        .padding(.horizontal, 16)
+                                    }
                                 }
                             }
-                        }
 
-                        Spacer().frame(height: 32)
+                            Spacer().frame(height: 32)
+                        }
                     }
-                }
-                .refreshable {
-                    await vm.load(customerID: user.id)
+                    .refreshable {
+                        await vm.load(customerID: user.id)
+                    }
                 }
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: { dismiss() }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
-                        Text("Back")
-                            .font(.urbanistSemiBold(15))
-                    }
-                    .foregroundColor(.cakeBrown)
-                }
-            }
-            ToolbarItem(placement: .principal) {
-                Text("Payment History")
-                    .font(.urbanistBold(18))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-            }
-        }
         .task {
             await vm.load(customerID: user.id)
         }
+    }
+
+    private var headerBar: some View {
+        HStack {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.cakeBrown)
+            }
+            Spacer()
+            VStack(spacing: 2) {
+                Text("Payment History")
+                    .font(.urbanistBold(18))
+                    .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
+            }
+            Spacer()
+            Color.clear.frame(width: 24)
+        }
+        .padding(.horizontal, 20)
+        .frame(height: 56)
+        .background(Color.white)
     }
 
     // MARK: - Summary Card

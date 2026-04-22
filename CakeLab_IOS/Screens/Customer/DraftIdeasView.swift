@@ -64,19 +64,14 @@ struct DraftIdeasView: View {
             VStack(spacing: 2) {
                 Text("Draft Ideas")
                     .font(.urbanistBold(18))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                Text("Saved for later")
-                    .font(.urbanistRegular(11))
-                    .foregroundColor(.cakeGrey)
+                    .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
             }
             Spacer()
             Color.clear.frame(width: 24)
         }
         .padding(.horizontal, 20)
-        .padding(.top, 12)
-        .padding(.bottom, 14)
+        .frame(height: 56)
         .background(Color.white)
-        .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 3)
     }
 
     private var emptyState: some View {
@@ -102,19 +97,7 @@ struct DraftIdeasView: View {
     }
 
     private var backgroundLayer: some View {
-        ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.98, green: 0.96, blue: 0.94), Color(red: 0.97, green: 0.97, blue: 0.97)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-
-            Circle()
-                .fill(Color.cakeBrown.opacity(0.06))
-                .frame(width: 220, height: 220)
-                .offset(x: 140, y: -120)
-        }
+        Color.white.ignoresSafeArea()
     }
     
     private func fetchDrafts() async {
