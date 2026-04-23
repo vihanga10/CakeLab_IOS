@@ -89,7 +89,9 @@ struct PublishRequestView: View {
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 12) {
                             ForEach(requests) { request in
-                                PublishedRequestCard(request: request)
+                                NavigationLink(destination: PublishedCakeDetailView(request: request)) {
+                                    PublishedRequestCard(request: request)
+                                }
                             }
                         }
                         .padding(.horizontal, 16)
@@ -180,49 +182,154 @@ private struct PublishedRequestCard: View {
     let request: CakeRequestRecord
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(request.displayTitle)
-                        .font(.urbanistSemiBold(15))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                    Text(request.displayCategory)
-                        .font(.urbanistRegular(12))
-                        .foregroundColor(.cakeGrey)
+                        .font(.urbanistSemiBold(16))
+                        .foregroundColor(Color(.label))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
                 }
-                Spacer()
+
+                Spacer(minLength: 10)
+
                 StatusBadge(status: request.statusBadge)
             }
 
+            // Category badge with pastel color
+            Text(request.displayCategory)
+                .font(.urbanistMedium(12))
+                .foregroundColor(categoryTextColor(for: request.displayCategory))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(categoryBackgroundColor(for: request.displayCategory))
+                .clipShape(Capsule())
+
             Divider()
 
-            HStack(spacing: 16) {
-                infoItem(icon: "calendar", label: dateText(request.sortDate))
-                infoItem(icon: "banknote", label: request.budgetText)
-                infoItem(icon: "person.2.fill", label: "\(request.bidCount) bids")
+            HStack(spacing: 0) {
+                infoColumn(icon: "calendar", label: "Date", value: dateText(request.sortDate))
+                infoDivider
+                infoColumn(icon: "banknote", label: "Budget", value: request.budgetText)
+                infoDivider
+                infoColumn(icon: "person.2.fill", label: "Bids", value: "\(request.bidCount)")
             }
         }
         .padding(16)
-        .background(Color(red: 0.98, green: 0.976, blue: 0.973))
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.15), radius: 6, x: 0, y: 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.black.opacity(0.06), lineWidth: 0.8)
+        )
+        .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
     }
 
-    private func infoItem(icon: String, label: String) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: icon)
-                .font(.system(size: 12))
-                .foregroundColor(.cakeBrown)
-            Text(label)
-                .font(.urbanistRegular(12))
-                .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
+    private func infoColumn(icon: String, label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color.cakeBrown)
+
+                Text(label)
+                    .font(.urbanistRegular(11))
+                    .foregroundColor(Color(.secondaryLabel))
+            }
+
+            Text(value)
+                .font(.urbanistSemiBold(12))
+                .foregroundColor(Color(.label))
+                .lineLimit(1)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var infoDivider: some View {
+        Rectangle()
+            .fill(Color.black.opacity(0.08))
+            .frame(width: 1, height: 34)
     }
 
     private func dateText(_ date: Date) -> String {
         let f = DateFormatter()
         f.dateStyle = .medium
         return f.string(from: date)
+    }
+    
+    // MARK: - Category Color Mapping
+    private func categoryBackgroundColor(for category: String) -> Color {
+        let categoryLower = category.lowercased()
+        switch categoryLower {
+        case let cat where cat.contains("wedding"):
+            return Color(red: 1.0, green: 0.95, blue: 0.97) // Pink pastel
+        case let cat where cat.contains("birthday"):
+            return Color(red: 0.99, green: 0.95, blue: 0.90) // Peach pastel
+        case let cat where cat.contains("anniversary"):
+            return Color(red: 0.95, green: 0.99, blue: 0.95) // Mint pastel
+        case let cat where cat.contains("baby"):
+            return Color(red: 0.98, green: 0.96, blue: 1.0) // Lavender pastel
+        case let cat where cat.contains("cupcake"):
+            return Color(red: 1.0, green: 0.98, blue: 0.94) // Cream pastel
+        case let cat where cat.contains("buttercream"):
+            return Color(red: 0.99, green: 1.0, blue: 0.95) // Light yellow pastel
+        case let cat where cat.contains("corporate"):
+            return Color(red: 0.95, green: 0.98, blue: 1.0) // Sky blue pastel
+        case let cat where cat.contains("engagement"):
+            return Color(red: 1.0, green: 0.96, blue: 0.92) // Coral pastel
+        case let cat where cat.contains("graduation"):
+            return Color(red: 0.94, green: 0.97, blue: 1.0) // Light blue pastel
+        case let cat where cat.contains("baptism"):
+            return Color(red: 0.96, green: 0.99, blue: 1.0) // Ice blue pastel
+        case let cat where cat.contains("retirement"):
+            return Color(red: 1.0, green: 0.96, blue: 0.94) // Salmon pastel
+        case let cat where cat.contains("farewell"):
+            return Color(red: 0.98, green: 0.97, blue: 1.0) // Soft purple pastel
+        case let cat where cat.contains("vegan"):
+            return Color(red: 0.96, green: 1.0, blue: 0.96) // Pale green pastel
+        case let cat where cat.contains("sculpted"):
+            return Color(red: 0.98, green: 0.95, blue: 0.99) // Lilac pastel
+        default:
+            return Color(red: 0.96, green: 0.96, blue: 0.96) // Gray pastel
+        }
+    }
+    
+    private func categoryTextColor(for category: String) -> Color {
+        let categoryLower = category.lowercased()
+        switch categoryLower {
+        case let cat where cat.contains("wedding"):
+            return Color(red: 0.8, green: 0.3, blue: 0.6) // Rose
+        case let cat where cat.contains("birthday"):
+            return Color(red: 0.85, green: 0.5, blue: 0.25) // Burnt orange
+        case let cat where cat.contains("anniversary"):
+            return Color(red: 0.2, green: 0.6, blue: 0.4) // Teal
+        case let cat where cat.contains("baby"):
+            return Color(red: 0.6, green: 0.3, blue: 0.8) // Purple
+        case let cat where cat.contains("cupcake"):
+            return Color(red: 0.8, green: 0.5, blue: 0.2) // Orange
+        case let cat where cat.contains("buttercream"):
+            return Color(red: 0.7, green: 0.6, blue: 0.1) // Golden
+        case let cat where cat.contains("corporate"):
+            return Color(red: 0.2, green: 0.5, blue: 0.8) // Blue
+        case let cat where cat.contains("engagement"):
+            return Color(red: 0.85, green: 0.35, blue: 0.3) // Red
+        case let cat where cat.contains("graduation"):
+            return Color(red: 0.3, green: 0.5, blue: 0.7) // Slate blue
+        case let cat where cat.contains("baptism"):
+            return Color(red: 0.2, green: 0.6, blue: 0.7) // Cyan
+        case let cat where cat.contains("retirement"):
+            return Color(red: 0.8, green: 0.4, blue: 0.3) // Terracotta
+        case let cat where cat.contains("farewell"):
+            return Color(red: 0.5, green: 0.3, blue: 0.7) // Plum
+        case let cat where cat.contains("vegan"):
+            return Color(red: 0.2, green: 0.7, blue: 0.2) // Forest green
+        case let cat where cat.contains("sculpted"):
+            return Color(red: 0.7, green: 0.2, blue: 0.7) // Magenta
+        default:
+            return Color(red: 0.4, green: 0.4, blue: 0.4) // Dark gray
+        }
     }
 }
 
@@ -234,10 +341,10 @@ private struct StatusBadge: View {
         Text(status.label)
             .font(.urbanistSemiBold(11))
             .foregroundColor(status.textColor)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
             .background(status.bgColor)
-            .cornerRadius(10)
+            .clipShape(Capsule())
     }
 }
 

@@ -243,6 +243,14 @@ final class AuthService: AuthServiceProtocol {
         let roleRaw   = data["role"]  as? String ?? "customer"
         let role      = UserRole(rawValue: roleRaw) ?? .customer
         let createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+        
+        // Profile fields
+        let phoneNumber = data["phoneNumber"] as? String
+        let address = data["address"] as? String
+        let city = data["city"] as? String
+        let postalCode = data["postalCode"] as? String
+        let dateOfBirth = (data["dateOfBirth"] as? Timestamp)?.dateValue()
+        
         return AppUser(
             id: uid,
             email: email,
@@ -250,7 +258,12 @@ final class AuthService: AuthServiceProtocol {
             role: role,
             avatarURL: data["avatarURL"] as? String,
             fcmToken:  data["fcmToken"]  as? String,
-            createdAt: createdAt
+            createdAt: createdAt,
+            phoneNumber: phoneNumber,
+            address: address,
+            city: city,
+            postalCode: postalCode,
+            dateOfBirth: dateOfBirth
         )
     }
 }

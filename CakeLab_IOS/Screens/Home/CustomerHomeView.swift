@@ -9,6 +9,7 @@ struct CustomerHomeView: View {
     @Binding var selectedTab: Int
     @State private var searchText = ""
     @StateObject private var viewModel = CustomerHomeViewModel()
+    @State private var profileAvatar: UIImage? = nil
     
     private let db = Firestore.firestore()
 
@@ -45,13 +46,21 @@ struct CustomerHomeView: View {
                         HStack(alignment: .center, spacing: 12) {
                             // Profile avatar (clickable)
                             NavigationLink(destination: CustomerProfileDetailView(user: user)) {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color(red: 0.90, green: 0.86, blue: 0.82))
+                                if let profileAvatar = profileAvatar {
+                                    Image(uiImage: profileAvatar)
+                                        .resizable()
+                                        .scaledToFill()
                                         .frame(width: 48, height: 48)
-                                    Image(systemName: "person.fill")
-                                        .font(.system(size: 22))
-                                        .foregroundColor(.cakeBrown)
+                                        .clipShape(Circle())
+                                } else {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color(red: 0.90, green: 0.86, blue: 0.82))
+                                            .frame(width: 48, height: 48)
+                                        Image(systemName: "person.fill")
+                                            .font(.system(size: 22))
+                                            .foregroundColor(.cakeBrown)
+                                    }
                                 }
                             }
                             VStack(alignment: .leading, spacing: 2) {
@@ -321,6 +330,13 @@ struct CustomerHomeView: View {
                 }
             }
             .navigationBarHidden(true)
+            .onAppear {
+                // Load avatar from UserDefaults
+                loadProfileAvatar()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("profileAvatarUpdated"))) { _ in
+                loadProfileAvatar()
+            }
             .task {
                 // Refresh user data from Firestore
                 await refreshUserFromFirestore()
@@ -333,6 +349,19 @@ struct CustomerHomeView: View {
                 await artisans
             }
         }
+    }
+    
+    // MARK: - Load Profile Avatar
+    /// Loads the profile avatar from UserDefaults
+    private func loadProfileAvatar() {
+        guard let base64String = UserDefaults.standard.string(forKey: "profileAvatar_\(user.id)") else {
+            profileAvatar = nil
+            return
+        }
+        guard let imageData = Data(base64Encoded: base64String) else {
+            return
+        }
+        profileAvatar = UIImage(data: imageData)
     }
     
     // MARK: - Refresh User
