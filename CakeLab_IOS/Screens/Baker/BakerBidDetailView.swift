@@ -11,6 +11,7 @@ extension Notification.Name {
 struct BakerBidDetailView: View {
     let request: CakeRequest
 
+    @EnvironmentObject var notificationManager: NotificationManager
     @State private var bidAmount = ""
     @State private var deliveryNote = ""
     @State private var canDeliverOnTime = true
@@ -484,6 +485,20 @@ struct BakerBidDetailView: View {
                     return nil
                 }
             }
+            
+            // 🔔 Trigger notifications
+            let bakerNameForNotif = bakerName.isEmpty ? (Auth.auth().currentUser?.email ?? "Baker") : bakerName
+            
+            // Notify CUSTOMER: New bid received
+            self.notificationManager.notifyNewBidReceived(
+                bakerName: bakerNameForNotif,
+                bidAmount: amount,
+                requestTitle: request.title,
+                bakerID: bakerID,
+                orderID: request.requestDocumentID,
+                customerID: request.customerID
+            )
+            print("✅ Customer notified: New bid from \(bakerNameForNotif) for \(request.title)")
             
             bidSubmitted = true
             showConfirmation = false

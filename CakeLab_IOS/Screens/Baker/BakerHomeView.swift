@@ -14,6 +14,7 @@ struct BakerHomeView: View {
     @State private var selectedRequest: CakeRequest?
     @State private var showBidDetail = false
     @StateObject private var matchingRequestsVM = BakerMatchingRequestsViewModel()
+    @EnvironmentObject var notificationManager: NotificationManager
 
     // Mock stats
     private let activeOrders = 3
@@ -132,18 +133,12 @@ struct BakerHomeView: View {
             Spacer()
             HStack(spacing: 12) {
                 // Notification bell
-                ZStack(alignment: .topTrailing) {
+                ZStack {
                     Circle()
                         .fill(Color.white)
                         .frame(width: 44, height: 44)
                         .shadow(color: Color.black.opacity(0.07), radius: 4, x: 0, y: 2)
-                    Image(systemName: "bell")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: 9, height: 9)
-                        .offset(x: 1, y: -1)
+                    NotificationBellButton(notificationService: notificationManager.notificationService, userType: "baker")
                 }
                 // Avatar
                 Circle()

@@ -205,6 +205,7 @@ final class BidsReceivedViewModel: ObservableObject {
 struct CustomerBidsView: View {
     let user: AppUser
     @StateObject private var viewModel = CustomerBidsViewModel()
+    @EnvironmentObject var notificationManager: NotificationManager
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -238,6 +239,7 @@ struct CustomerBidsView: View {
                             ForEach(viewModel.requests) { request in
                                 CustomerBidRequestCard(
                                     request: request,
+                                    user: user,
                                     dateText: Self.dateFormatter.string(from: request.expectedDate),
                                     timeText: Self.timeFormatter.string(from: request.expectedTime)
                                 )
@@ -273,12 +275,13 @@ struct CustomerBidsView: View {
 
 struct CustomerBidRequestCard: View {
     let request: CustomerBidRequest
+    let user: AppUser
     let dateText: String
     let timeText: String
 
     var body: some View {
         NavigationLink {
-            BidsReceivedView(request: request)
+            BidsReceivedView(request: request, user: user)
         } label: {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top, spacing: 12) {
@@ -360,6 +363,8 @@ struct CustomerBidRequestCard: View {
 
 struct BidsReceivedView: View {
     let request: CustomerBidRequest
+    let user: AppUser
+    @EnvironmentObject var notificationManager: NotificationManager
     @StateObject private var viewModel = BidsReceivedViewModel()
     @State private var activeSheet: BidsReceivedSheet?
     @State private var isSubmittingPayment = false
@@ -545,12 +550,33 @@ struct BidsReceivedView: View {
 
             try await batch.commit()
 
+            // 🔔 Trigger notifications
+            // Notify CUSTOMER: Order Confirmed
+            self.notificationManager.notifyOrderConfirmed(
+                bakerName: bid.bakerName,
+                deliveryDate: finalDeliveryDate,
+                orderID: orderID,
+                customerID: request.customerID
+            )
+            print("✅ Customer notified: Order confirmed with \(bid.bakerName)")
+            
+            // Notify BAKER: Order Confirmed  
+            self.notificationManager.notifyBakerOrderConfirmed(
+                customerName: self.user.name.isEmpty ? self.user.email : self.user.name,
+                requestTitle: request.title,
+                deliveryDate: finalDeliveryDate,
+                orderID: orderID,
+                customerID: request.customerID,
+                bakerID: bid.bakerID
+            )
+            print("✅ Baker notified: Order confirmed for \(request.title)")
+
             activeSheet = nil
             NotificationCenter.default.post(name: .orderDidChange, object: nil)
             WidgetDataSyncManager.shared.refreshFromCurrentSession()
             successMessage = "Payment completed. Your order is now active for both customer and baker."
 
-            await viewModel.loadBids(requestID: request.id, customerID: request.customerID)
+            await self.viewModel.loadBids(requestID: request.id, customerID: request.customerID)
         } catch {
             errorMessage = "Could not complete payment. \(error.localizedDescription)"
         }

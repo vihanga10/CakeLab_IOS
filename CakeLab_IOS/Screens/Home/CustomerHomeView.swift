@@ -10,6 +10,7 @@ struct CustomerHomeView: View {
     @State private var searchText = ""
     @StateObject private var viewModel = CustomerHomeViewModel()
     @State private var profileAvatar: UIImage? = nil
+    @EnvironmentObject var notificationManager: NotificationManager
     
     private let db = Firestore.firestore()
 
@@ -29,6 +30,7 @@ struct CustomerHomeView: View {
         (name: "Farewell Cakes",          image: "farewell_cat"),
         (name: "Vegan Cakes",       image: "vegan_cat"),
         (name: "Sculpted Cakes",    image: "sculpted_cat"),
+        (name: "Normal Cakes",    image: "normal_cat"),
         
         
     ]
@@ -74,11 +76,7 @@ struct CustomerHomeView: View {
                                     .lineLimit(1)
                             }
                             Spacer()
-                            Button {} label: {
-                                Image(systemName: "bell")
-                                    .font(.system(size: 20))
-                                    .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
-                            }
+                            NotificationBellButton(notificationService: notificationManager.notificationService, userType: "customer")
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 16)

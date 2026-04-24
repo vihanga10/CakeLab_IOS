@@ -10,6 +10,7 @@ struct SignInView: View {
     @State private var showForgot     = false
     @State private var showContentView = false
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var notificationManager: NotificationManager
 
     var body: some View {
         NavigationStack {
@@ -70,7 +71,14 @@ struct SignInView: View {
             }
             .navigationBarHidden(true)
             .onChange(of: vm.navigateToFaceID) { _, newVal in
-                if newVal { showContentView = true }
+                if newVal {
+                    // 🔔 Reload notifications on successful login with user type
+                    if let user = vm.signedInUser {
+                        notificationManager.reloadNotifications(for: user.role.rawValue)
+                        print("✅ Notifications reloaded for \(user.role.rawValue) after sign in")
+                    }
+                    showContentView = true
+                }
             }
         }
     }

@@ -9,6 +9,7 @@ struct BiometricAuthView: View {
     @State private var navigateToSignUp = false
     @State private var navigateToHome = false
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var notificationManager: NotificationManager
     
     private let bgImage = "Signin_up"
     
@@ -71,6 +72,15 @@ struct BiometricAuthView: View {
                 }
                 .navigationDestination(isPresented: $navigateToSignUp) {
                     SignUpView()
+                }
+                .onChange(of: navigateToHome) { _, newVal in
+                    if newVal {
+                        // 🔔 Reload notifications on successful biometric login with user type
+                        if let user = vm.authenticatedUser {
+                            notificationManager.reloadNotifications(for: user.role.rawValue)
+                            print("✅ Notifications reloaded for \(user.role.rawValue) after biometric sign in")
+                        }
+                    }
                 }
             }
         }

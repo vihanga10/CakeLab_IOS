@@ -5,6 +5,8 @@ struct CustomerTabView: View {
     let user: AppUser
     @Binding var widgetRoute: WidgetDeepLinkRoute?
     @State private var selectedTab: Int = 0
+    @State private var notificationsShown = false
+    @EnvironmentObject var notificationManager: NotificationManager
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,6 +39,14 @@ struct CustomerTabView: View {
             }
 
             widgetRoute = nil
+        }
+        .task {
+            // 🔔 Show customer notifications only once on login
+            if !notificationsShown {
+                notificationManager.reloadNotifications(for: "customer")
+                notificationsShown = true
+                print("✅ Customer notifications loaded and displayed once on login")
+            }
         }
     }
 }
