@@ -38,21 +38,46 @@ struct PublishedCakeDetailView: View {
                                 .lineLimit(nil)
                         }
 
-                        // Image placeholder
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color(red: 0.93, green: 0.91, blue: 0.88))
-                            
-                            VStack(spacing: 8) {
-                                Image(systemName: "photo.fill")
-                                    .font(.system(size: 32))
-                                    .foregroundColor(.cakeBrown.opacity(0.5))
-                                Text("Full View Image")
-                                    .font(.urbanistSemiBold(14))
-                                    .foregroundColor(.cakeBrown)
+                        // Reference Images
+                        if !request.referenceImages.isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Reference Images")
+                                    .font(.urbanistSemiBold(12))
+                                    .foregroundColor(.cakeGrey)
+                                
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 12) {
+                                        ForEach(request.referenceImages.indices, id: \.self) { index in
+                                            if let imageData = Data(base64Encoded: request.referenceImages[index]),
+                                               let uiImage = UIImage(data: imageData) {
+                                                Image(uiImage: uiImage)
+                                                    .resizable()
+                                                    .scaledToFill()
+                                                    .frame(width: 120, height: 120)
+                                                    .cornerRadius(10)
+                                                    .clipped()
+                                            }
+                                        }
+                                    }
+                                }
                             }
+                        } else {
+                            // Placeholder when no images
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(red: 0.93, green: 0.91, blue: 0.88))
+                                
+                                VStack(spacing: 8) {
+                                    Image(systemName: "photo.fill")
+                                        .font(.system(size: 32))
+                                        .foregroundColor(.cakeBrown.opacity(0.5))
+                                    Text("No Reference Images")
+                                        .font(.urbanistSemiBold(14))
+                                        .foregroundColor(.cakeBrown)
+                                }
+                            }
+                            .frame(height: 120)
                         }
-                        .frame(height: 200)
 
                         // Budget
                         infoRow(label: "Budget (LKR)", value: request.budgetText)
@@ -264,6 +289,7 @@ extension CakeRequestRecord {
         savedAt: Date?,
         status: String,
         bidCount: Int,
+        referenceImages: [String] = [],
         isDirectRequest: Bool,
         targetArtisanId: String?,
         targetArtisanName: String?
@@ -294,6 +320,7 @@ extension CakeRequestRecord {
         self.savedAt = savedAt
         self.status = status
         self.bidCount = bidCount
+        self.referenceImages = referenceImages
         self.isDirectRequest = isDirectRequest
         self.targetArtisanId = targetArtisanId
         self.targetArtisanName = targetArtisanName

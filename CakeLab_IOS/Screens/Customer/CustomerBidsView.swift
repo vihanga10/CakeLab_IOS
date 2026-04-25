@@ -8,6 +8,8 @@ extension Notification.Name {
 
 enum PaymentMethod: String, CaseIterable {
     case card = "Card"
+    case cash = "Cash"
+    case googlePay = "Google Pay"
     case applePay = "Apple Pay"
 }
 
@@ -30,6 +32,7 @@ struct CustomerBidRequest: Identifiable {
     let bidCount: Int
     let createdAt: Date
     let description: String
+    let referenceImages: [String]
 }
 
 struct CustomerBidOffer: Identifiable {
@@ -114,7 +117,8 @@ final class CustomerBidsViewModel: ObservableObject {
             expectedTime: expectedTime,
             bidCount: parseInt(data["bidCount"]),
             createdAt: createdAt,
-            description: data["description"] as? String ?? ""
+            description: data["description"] as? String ?? "",
+            referenceImages: data["referenceImages"] as? [String] ?? []
         )
     }
 
@@ -222,7 +226,7 @@ struct CustomerBidsView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(red: 0.97, green: 0.97, blue: 0.97).ignoresSafeArea()
+                Color.white.ignoresSafeArea()
 
                 if viewModel.isLoading {
                     ProgressView("Loading your request bids...")
@@ -253,7 +257,7 @@ struct CustomerBidsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("Bids On My Requests")
+                    Text("Bids on My Requests")
                         .font(.urbanistBold(18))
                         .foregroundColor(Color(red: 93/255, green: 55/255, blue: 20/255))
                 }
@@ -283,50 +287,34 @@ struct CustomerBidRequestCard: View {
         NavigationLink {
             BidsReceivedView(request: request, user: user)
         } label: {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .top, spacing: 12) {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
-                        .frame(width: 74, height: 74)
-                        .overlay(
-                            Image(systemName: "birthday.cake.fill")
-                                .font(.system(size: 28))
-                                .foregroundColor(.cakeBrown.opacity(0.7))
-                        )
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .top, spacing: 16) {
+                    thumbnailView
 
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 0) {
                         Text(request.title)
-                            .font(.urbanistBold(14))
-                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                            .lineLimit(2)
-
-                        HStack(spacing: 8) {
-                            Text(dateText)
-                                .font(.urbanistSemiBold(12))
-                            Text("|")
-                                .foregroundColor(Color.black.opacity(0.25))
-                            Text(timeText.lowercased())
-                                .font(.urbanistSemiBold(12))
-                        }
-                        .foregroundColor(Color(red: 93/255, green: 55/255, blue: 20/255))
-
-                        Text("Category : \(request.category)")
-                            .font(.urbanistRegular(12))
-                            .foregroundColor(Color(red: 0.35, green: 0.35, blue: 0.35))
+                            .font(.urbanistSemiBold(14))
+                            .foregroundColor(.black)
                             .lineLimit(1)
+                            .padding(.top, 16)
+
+                        categoryPill
+                            .padding(.top, 9)
+                         
+
+                        HStack(spacing: 12) {
+                            compactMetric(icon: "calendar", label: "Date", value: dateText); footerDivider
+                            compactMetric(icon: "banknote", label: "Budget", value: budgetText)
+                        }
+                        
+                        .padding(.top, 9)
+
+                        Spacer(minLength: 0)
                     }
-
-                    Spacer()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
 
-                HStack(spacing: 6) {
-                    Text("Budget (LKR) :")
-                        .font(.urbanistRegular(12))
-                        .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
-                    Text("\(Int(request.budgetMin).formatted()) - \(Int(request.budgetMax).formatted())")
-                        .font(.urbanistBold(14))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                }
+                Spacer(minLength: 0)
 
                 HStack(spacing: 10) {
                     Text("View Bids Received (\(request.bidCount))")
@@ -337,33 +325,180 @@ struct CustomerBidRequestCard: View {
                         .background(Color.cakeBrown)
                         .clipShape(Capsule())
 
+                    Spacer(minLength: 0)
+
                     Text("View Full Details")
                         .font(.urbanistSemiBold(12))
                         .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
-                        .padding(.horizontal, 14)
                         .padding(.vertical, 10)
+                        .frame(width: 148)
                         .background(Color.white)
                         .clipShape(Capsule())
                         .overlay(
                             Capsule()
                                 .stroke(Color(red: 0.80, green: 0.80, blue: 0.80), lineWidth: 1.2)
                         )
-
-                    Spacer()
                 }
+                .padding(.top, 14)
+                .padding(.bottom, 14)
             }
-            .padding(14)
+            .padding(.horizontal, 12)
+            .frame(maxWidth: 358, alignment: .leading)
+            .frame(height: 150)
             .background(Color.white)
-            .cornerRadius(18)
-            .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 3)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(Color.black.opacity(0.05), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.10), radius: 16, x: 0, y: 8)
         }
         .buttonStyle(.plain)
+    }
+
+    private var thumbnailView: some View {
+        Group {
+            if !request.referenceImages.isEmpty,
+               let imageData = Data(base64Encoded: request.referenceImages[0]),
+               let uiImage = UIImage(data: imageData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 80, height: 88)
+                    .clipped()
+            } else {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+                    .overlay(
+                        Image(systemName: "birthday.cake.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.cakeBrown.opacity(0.7))
+                    )
+            }
+        }
+        .frame(width: 80, height: 88)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
+        .padding(.top, 16)
+    }
+
+    private var categoryPill: some View {
+        Text(request.category)
+            .font(.urbanistMedium(11))
+            .foregroundColor(categoryTextColor(for: request.category))
+            .padding(.horizontal, 13)
+            .frame(height: 22)
+            .background(categoryBackgroundColor(for: request.category))
+            .clipShape(Capsule())
+    }
+
+    private var footerDivider: some View {
+        Rectangle()
+            .fill(Color.black.opacity(0.12))
+            .frame(width: 1, height: 32)
+    }
+
+
+    private var budgetText: String {
+        "Rs \(Int(request.budgetMin).formatted()) - \(Int(request.budgetMax).formatted())"
+    }
+
+    private func compactMetric(icon: String, label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(Color(.systemGray))
+
+                Text(label)
+                    .font(.urbanistRegular(10))
+                    .foregroundColor(Color(.systemGray))
+            }
+
+            Text(value)
+                .font(.urbanistSemiBold(12))
+                .foregroundColor(.black)
+                .lineLimit(1)
+        }
+    }
+
+    private func categoryBackgroundColor(for category: String) -> Color {
+        let categoryLower = category.lowercased()
+        switch categoryLower {
+        case let cat where cat.contains("wedding"):
+            return Color(red: 1.0, green: 0.95, blue: 0.97)
+        case let cat where cat.contains("birthday"):
+            return Color(red: 0.99, green: 0.95, blue: 0.90)
+        case let cat where cat.contains("anniversary"):
+            return Color(red: 0.95, green: 0.99, blue: 0.95)
+        case let cat where cat.contains("baby"):
+            return Color(red: 0.98, green: 0.96, blue: 1.0)
+        case let cat where cat.contains("cupcake"):
+            return Color(red: 1.0, green: 0.98, blue: 0.94)
+        case let cat where cat.contains("buttercream"):
+            return Color(red: 0.99, green: 1.0, blue: 0.95)
+        case let cat where cat.contains("corporate"):
+            return Color(red: 0.95, green: 0.98, blue: 1.0)
+        case let cat where cat.contains("engagement"):
+            return Color(red: 1.0, green: 0.96, blue: 0.92)
+        case let cat where cat.contains("graduation"):
+            return Color(red: 0.94, green: 0.97, blue: 1.0)
+        case let cat where cat.contains("baptism"):
+            return Color(red: 0.96, green: 0.99, blue: 1.0)
+        case let cat where cat.contains("retirement"):
+            return Color(red: 1.0, green: 0.96, blue: 0.94)
+        case let cat where cat.contains("farewell"):
+            return Color(red: 0.98, green: 0.97, blue: 1.0)
+        case let cat where cat.contains("vegan"):
+            return Color(red: 0.96, green: 1.0, blue: 0.96)
+        case let cat where cat.contains("sculpted"):
+            return Color(red: 0.98, green: 0.95, blue: 0.99)
+        default:
+            return Color(red: 0.96, green: 0.96, blue: 0.96)
+        }
+    }
+
+    private func categoryTextColor(for category: String) -> Color {
+        let categoryLower = category.lowercased()
+        switch categoryLower {
+        case let cat where cat.contains("wedding"):
+            return Color(red: 0.8, green: 0.3, blue: 0.6)
+        case let cat where cat.contains("birthday"):
+            return Color(red: 0.85, green: 0.5, blue: 0.25)
+        case let cat where cat.contains("anniversary"):
+            return Color(red: 0.2, green: 0.6, blue: 0.4)
+        case let cat where cat.contains("baby"):
+            return Color(red: 0.6, green: 0.3, blue: 0.8)
+        case let cat where cat.contains("cupcake"):
+            return Color(red: 0.8, green: 0.5, blue: 0.2)
+        case let cat where cat.contains("buttercream"):
+            return Color(red: 0.7, green: 0.6, blue: 0.1)
+        case let cat where cat.contains("corporate"):
+            return Color(red: 0.2, green: 0.5, blue: 0.8)
+        case let cat where cat.contains("engagement"):
+            return Color(red: 0.85, green: 0.35, blue: 0.3)
+        case let cat where cat.contains("graduation"):
+            return Color(red: 0.3, green: 0.5, blue: 0.7)
+        case let cat where cat.contains("baptism"):
+            return Color(red: 0.2, green: 0.6, blue: 0.7)
+        case let cat where cat.contains("retirement"):
+            return Color(red: 0.8, green: 0.4, blue: 0.3)
+        case let cat where cat.contains("farewell"):
+            return Color(red: 0.5, green: 0.3, blue: 0.7)
+        case let cat where cat.contains("vegan"):
+            return Color(red: 0.2, green: 0.7, blue: 0.2)
+        case let cat where cat.contains("sculpted"):
+            return Color(red: 0.7, green: 0.2, blue: 0.7)
+        default:
+            return Color(red: 0.4, green: 0.4, blue: 0.4)
+        }
     }
 }
 
 struct BidsReceivedView: View {
     let request: CustomerBidRequest
     let user: AppUser
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var notificationManager: NotificationManager
     @StateObject private var viewModel = BidsReceivedViewModel()
     @State private var activeSheet: BidsReceivedSheet?
@@ -385,44 +520,48 @@ struct BidsReceivedView: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.97, green: 0.97, blue: 0.97).ignoresSafeArea()
+            Color.white.ignoresSafeArea()
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 16) {
-                    requestSummaryCard
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
+            VStack(spacing: 0) {
+                headerBar
 
-                    if viewModel.isLoading {
-                        ProgressView("Loading bids...")
-                            .tint(.cakeBrown)
-                            .padding(.top, 20)
-                    } else if viewModel.bids.isEmpty {
-                        ContentUnavailableView(
-                            "No Bids Yet",
-                            systemImage: "person.2.slash",
-                            description: Text("Bakers have not placed bids for this request yet.")
-                        )
-                        .padding(.top, 20)
-                    } else {
-                        ForEach(viewModel.bids) { bid in
-                            BakerBidOfferCard(
-                                bid: bid,
-                                onAcceptBid: {
-                                    activeSheet = .payment(bid)
-                                },
-                                onViewBidDetails: {
-                                    activeSheet = .bidDetails(bid)
-                                }
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 16) {
+                        requestSummaryCard
+                            .padding(.horizontal, 16)
+                            .padding(.top, 12)
+
+                        if viewModel.isLoading {
+                            ProgressView("Loading bids...")
+                                .tint(.cakeBrown)
+                                .padding(.top, 20)
+                        } else if viewModel.bids.isEmpty {
+                            ContentUnavailableView(
+                                "No Bids Yet",
+                                systemImage: "person.2.slash",
+                                description: Text("Bakers have not placed bids for this request yet.")
                             )
-                                .padding(.horizontal, 16)
+                            .padding(.top, 20)
+                        } else {
+                            ForEach(viewModel.bids) { bid in
+                                BakerBidOfferCard(
+                                    bid: bid,
+                                    onAcceptBid: {
+                                        activeSheet = .payment(bid)
+                                    },
+                                    onViewBidDetails: {
+                                        activeSheet = .bidDetails(bid)
+                                    }
+                                )
+                                    .padding(.horizontal, 16)
+                            }
                         }
                     }
+                    .padding(.bottom, 100)
                 }
-                .padding(.bottom, 100)
             }
         }
-        .navigationTitle("Bids Received")
+        .navigationBarBackButtonHidden(true)
         .navigationBarTitleDisplayMode(.inline)
         .overlay {
             if isSubmittingPayment {
@@ -444,7 +583,7 @@ struct BidsReceivedView: View {
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .payment(let bid):
-                PaymentCheckoutView(request: request, bid: bid) { payload in
+                PaymentCheckoutView(request: request, bid: bid, user: user) { payload in
                     Task {
                         await processAcceptedBid(bid: bid, payment: payload)
                     }
@@ -473,6 +612,27 @@ struct BidsReceivedView: View {
         } message: {
             Text(errorMessage ?? "")
         }
+    }
+
+    private var headerBar: some View {
+        HStack {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.cakeBrown)
+            }
+            Spacer()
+            VStack(spacing: 2) {
+                Text("Bids Received")
+                    .font(.urbanistBold(18))
+                    .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
+            }
+            Spacer()
+            Color.white.frame(width: 24)
+        }
+        .padding(.horizontal, 20)
+        .frame(height: 56)
+        .background(Color.white)
     }
 
     private func processAcceptedBid(bid: CustomerBidOffer, payment: PaymentPayload) async {
@@ -603,7 +763,7 @@ struct BidsReceivedView: View {
     private var requestSummaryCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(request.title)
-                .font(.urbanistBold(20))
+                .font(.urbanistBold(16))
                 .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
 
             HStack(spacing: 10) {
@@ -612,15 +772,15 @@ struct BidsReceivedView: View {
                 Label(Self.timeFormatter.string(from: request.expectedTime).lowercased(), systemImage: "clock")
             }
             .font(.urbanistSemiBold(13))
-            .foregroundColor(Color(red: 93/255, green: 55/255, blue: 20/255))
+            .foregroundColor(.cakeGrey)
 
             Text("Budget (LKR) : \(Int(request.budgetMin).formatted()) - \(Int(request.budgetMax).formatted())")
                 .font(.urbanistSemiBold(14))
-                .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
+                .foregroundColor(Color(red: 93/255, green: 55/255, blue: 20/255))
 
             Text(request.description)
-                .font(.urbanistRegular(13))
-                .foregroundColor(.cakeGrey)
+                .font(.urbanistRegular(13))      
+                .foregroundColor(.cakeGrey)    
                 .lineLimit(3)
         }
         .padding(16)
@@ -661,7 +821,7 @@ struct BakerBidOfferCard: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(bid.bakerName)
-                        .font(.urbanistBold(20))
+                        .font(.urbanistBold(16))
                         .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
 
                     Text("Bid placed on \(Self.dateFormatter.string(from: bid.submittedAt)) at \(Self.timeFormatter.string(from: bid.submittedAt).lowercased())")
@@ -679,14 +839,15 @@ struct BakerBidOfferCard: View {
                 label: "Delivery",
                 value: bid.canDeliverOnTime
                 ? "Can deliver on requested date"
-                : "Alternative: \(bid.deliveryDate.map { Self.dateFormatter.string(from: $0) } ?? "Not provided")"
+                : "Alternative: \(bid.deliveryDate.map { Self.dateFormatter.string(from: $0) } ?? "Not provided")",
+                valueColor: .gray
             )
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Message from baker")
                     .font(.urbanistSemiBold(13))
                     .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
-                Text(bid.message.isEmpty ? "No message provided." : bid.message)
+                Text(previewMessage(bid.message))
                     .font(.urbanistRegular(13))
                     .foregroundColor(.cakeGrey)
                     .fixedSize(horizontal: false, vertical: true)
@@ -706,25 +867,25 @@ struct BakerBidOfferCard: View {
                 Button(action: onViewBidDetails) {
                     Text("View Bid Details")
                         .font(.urbanistSemiBold(13))
-                        .foregroundColor(Color(red: 93/255, green: 55/255, blue: 20/255))
+                        .foregroundColor(.cakeGrey)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         .background(Color.white)
                         .clipShape(Capsule())
                         .overlay(
                             Capsule()
-                                .stroke(Color(red: 93/255, green: 55/255, blue: 20/255), lineWidth: 1.2)
+                                .stroke(Color.cakeGrey, lineWidth: 1.2)
                         )
                 }
             }
         }
-        .padding(16)
+        .padding(14)
         .background(Color.white)
         .cornerRadius(20)
         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 3)
     }
 
-    private func detailsRow(label: String, value: String) -> some View {
+    private func detailsRow(label: String, value: String, valueColor: Color = Color(red: 93/255, green: 55/255, blue: 20/255)) -> some View {
         HStack(alignment: .top) {
             Text(label)
                 .font(.urbanistRegular(14))
@@ -732,15 +893,27 @@ struct BakerBidOfferCard: View {
                 .frame(width: 88, alignment: .leading)
             Text(": \(value)")
                 .font(.urbanistSemiBold(14))
-                .foregroundColor(Color(red: 93/255, green: 55/255, blue: 20/255))
+                .foregroundColor(valueColor)
             Spacer()
         }
+    }
+
+    private func previewMessage(_ text: String) -> String {
+        let words = text
+            .replacingOccurrences(of: "\n", with: " ")
+            .split(whereSeparator: \.isWhitespace)
+
+        guard !words.isEmpty else { return "No message provided." }
+
+        let truncated = words.prefix(20).joined(separator: " ")
+        return words.count > 20 ? truncated + "..." : truncated
     }
 }
 
 struct PaymentCheckoutView: View {
     let request: CustomerBidRequest
     let bid: CustomerBidOffer
+    let user: AppUser
     let onPay: (PaymentPayload) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -749,19 +922,30 @@ struct PaymentCheckoutView: View {
     @State private var cardholderName = ""
     @State private var expiry = ""
     @State private var cvv = ""
+    @State private var deliveryAddress = ""
+    @State private var deliveryCity = ""
+    @State private var showDeliveryLocationSheet = false
 
     private var serviceFee: Double { 250 }
     private var totalAmount: Double { bid.amount + serviceFee }
+    
+    private var displayAddress: String {
+        let userAddress = user.address ?? ""
+        let userCity = user.city ?? ""
+        if !userAddress.isEmpty && !userCity.isEmpty {
+            return "\(userAddress), \(userCity)"
+        } else if !userAddress.isEmpty {
+            return userAddress
+        }
+        return "No 65/B, Flower Road, Dehiwala"
+    }
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                LinearGradient(
-                    colors: [Color(red: 0.98, green: 0.98, blue: 0.99), Color(red: 0.96, green: 0.96, blue: 0.97)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
+        ZStack {
+            Color.white.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                headerBar
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 16) {
@@ -771,6 +955,8 @@ struct PaymentCheckoutView: View {
                         if selectedMethod == .card {
                             cardDetailsCard
                         }
+
+                        warningMessage
 
                         Button {
                             onPay(
@@ -795,21 +981,47 @@ struct PaymentCheckoutView: View {
                     .padding(16)
                     .padding(.bottom, 24)
                 }
-            }
-            .navigationTitle("Checkout")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
-                        .foregroundColor(.cakeBrown)
-                }
+        .onAppear {
+            if deliveryAddress.isEmpty {
+                deliveryAddress = user.address ?? ""
+                deliveryCity = user.city ?? ""
             }
         }
+            }
+        }
+        .sheet(isPresented: $showDeliveryLocationSheet) {
+            EditDeliveryLocationSheet(
+                address: $deliveryAddress,
+                city: $deliveryCity,
+                isPresented: $showDeliveryLocationSheet
+            )
+        }
+    }
+
+    private var headerBar: some View {
+        HStack {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.cakeBrown)
+            }
+            Spacer()
+            VStack(spacing: 2) {
+                Text("Checkout")
+                    .font(.urbanistBold(18))
+                    .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
+            }
+            Spacer()
+            Color.white.frame(width: 24)
+        }
+        .padding(.horizontal, 20)
+        .frame(height: 56)
+        .background(Color.white)
     }
 
     private var isValidPayment: Bool {
         switch selectedMethod {
-        case .applePay:
+        case .applePay, .cash, .googlePay:
             return true
         case .card:
             return cardNumber.count >= 12 && !cardholderName.isEmpty && expiry.count >= 4 && cvv.count >= 3
@@ -818,16 +1030,49 @@ struct PaymentCheckoutView: View {
 
     private var paymentSummaryCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(request.title)
-                .font(.urbanistBold(17))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                .lineLimit(2)
+            // Delivery Location Section
+            HStack {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "mappin.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.cakeBrown)
+                        Text("Delivery Location")
+                            .font(.urbanistSemiBold(13))
+                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    }
+                    Text(displayAddress)
+                        .font(.urbanistRegular(12))
+                        .foregroundColor(.cakeGrey)
+                }
+                Spacer()
+                Button(action: { showDeliveryLocationSheet = true }) {
+                    Text("Change")
+                        .font(.urbanistSemiBold(12))
+                        .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color(red: 0.93, green: 0.91, blue: 0.88))
+                        .cornerRadius(6)
+                }
+            }
+            .padding(12)
+            .background(Color(red: 0.98, green: 0.98, blue: 0.98))
+            .cornerRadius(10)
 
             Divider()
+                .padding(.vertical, 4)
 
-            summaryRow(label: "Bid Amount", value: "LKR \(Int(bid.amount).formatted())")
-            summaryRow(label: "Service Fee", value: "LKR \(Int(serviceFee).formatted())")
-            summaryRow(label: "Total", value: "LKR \(Int(totalAmount).formatted())", isBold: true)
+            // Payment Summary
+            VStack(alignment: .leading, spacing: 10) {
+                summaryRow(label: "Sub Total (LKR)", value: "LKR \(Int(bid.amount).formatted())")
+                summaryRow(label: "Delivery Fee (LKR)", value: "LKR \(Int(serviceFee).formatted())")
+                
+                Divider()
+                    .padding(.vertical, 4)
+                
+                summaryRow(label: "Total Cost (LKR)", value: "LKR \(Int(totalAmount).formatted())", isBold: true)
+            }
         }
         .padding(16)
         .background(Color.white)
@@ -836,14 +1081,20 @@ struct PaymentCheckoutView: View {
     }
 
     private var paymentMethodCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Payment Method")
                 .font(.urbanistBold(15))
                 .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
 
-            HStack(spacing: 10) {
-                methodChip(.card, icon: "creditcard.fill")
-                methodChip(.applePay, icon: "applelogo")
+            VStack(spacing: 10) {
+                HStack(spacing: 10) {
+                    methodChip(.card, icon: "creditcard.fill")
+                    methodChip(.cash, icon: "banknote.fill", label: "Cash")
+                }
+                HStack(spacing: 10) {
+                    methodChip(.googlePay, icon: "g.circle.fill", label: "Google Pay")
+                    methodChip(.applePay, icon: "applelogo", label: "Apple Pay")
+                }
             }
         }
         .padding(16)
@@ -872,19 +1123,20 @@ struct PaymentCheckoutView: View {
         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
     }
 
-    private func methodChip(_ method: PaymentMethod, icon: String) -> some View {
+    private func methodChip(_ method: PaymentMethod, icon: String, label: String? = nil) -> some View {
         Button {
             selectedMethod = method
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: icon)
                     .font(.system(size: 14, weight: .semibold))
-                Text(method.rawValue)
+                Text(label ?? method.rawValue)
                     .font(.urbanistSemiBold(13))
             }
-            .foregroundColor(selectedMethod == method ? .white : Color(red: 0.2, green: 0.2, blue: 0.2))
+            .foregroundColor(selectedMethod == method ? .white : Color(red: 0.72, green: 0.72, blue: 0.72))
             .padding(.horizontal, 14)
             .padding(.vertical, 9)
+            .frame(maxWidth: .infinity)
             .background(selectedMethod == method ? Color.cakeBrown : Color(red: 0.94, green: 0.94, blue: 0.95))
             .cornerRadius(10)
         }
@@ -902,6 +1154,21 @@ struct PaymentCheckoutView: View {
         }
     }
 
+    private var warningMessage: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "info.circle.fill")
+                .font(.system(size: 16))
+                .foregroundColor(Color(.systemGray))
+            Text("Before proceeding to payment, please review your order details.")
+                .font(.urbanistRegular(12))
+                .foregroundColor(Color(.systemGray))
+            Spacer()
+        }
+        .padding(12)
+        .background(Color(red: 0.96, green: 0.96, blue: 0.96))
+        .cornerRadius(10)
+    }
+
     private func formField(title: String, placeholder: String, text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
@@ -916,9 +1183,77 @@ struct PaymentCheckoutView: View {
     }
 }
 
+struct EditDeliveryLocationSheet: View {
+    @Binding var address: String
+    @Binding var city: String
+    @Binding var isPresented: Bool
+    @State private var tempAddress = ""
+    @State private var tempCity = ""
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Address")
+                        .font(.urbanistSemiBold(12))
+                        .foregroundColor(.cakeGrey)
+                    TextField("Enter your address", text: $tempAddress)
+                        .font(.urbanistRegular(14))
+                        .padding(12)
+                        .background(Color(red: 0.97, green: 0.97, blue: 0.98))
+                        .cornerRadius(10)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("City")
+                        .font(.urbanistSemiBold(12))
+                        .foregroundColor(.cakeGrey)
+                    TextField("Enter your city", text: $tempCity)
+                        .font(.urbanistRegular(14))
+                        .padding(12)
+                        .background(Color(red: 0.97, green: 0.97, blue: 0.98))
+                        .cornerRadius(10)
+                }
+
+                Spacer()
+
+                Button(action: {
+                    address = tempAddress
+                    city = tempCity
+                    isPresented = false
+                }) {
+                    Text("Save Location")
+                        .font(.urbanistBold(16))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 15)
+                        .background(Color.cakeBrown)
+                        .cornerRadius(14)
+                }
+                .disabled(tempAddress.isEmpty || tempCity.isEmpty)
+                .opacity(tempAddress.isEmpty || tempCity.isEmpty ? 0.5 : 1)
+            }
+            .padding(16)
+            .navigationTitle("Edit Delivery Location")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { isPresented = false }
+                        .foregroundColor(.cakeBrown)
+                }
+            }
+        }
+        .onAppear {
+            tempAddress = address
+            tempCity = city
+        }
+    }
+}
+
 struct BidFullDetailsSheet: View {
     let request: CustomerBidRequest
     let bid: CustomerBidOffer
+    @Environment(\.dismiss) private var dismiss
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -926,43 +1261,157 @@ struct BidFullDetailsSheet: View {
         return formatter
     }()
 
+    private static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "hh.mm a"
+        return formatter
+    }()
+
     var body: some View {
-        NavigationStack {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 14) {
-                    detailCard(title: "Cake Request", value: request.title)
-                    detailCard(title: "Baker", value: bid.bakerName)
-                    detailCard(title: "Bid Amount", value: "LKR \(Int(bid.amount).formatted())")
-                    detailCard(
-                        title: "Delivery Commitment",
-                        value: bid.canDeliverOnTime
-                        ? "Can deliver on requested date"
-                        : "Alternative: \(bid.deliveryDate.map { Self.dateFormatter.string(from: $0) } ?? "Not provided")"
-                    )
-                    detailCard(title: "Message", value: bid.message.isEmpty ? "No message provided." : bid.message)
+        ZStack {
+            Color.white.ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                headerBar
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        heroCard
+                        
+                        detailCard(
+                            icon: "doc.text",
+                            title: "Cake Request",
+                            value: request.title
+                        )
+                        detailCard(
+                            icon: "person.circle.fill",
+                            title: "Baker",
+                            value: bid.bakerName
+                        )
+                        detailCard(
+                            icon: "banknote.fill",
+                            title: "Bid Amount",
+                            value: "LKR \(Int(bid.amount).formatted())"
+                        )
+                        detailCard(
+                            icon: "calendar",
+                            title: "Delivery Commitment",
+                            value: bid.canDeliverOnTime
+                            ? "Can deliver on requested date"
+                            : "Alternative: \(bid.deliveryDate.map { Self.dateFormatter.string(from: $0) } ?? "Not provided")"
+                        )
+                        detailCard(
+                            icon: "bubble.left.fill",
+                            title: "Message",
+                            value: bid.message.isEmpty ? "No message provided." : bid.message
+                        )
+                    }
+                    .padding(16)
+                    .padding(.bottom, 24)
                 }
-                .padding(16)
             }
-            .background(Color(red: 0.97, green: 0.97, blue: 0.97).ignoresSafeArea())
-            .navigationTitle("Bid Details")
-            .navigationBarTitleDisplayMode(.inline)
         }
+        .navigationBarBackButtonHidden(true)
+    }
+    
+    private var headerBar: some View {
+        HStack {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.cakeBrown)
+            }
+            Spacer()
+            VStack(spacing: 2) {
+                Text("Bid Details")
+                    .font(.urbanistBold(18))
+                    .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
+            }
+            Spacer()
+            Color.white.frame(width: 24)
+        }
+        .padding(.horizontal, 20)
+        .frame(height: 56)
+        .background(Color.white)
     }
 
-    private func detailCard(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.urbanistSemiBold(12))
-                .foregroundColor(.cakeGrey)
-            Text(value)
-                .font(.urbanistMedium(15))
-                .foregroundColor(Color(red: 0.12, green: 0.12, blue: 0.12))
-                .fixedSize(horizontal: false, vertical: true)
+    private var heroCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Circle()
+                    .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+                    .frame(width: 48, height: 48)
+                    .overlay(
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
+                    )
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(bid.bakerName)
+                        .font(.urbanistBold(15))
+                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    Text("Bid placed on \(Self.dateFormatter.string(from: bid.submittedAt)) at \(Self.timeFormatter.string(from: bid.submittedAt).lowercased())")
+                        .font(.urbanistRegular(12))
+                        .foregroundColor(.cakeGrey)
+                }
+                Spacer()
+            }
+            
+            Divider()
+            
+            HStack(spacing: 14) {
+                summaryItemCard(label: "Bid Amount", value: "LKR \(Int(bid.amount).formatted())")
+                summaryItemCard(label: "Delivery", value: bid.canDeliverOnTime ? "On Time" : "Alternative")
+            }
         }
         .padding(14)
         .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 3)
+    }
+    
+    private func summaryItemCard(label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.urbanistRegular(11))
+                .foregroundColor(.cakeGrey)
+            Text(value)
+                .font(.urbanistSemiBold(13))
+                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(Color(red: 0.98, green: 0.98, blue: 0.98))
+        .cornerRadius(12)
+    }
+
+    private func detailCard(icon: String, title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
+                    .frame(width: 32, height: 32)
+                    .background(Color(red: 0.98, green: 0.96, blue: 0.93))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                
+                Text(title)
+                    .font(.urbanistSemiBold(13))
+                    .foregroundColor(.cakeGrey)
+                
+                Spacer()
+            }
+            
+            Text(value)
+                .font(.urbanistRegular(14))
+                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .lineLimit(4)
+        }
+        .padding(12)
+        .background(Color.white)
         .cornerRadius(14)
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 3)
+        .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
     }
 }
 

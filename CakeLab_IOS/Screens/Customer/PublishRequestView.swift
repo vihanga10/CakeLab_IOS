@@ -119,13 +119,13 @@ struct PublishRequestView: View {
             }
             Spacer()
             VStack(spacing: 2) {
-                Text("Published Requests")
+                Text("Published Cake Requests")
                     .font(.urbanistBold(18))
                     .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
                 
             }
             Spacer()
-            Color.clear.frame(width: 24)
+            Color.white.frame(width: 24)
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
@@ -182,61 +182,120 @@ private struct PublishedRequestCard: View {
     let request: CakeRequestRecord
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 17) {
+                thumbnailView
+
+                VStack(alignment: .leading, spacing: 0) {
                     Text(request.displayTitle)
-                        .font(.urbanistSemiBold(16))
+                        .font(.urbanistSemiBold(15))
                         .foregroundColor(Color(.label))
-                        .lineLimit(2)
+                        .lineLimit(1)
                         .multilineTextAlignment(.leading)
+                        .padding(.top, 10)
+
+                    Text(summaryText(request.description))
+                        .font(.urbanistRegular(10))
+                        .foregroundColor(Color(.secondaryLabel))
+                        .lineLimit(2)
+                        .lineSpacing(1)
+                        .multilineTextAlignment(.leading)
+                        .padding(.top, 9)
+
+                    categoryPill
+                        .padding(.top, 9)
+
+                    Spacer(minLength: 0)
                 }
-
-                Spacer(minLength: 10)
-
-                StatusBadge(status: request.statusBadge)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
 
-            // Category badge with pastel color
-            Text(request.displayCategory)
-                .font(.urbanistMedium(12))
-                .foregroundColor(categoryTextColor(for: request.displayCategory))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(categoryBackgroundColor(for: request.displayCategory))
-                .clipShape(Capsule())
+            Spacer(minLength: 0)
 
-            Divider()
-
-            HStack(spacing: 0) {
-                infoColumn(icon: "calendar", label: "Date", value: dateText(request.sortDate))
-                infoDivider
-                infoColumn(icon: "banknote", label: "Budget", value: request.budgetText)
-                infoDivider
-                infoColumn(icon: "person.2.fill", label: "Bids", value: "\(request.bidCount)")
-            }
+            footerMetrics
+                .padding(.bottom, 10)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.black.opacity(0.06), lineWidth: 0.8)
+        .padding(.leading, 10)
+        .padding(.trailing, 10)
+        .frame(maxWidth: 363, alignment: .leading)
+        .frame(height: 148)
+        .background(
+            RoundedRectangle(cornerRadius: 21, style: .continuous)
+                .fill(Color.white)
         )
-        .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
+        .overlay(
+            RoundedRectangle(cornerRadius: 21, style: .continuous)
+                .stroke(Color.black.opacity(0.05), lineWidth: 1)
+        )
+        .overlay(innerShadow)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 8)
     }
 
-    private func infoColumn(icon: String, label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
+    private var thumbnailView: some View {
+        Group {
+            if !request.referenceImages.isEmpty,
+               let imageData = Data(base64Encoded: request.referenceImages[0]),
+               let uiImage = UIImage(data: imageData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 80, height: 80)
+                    .clipped()
+            } else {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(red: 0.93, green: 0.91, blue: 0.88))
+                    .frame(width: 80, height: 80)
+                    .overlay(
+                        Image(systemName: "photo.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.cakeBrown.opacity(0.45))
+                    )
+            }
+        }
+        .frame(width: 80, height: 80)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.white.opacity(0.9), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
+        .padding(.top, 10)
+    }
+
+    private var categoryPill: some View {
+        Text(request.displayCategory)
+            .font(.urbanistMedium(11))
+            .foregroundColor(categoryTextColor(for: request.displayCategory))
+            .frame(width: 89, height: 22)
+            .background(categoryBackgroundColor(for: request.displayCategory))
+            .clipShape(Capsule())
+            
+    }
+
+    private var footerMetrics: some View {
+        HStack(spacing:9) {
+            metricColumn(icon: "calendar", label: "Date", value: dateText(request.expectedDate), width: 72)
+            footerDivider
+            metricColumn(icon: "banknote", label: "Budget", value: request.budgetText, width: 112)
+            footerDivider
+            metricColumn(icon: "person.2.fill", label: "Bids", value: "\(request.bidCount)", width: 50)
+            footerDivider
+            metricColumn(icon: "clock.fill", label: "Time", value: timeText(request.expectedTime), width: 62)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func metricColumn(icon: String, label: String, value: String, width: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 4) {
                 Image(systemName: icon)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(Color.cakeBrown)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Color(.systemGray))
 
                 Text(label)
                     .font(.urbanistRegular(11))
-                    .foregroundColor(Color(.secondaryLabel))
+                    .foregroundColor(Color(.systemGray))
             }
 
             Text(value)
@@ -244,19 +303,59 @@ private struct PublishedRequestCard: View {
                 .foregroundColor(Color(.label))
                 .lineLimit(1)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(width: width, alignment: .leading)
     }
 
-    private var infoDivider: some View {
+    private var footerDivider: some View {
         Rectangle()
-            .fill(Color.black.opacity(0.08))
-            .frame(width: 1, height: 34)
+            .fill(Color.black.opacity(0.12))
+            .frame(width: 1, height: 32)
     }
 
     private func dateText(_ date: Date) -> String {
         let f = DateFormatter()
         f.dateStyle = .medium
         return f.string(from: date)
+    }
+
+    private func timeText(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "hh.mm a"
+        return f.string(from: date).lowercased()
+    }
+
+    private func summaryText(_ text: String) -> String {
+        let words = text
+            .replacingOccurrences(of: "\n", with: " ")
+            .split(whereSeparator: \.isWhitespace)
+
+        guard !words.isEmpty else {
+            return "Tell bakers about your cake theme, preferred style, flavor ideas, colors, and the small details you want included."
+        }
+
+        let limitedText = words.prefix(20).joined(separator: " ")
+        return words.count > 20 ? limitedText + "..." : limitedText
+    }
+
+    private var innerShadow: some View {
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
+            .stroke(Color.black.opacity(0.03), lineWidth: 1)
+            .shadow(color: Color.black.opacity(0.07), radius: 6, x: 0, y: 2)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .mask(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.black,
+                                Color.black.opacity(0.35),
+                                Color.clear
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+            )
     }
     
     // MARK: - Category Color Mapping
@@ -384,6 +483,7 @@ struct CakeRequestRecord: Identifiable {
     let isDirectRequest: Bool
     let targetArtisanId: String?
     let targetArtisanName: String?
+    let referenceImages: [String]
     
     init?(document: DocumentSnapshot) {
                 guard let data = document.data(),
@@ -421,6 +521,7 @@ struct CakeRequestRecord: Identifiable {
         self.expectedTime = Self.dateValue(in: data, key: "expectedTime") ?? Date()
         self.createdAt = Self.dateValue(in: data, key: "createdAt") ?? Date()
         self.savedAt = Self.dateValue(in: data, key: "savedAt")
+        self.referenceImages = data["referenceImages"] as? [String] ?? []
     }
 
     func ownedBy(userID: String) -> Bool {
@@ -508,6 +609,7 @@ struct CakeRequestRecord: Identifiable {
             flavours: flavours,
             customerName: customerName,
             postedTime: postedTimeText(from: createdAt),
+            referenceImages: referenceImages,
             isMatching: true
         )
     }

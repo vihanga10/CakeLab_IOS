@@ -35,8 +35,9 @@ struct CreateCakeRequestView: View {
     @State private var selectedFlavours:   Set<String> = []
     @State private var fillingFlavour     = ""
     @State private var specialInstructions = ""
-    @State private var referenceImageURLs: [String] = []
-    @State private var isUploadingImages = false
+    @State private var referenceImagesBase64: [String] = []
+    @State private var actionInProgress = false
+    @State private var imageSizeWarning = ""
     
     init(user: AppUser, selectedArtisan: ArtisanProfile? = nil) {
         self.user = user
@@ -54,8 +55,6 @@ struct CreateCakeRequestView: View {
     @State private var showCamera         = false
     @State private var cameraImage: UIImage?          = nil
     @State private var isSaving = false
-    @State private var showSuccessAlert = false
-    @State private var successMessage = ""
     
     // Tier add
     @State private var showAddTierAlert = false
@@ -211,20 +210,66 @@ struct CreateCakeRequestView: View {
                                     ImagePickerButton(icon: "camera", label: "Camera")
                                 }
                                 
-                                if let img = cameraImage {
-                                    Image(uiImage: img)
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(width: 72, height: 72)
-                                        .cornerRadius(10)
-                                        .clipped()
-                                }
                                 Spacer()
                             }
                             .onChange(of: cameraImage) { _, newImage in
                                 if let img = newImage {
                                     uploadCameraImageToStorage(img)
                                 }
+                            }
+                            
+                            // Display uploaded images
+                            if !referenceImagesBase64.isEmpty {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Uploaded Images (\(referenceImagesBase64.count))")
+                                        .font(.urbanistSemiBold(12))
+                                        .foregroundColor(.cakeGrey)
+                                    
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 12) {
+                                            ForEach(referenceImagesBase64.indices, id: \.self) { index in
+                                                ZStack(alignment: .topTrailing) {
+                                                    if let imageData = Data(base64Encoded: referenceImagesBase64[index]),
+                                                       let uiImage = UIImage(data: imageData) {
+                                                        Image(uiImage: uiImage)
+                                                            .resizable()
+                                                            .scaledToFill()
+                                                            .frame(width: 80, height: 80)
+                                                            .cornerRadius(8)
+                                                            .clipped()
+                                                    } else {
+                                                        Image(systemName: "photo.fill")
+                                                            .foregroundColor(.gray)
+                                                            .frame(width: 80, height: 80)
+                                                    }
+                                                    
+                                                    Button(action: {
+                                                        referenceImagesBase64.remove(at: index)
+                                                    }) {
+                                                        Image(systemName: "xmark.circle.fill")
+                                                            .font(.system(size: 18))
+                                                            .foregroundColor(.red)
+                                                            .background(Color.white.clipShape(Circle()))
+                                                    }
+                                                    .padding(4)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding(10)
+                                .background(Color(red: 0.97, green: 0.97, blue: 0.97))
+                                .cornerRadius(8)
+                            }
+                            
+                            // Size warning
+                            if !imageSizeWarning.isEmpty {
+                                Text(imageSizeWarning)
+                                    .font(.urbanistRegular(11))
+                                    .foregroundColor(.red)
+                                    .padding(8)
+                                    .background(Color(red: 1.0, green: 0.95, blue: 0.95))
+                                    .cornerRadius(6)
                             }
                         }
                         .padding(16)
@@ -456,10 +501,16 @@ struct CreateCakeRequestView: View {
                         .padding(.bottom, 16)
                         
                         // ── Action Buttons ───────────────────────────────────
-                        HStack(spacing: 12) {
+                        VStack(spacing: 12) {
                             Button {
-                                Task {
-                                    await publishRequest()
+                                if !actionInProgress {
+                                    actionInProgress = true
+                                    Task {
+                                        await publishRequest()
+                                        DispatchQueue.main.async {
+                                            actionInProgress = false
+                                        }
+                                    }
                                 }
                             } label: {
                                 if isSaving {
@@ -469,17 +520,25 @@ struct CreateCakeRequestView: View {
                                     Text("Publish Cake Request")
                                 }
                             }
-                            .disabled(isSaving)
+                            .buttonStyle(.plain)
+                            .disabled(isSaving || actionInProgress)
                             .font(.urbanistSemiBold(15))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
                             .background(Color.cakeBrown)
                             .clipShape(Capsule())
+                            .contentShape(Capsule())
                             
                             Button {
-                                Task {
-                                    await saveDraft()
+                                if !actionInProgress {
+                                    actionInProgress = true
+                                    Task {
+                                        await saveDraft()
+                                        DispatchQueue.main.async {
+                                            actionInProgress = false
+                                        }
+                                    }
                                 }
                             } label: {
                                 if isSaving {
@@ -489,13 +548,15 @@ struct CreateCakeRequestView: View {
                                     Text("Save As Draft")
                                 }
                             }
-                            .disabled(isSaving)
+                            .buttonStyle(.plain)
+                            .disabled(isSaving || actionInProgress)
                             .font(.urbanistSemiBold(15))
                             .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
                             .background(Color.white)
                             .clipShape(Capsule())
+                            .contentShape(Capsule())
                             .overlay(
                                 Capsule()
                                     .stroke(Color(red: 0.80, green: 0.80, blue: 0.80), lineWidth: 1.5)
@@ -516,11 +577,6 @@ struct CreateCakeRequestView: View {
             .fullScreenCover(isPresented: $showCamera) {
                 CameraPickerView(capturedImage: $cameraImage, isPresented: $showCamera)
                     .ignoresSafeArea()
-            }
-            .alert("Success", isPresented: $showSuccessAlert) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(successMessage)
             }
             .sheet(isPresented: $showDatePicker) {
                 VStack {
@@ -557,59 +613,17 @@ struct CreateCakeRequestView: View {
     // MARK: - Save to Firebase
     @MainActor
     private func publishRequest() async {
-            isSaving = true
-            defer { isSaving = false }
-            
-            guard let userID = Auth.auth().currentUser?.uid else {
-                print("Error saving request: no authenticated Firebase session")
-                return
-            }
-            let db = Firestore.firestore()
-            let customerProfile = await fetchCurrentUserProfile(from: db, userID: userID)
-            
-            guard canPublishRequest else {
-                await persistRequest(
-                    in: db,
-                    collection: "draftRequests",
-                    documentID: db.collection("draftRequests").document().documentID,
-                    customerID: userID,
-                    customerProfile: customerProfile,
-                    status: "draft",
-                    timestampField: "savedAt",
-                    successText: "Incomplete details were saved as a draft idea.",
-                    triggerNotification: false,
-                    requestTitle: title
-                )
-                return
-            }
-            
-            await persistRequest(
-                in: db,
-                collection: "cakeRequests",
-                documentID: db.collection("cakeRequests").document().documentID,
-                customerID: userID,
-                customerProfile: customerProfile,
-                status: "open",
-                timestampField: "createdAt",
-                successText: "Request published successfully!",
-                triggerNotification: true,
-                requestTitle: title
-            )
-        }
+        isSaving = true
+        defer { isSaving = false }
         
-        // MARK: - Save as Draft
-        @MainActor
-        private func saveDraft() async {
-            isSaving = true
-            defer { isSaving = false }
-            
-            guard let userID = Auth.auth().currentUser?.uid else {
-                print("Error saving draft: no authenticated Firebase session")
-                return
-            }
-            let db = Firestore.firestore()
-            let customerProfile = await fetchCurrentUserProfile(from: db, userID: userID)
-            
+        guard let userID = Auth.auth().currentUser?.uid else {
+            print("Error saving request: no authenticated Firebase session")
+            return
+        }
+        let db = Firestore.firestore()
+        let customerProfile = await fetchCurrentUserProfile(from: db, userID: userID)
+        
+        guard canPublishRequest else {
             await persistRequest(
                 in: db,
                 collection: "draftRequests",
@@ -618,235 +632,271 @@ struct CreateCakeRequestView: View {
                 customerProfile: customerProfile,
                 status: "draft",
                 timestampField: "savedAt",
-                successText: "Draft saved successfully!"
+                successText: "Incomplete details were saved as a draft idea.",
+                triggerNotification: false,
+                requestTitle: title
             )
+            return
         }
         
-        private var canPublishRequest: Bool {
-            !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            !selectedCategories.isEmpty
-        }
+        await persistRequest(
+            in: db,
+            collection: "cakeRequests",
+            documentID: db.collection("cakeRequests").document().documentID,
+            customerID: userID,
+            customerProfile: customerProfile,
+            status: "open",
+            timestampField: "createdAt",
+            successText: "Request published successfully!",
+            triggerNotification: true,
+            requestTitle: title
+        )
+    }
+    
+    // MARK: - Save as Draft
+    @MainActor
+    private func saveDraft() async {
+        isSaving = true
+        defer { isSaving = false }
         
-        private func fetchCurrentUserProfile(from db: Firestore, userID: String) async -> [String: Any] {
-            do {
-                let snapshot = try await db.collection("users").document(userID).getDocument()
-                return snapshot.data() ?? [:]
-            } catch {
-                print("Error fetching current user profile: \(error)")
-                return [:]
-            }
+        guard let userID = Auth.auth().currentUser?.uid else {
+            print("Error saving draft: no authenticated Firebase session")
+            return
         }
+        let db = Firestore.firestore()
+        let customerProfile = await fetchCurrentUserProfile(from: db, userID: userID)
         
-        private func uploadPhotosToStorage(_ items: [PhotosPickerItem]) {
-            isUploadingImages = true
-            let storage = Storage.storage()
-            let storageRef = storage.reference()
-            
-            for item in items {
-                Task {
-                    do {
-                        guard let data = try? await item.loadTransferable(type: Data.self) else {
-                            print("Failed to load photo data")
-                            return
-                        }
-                        
-                        // Generate unique filename
-                        let filename = "request_\(UUID().uuidString).jpg"
-                        let imageRef = storageRef.child("cakeRequests/\(filename)")
-                        
-                        // Upload image
-                        let metadata = StorageMetadata()
-                        metadata.contentType = "image/jpeg"
-                        
-                        let _ = try await imageRef.putDataAsync(data, metadata: metadata)
-                        
-                        // Get download URL
-                        let downloadURL = try await imageRef.downloadURL()
-                        
-                        DispatchQueue.main.async {
-                            if !self.referenceImageURLs.contains(downloadURL.absoluteString) {
-                                self.referenceImageURLs.append(downloadURL.absoluteString)
-                            }
-                        }
-                    } catch {
-                        print("Error uploading photo to Storage: \(error)")
-                    }
-                }
-            }
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                self.isUploadingImages = false
-            }
+        await persistRequest(
+            in: db,
+            collection: "draftRequests",
+            documentID: db.collection("draftRequests").document().documentID,
+            customerID: userID,
+            customerProfile: customerProfile,
+            status: "draft",
+            timestampField: "savedAt",
+            successText: "Draft saved successfully!"
+        )
+    }
+    
+    private var canPublishRequest: Bool {
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !selectedCategories.isEmpty
+    }
+    
+    private func fetchCurrentUserProfile(from db: Firestore, userID: String) async -> [String: Any] {
+        do {
+            let snapshot = try await db.collection("users").document(userID).getDocument()
+            return snapshot.data() ?? [:]
+        } catch {
+            print("Error fetching current user profile: \(error)")
+            return [:]
         }
-        
-        private func uploadCameraImageToStorage(_ uiImage: UIImage) {
-            isUploadingImages = true
-            let storage = Storage.storage()
-            let storageRef = storage.reference()
-            
+    }
+    
+    private func uploadPhotosToStorage(_ items: [PhotosPickerItem]) {
+        for item in items {
             Task {
                 do {
-                    guard let imageData = uiImage.jpegData(compressionQuality: 0.8) else {
-                        print("Failed to compress camera image")
+                    guard let data = try? await item.loadTransferable(type: Data.self) else {
+                        print("Failed to load photo data")
                         return
                     }
                     
-                    // Generate unique filename
-                    let filename = "request_\(UUID().uuidString).jpg"
-                    let imageRef = storageRef.child("cakeRequests/\(filename)")
+                    // Convert to UIImage for compression
+                    guard let uiImage = UIImage(data: data) else {
+                        print("Failed to create UIImage from data")
+                        return
+                    }
                     
-                    // Upload image
-                    let metadata = StorageMetadata()
-                    metadata.contentType = "image/jpeg"
+                    // Compress with very high compression (30% quality to minimize size)
+                    guard let compressedData = uiImage.jpegData(compressionQuality: 0.3) else {
+                        print("Failed to compress image")
+                        return
+                    }
                     
-                    let _ = try await imageRef.putDataAsync(imageData, metadata: metadata)
+                    // Check size
+                    let sizeInMB = Double(compressedData.count) / (1024 * 1024)
+                    print("📸 Image size: \(String(format: "%.2f", sizeInMB)) MB")
                     
-                    // Get download URL
-                    let downloadURL = try await imageRef.downloadURL()
+                    if sizeInMB > 0.5 {
+                        DispatchQueue.main.async {
+                            self.imageSizeWarning = "⚠️ Image is large (\(String(format: "%.2f", sizeInMB)) MB). Consider using a smaller image."
+                        }
+                    }
+                    
+                    let base64String = compressedData.base64EncodedString()
                     
                     DispatchQueue.main.async {
-                        if !self.referenceImageURLs.contains(downloadURL.absoluteString) {
-                            self.referenceImageURLs.append(downloadURL.absoluteString)
+                        if !self.referenceImagesBase64.contains(base64String) {
+                            self.referenceImagesBase64.append(base64String)
+                            print("✅ Image added (Base64): \(base64String.prefix(50))...")
                         }
-                        self.isUploadingImages = false
                     }
                 } catch {
-                    print("Error uploading camera image to Storage: \(error)")
+                    print("❌ Error processing photo: \(error)")
+                }
+            }
+        }
+    }
+    private func uploadCameraImageToStorage(_ uiImage: UIImage) {
+        Task {
+            do {
+                // Compress with very high compression (30% quality)
+                guard let compressedData = uiImage.jpegData(compressionQuality: 0.3) else {
+                    print("Failed to compress camera image")
+                    return
+                }
+                
+                // Check size
+                let sizeInMB = Double(compressedData.count) / (1024 * 1024)
+                print("📸 Camera image size: \(String(format: "%.2f", sizeInMB)) MB")
+                
+                if sizeInMB > 0.5 {
                     DispatchQueue.main.async {
-                        self.isUploadingImages = false
+                        self.imageSizeWarning = "⚠️ Camera image is large (\(String(format: "%.2f", sizeInMB)) MB). Consider using a smaller image."
                     }
                 }
-            }
-        }
-        @MainActor
-        private func persistRequest(
-            in db: Firestore,
-            collection: String,
-            documentID: String,
-            customerID: String,
-            customerProfile: [String: Any],
-            status: String,
-            timestampField: String,
-            successText: String,
-            triggerNotification: Bool = false,
-            requestTitle: String = ""
-        ) async {
-            let requestData = buildRequestData(
-                documentID: documentID,
-                customerID: customerID,
-                customerProfile: customerProfile,
-                status: status,
-                timestampField: timestampField
-            )
-            
-            do {
-                try await db.collection(collection).document(documentID).setData(requestData, merge: true)
                 
-                // Trigger notification IMMEDIATELY after save (before dismiss)
-                if triggerNotification {
-                    let title = requestTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Untitled Request" : requestTitle
-                    print("🚀 [CreateCakeRequestView] Publishing request: '\(title)' for user: \(customerID)")
-                    notificationManager.notifyRequestPosted(requestTitle: title, userID: customerID)
-                    print("✅ [CreateCakeRequestView] Notification triggered successfully")
-                }
+                let base64String = compressedData.base64EncodedString()
                 
-                successMessage = "✓ \(successText)"
-                showSuccessAlert = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    dismiss()
+                DispatchQueue.main.async {
+                    if !self.referenceImagesBase64.contains(base64String) {
+                        self.referenceImagesBase64.append(base64String)
+                        print("✅ Camera image added (Base64): \(base64String.prefix(50))...")
+                    }
                 }
             } catch {
-                print("Error saving request to \(collection): \(error)")
+                print("❌ Error processing camera image: \(error)")
             }
         }
+    }
+    @MainActor
+    private func persistRequest(
+        in db: Firestore,
+        collection: String,
+        documentID: String,
+        customerID: String,
+        customerProfile: [String: Any],
+        status: String,
+        timestampField: String,
+        successText: String,
+        triggerNotification: Bool = false,
+        requestTitle: String = ""
+    ) async {
+        let requestData = buildRequestData(
+            documentID: documentID,
+            customerID: customerID,
+            customerProfile: customerProfile,
+            status: status,
+            timestampField: timestampField
+        )
         
-        private func buildRequestData(
-            documentID: String,
-            customerID: String,
-            customerProfile: [String: Any],
-            status: String,
-            timestampField: String
-        ) -> [String: Any] {
-            let profileName = (customerProfile["name"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            let customerName = profileName.isEmpty ? user.email : profileName
+        do {
+            try await db.collection(collection).document(documentID).setData(requestData, merge: true)
             
-            var data: [String: Any] = [
-                "id": documentID,
-                "title": title,
-                "description": description,
-                "customerID": customerID,
-                "customerId": customerID,
-                "customerName": customerName,
-                "customerEmail": customerProfile["email"] as? String ?? user.email,
-                "customerCity": customerProfile["city"] as? String ?? "",
-                "customerAddress": customerProfile["address"] as? String ?? "",
-                "category": selectedCategories.first ?? "",
-                "categories": Array(selectedCategories),
-                "styles": Array(selectedStyles),
-                "dietary": Array(selectedDietary),
-                "tier": selectedTier ?? 0,
-                "cakeSize": cakeSize,
-                "sugarLevel": sugarLevel,
-                "flavours": Array(selectedFlavours),
-                "fillingFlavour": fillingFlavour,
-                "specialInstructions": specialInstructions,
-                "budgetMin": budgetMin,
-                "budgetMax": budgetMax,
-                "expectedDate": expectedDate.timeIntervalSince1970,
-                "expectedTime": expectedTime.timeIntervalSince1970,
-                "referenceImages": referenceImageURLs,
-                "bidCount": 0,
-                "status": status,
-                timestampField: Date().timeIntervalSince1970
-            ]
-            
-            if let artisan = selectedArtisan {
-                data["targetArtisanId"] = artisan.id
-                data["targetArtisanName"] = artisan.name
-                data["targetArtisanAddress"] = artisan.location
-                data["targetArtisanRating"] = artisan.rating
-                data["isDirectRequest"] = true
+            // Trigger notification IMMEDIATELY after save (before dismiss)
+            if triggerNotification {
+                let title = requestTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Untitled Request" : requestTitle
+                print("🚀 [CreateCakeRequestView] Publishing request: '\(title)' for user: \(customerID)")
+                notificationManager.notifyRequestPosted(requestTitle: title, userID: customerID)
+                print("✅ [CreateCakeRequestView] Notification triggered successfully")
             }
             
-            if timestampField != "createdAt", data["createdAt"] == nil {
-                data["createdAt"] = Date().timeIntervalSince1970
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                dismiss()
             }
-            
-            return data
+        } catch {
+            print("Error saving request to \(collection): \(error)")
+        }
+    }
+    
+    private func buildRequestData(
+        documentID: String,
+        customerID: String,
+        customerProfile: [String: Any],
+        status: String,
+        timestampField: String
+    ) -> [String: Any] {
+        let profileName = (customerProfile["name"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let customerName = profileName.isEmpty ? user.email : profileName
+        
+        var data: [String: Any] = [
+            "id": documentID,
+            "title": title,
+            "description": description,
+            "customerID": customerID,
+            "customerId": customerID,
+            "customerName": customerName,
+            "customerEmail": customerProfile["email"] as? String ?? user.email,
+            "customerCity": customerProfile["city"] as? String ?? "",
+            "customerAddress": customerProfile["address"] as? String ?? "",
+            "category": selectedCategories.first ?? "",
+            "categories": Array(selectedCategories),
+            "styles": Array(selectedStyles),
+            "dietary": Array(selectedDietary),
+            "tier": selectedTier ?? 0,
+            "cakeSize": cakeSize,
+            "sugarLevel": sugarLevel,
+            "flavours": Array(selectedFlavours),
+            "fillingFlavour": fillingFlavour,
+            "specialInstructions": specialInstructions,
+            "budgetMin": budgetMin,
+            "budgetMax": budgetMax,
+            "expectedDate": expectedDate.timeIntervalSince1970,
+            "expectedTime": expectedTime.timeIntervalSince1970,
+            "referenceImages": referenceImagesBase64,
+            "bidCount": 0,
+            "status": status,
+            timestampField: Date().timeIntervalSince1970
+        ]
+        
+        if let artisan = selectedArtisan {
+            data["targetArtisanId"] = artisan.id
+            data["targetArtisanName"] = artisan.name
+            data["targetArtisanAddress"] = artisan.location
+            data["targetArtisanRating"] = artisan.rating
+            data["isDirectRequest"] = true
         }
         
-        // MARK: - Helpers
-        private func sectionHeader(_ text: String) -> some View {
-            Text(text)
-                .font(.urbanistBold(15))
-                .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
-                .padding(.horizontal, 16)
-                .padding(.bottom, 10)
-                .padding(.top, 4)
+        if timestampField != "createdAt", data["createdAt"] == nil {
+            data["createdAt"] = Date().timeIntervalSince1970
         }
         
-        private func specDivider() -> some View {
-            Divider()
-                .background(Color(red: 0.92, green: 0.92, blue: 0.92))
+        return data
+    }
+    
+    // MARK: - Helpers
+    private func sectionHeader(_ text: String) -> some View {
+        Text(text)
+            .font(.urbanistBold(15))
+            .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
+            .padding(.horizontal, 16)
+            .padding(.bottom, 10)
+            .padding(.top, 4)
+    }
+    
+    private func specDivider() -> some View {
+        Divider()
+            .background(Color(red: 0.92, green: 0.92, blue: 0.92))
+    }
+    
+    @ViewBuilder
+    private func fieldBlock<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.urbanistSemiBold(13))
+                .foregroundColor(.cakeBrown)
+            content()
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color(red: 0.85, green: 0.85, blue: 0.85), lineWidth: 1)
+                )
         }
-        
-        @ViewBuilder
-        private func fieldBlock<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(label)
-                    .font(.urbanistSemiBold(13))
-                    .foregroundColor(.cakeBrown)
-                content()
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color(red: 0.85, green: 0.85, blue: 0.85), lineWidth: 1)
-                    )
-            }
-        }
+    }
     
 }
 
@@ -996,13 +1046,12 @@ struct ImagePickerButton: View {
         )
     }
 }
-    
-    
-    struct CreateCakeRequestView_Previews: PreviewProvider {
-        static var previews: some View {
-            NavigationStack {
-                CreateCakeRequestView(user: .mock)
-            }
+
+
+struct CreateCakeRequestView_Previews: PreviewProvider {
+    static var previews: some View {
+        NavigationStack {
+            CreateCakeRequestView(user: .mock)
         }
     }
-
+}

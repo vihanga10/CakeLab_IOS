@@ -453,14 +453,25 @@ struct MatchingRequestCard: View {
         VStack(spacing: 0) {
             // ── Top Section ──────────────────────────────
             HStack(alignment: .top, spacing: 12) {
-                // Category icon
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(chipColor.opacity(0.8))
-                        .frame(width: 48, height: 48)
-                    Image(systemName: request.category.icon)
-                        .font(.system(size: 22))
-                        .foregroundColor(Color(red: 0.32, green: 0.23, blue: 0.16))
+                // Reference image or Category icon
+                if !request.referenceImages.isEmpty,
+                   let imageData = Data(base64Encoded: request.referenceImages[0]),
+                   let uiImage = UIImage(data: imageData) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 80, height: 80)
+                        .cornerRadius(10)
+                        .clipped()
+                } else {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(chipColor.opacity(0.8))
+                            .frame(width: 80, height: 80)
+                        Image(systemName: request.category.icon)
+                            .font(.system(size: 28))
+                            .foregroundColor(Color(red: 0.32, green: 0.23, blue: 0.16))
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 5) {
@@ -556,7 +567,7 @@ struct MatchingRequestCard: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 9)
         }
-        .frame(height: 155)
+        .frame(height: 170)
         .background(Color(red: 0.98, green: 0.98, blue: 0.98))
         .cornerRadius(14)
         .shadow(color: Color.black.opacity(0.09), radius: 10, x: 0, y: 4)
@@ -692,6 +703,7 @@ struct CakeRequest: Identifiable {
     let flavours: [String]
     let customerName: String
     let postedTime: String
+    let referenceImages: [String]
     var isMatching: Bool = true
     
     init(
@@ -709,6 +721,7 @@ struct CakeRequest: Identifiable {
         flavours: [String],
         customerName: String,
         postedTime: String,
+        referenceImages: [String] = [],
         isMatching: Bool = true
     ) {
         self.id = id
@@ -725,6 +738,7 @@ struct CakeRequest: Identifiable {
         self.flavours = flavours
         self.customerName = customerName
         self.postedTime = postedTime
+        self.referenceImages = referenceImages
         self.isMatching = isMatching
     }
 }
