@@ -10,6 +10,9 @@ final class CustomerOrderStatusViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var progressTimestamps: [String: Date] = [:]
     @Published var createdAt: Date?
+    @Published var requestCategory: String?
+    @Published var requestBudgetMin: Double?
+    @Published var requestBudgetMax: Double?
 
     private let db = Firestore.firestore()
     private var listener: ListenerRegistration?
@@ -42,7 +45,32 @@ final class CustomerOrderStatusViewModel: ObservableObject {
             self.order = order
             self.createdAt = Self.parseDate(data["createdAt"])
             self.progressTimestamps = Self.parseProgressTimestamps(data["progressTimestamps"])
+            self.requestCategory = nil
+            self.requestBudgetMin = nil
+            self.requestBudgetMax = nil
             self.isLoading = false
+
+            let directCategory = Self.parseCategory(from: data)
+            let directBudgetMin = Self.parseDouble(data["budgetMin"])
+            let directBudgetMax = Self.parseDouble(data["budgetMax"])
+
+            if !directCategory.isEmpty {
+                self.requestCategory = directCategory
+            }
+            if directBudgetMin > 0 {
+                self.requestBudgetMin = directBudgetMin
+            }
+            if directBudgetMax > 0 {
+                self.requestBudgetMax = directBudgetMax
+            }
+
+            if (directCategory.isEmpty || directBudgetMin <= 0 || directBudgetMax <= 0),
+               let requestDocumentID = data["requestDocumentID"] as? String,
+               !requestDocumentID.isEmpty {
+                Task {
+                    await self.loadRequestDetails(requestDocumentID: requestDocumentID)
+                }
+            }
         }
     }
 
@@ -67,6 +95,51 @@ final class CustomerOrderStatusViewModel: ObservableObject {
         }
         return result
     }
+
+    private func loadRequestDetails(requestDocumentID: String) async {
+        do {
+            let snapshot = try await db.collection("cakeRequests").document(requestDocumentID).getDocument()
+            guard let data = snapshot.data() else { return }
+
+            let category = Self.parseCategory(from: data)
+            let budgetMin = Self.parseDouble(data["budgetMin"])
+            let budgetMax = Self.parseDouble(data["budgetMax"])
+
+            if !category.isEmpty {
+                requestCategory = category
+            }
+            if budgetMin > 0 {
+                requestBudgetMin = budgetMin
+            }
+            if budgetMax > 0 {
+                requestBudgetMax = budgetMax
+            }
+        } catch {
+            print("Error loading linked cake request: \(error.localizedDescription)")
+        }
+    }
+
+    private static func parseCategory(from data: [String: Any]) -> String {
+        if let category = data["category"] as? String,
+           !category.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return category
+        }
+
+        if let categories = data["categories"] as? [String],
+           let first = categories.first,
+           !first.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return first
+        }
+
+        return ""
+    }
+
+    private static func parseDouble(_ raw: Any?) -> Double {
+        if let value = raw as? Double { return value }
+        if let value = raw as? Int { return Double(value) }
+        if let value = raw as? NSNumber { return value.doubleValue }
+        return 0
+    }
 }
 
 struct CustomerOrderStatusView: View {
@@ -74,7 +147,9 @@ struct CustomerOrderStatusView: View {
     let fallbackOrder: CustomerOrder
 
     @StateObject private var viewModel = CustomerOrderStatusViewModel()
+    @Environment(\.dismiss) private var dismiss
     @State private var calendarAlert: CalendarAlert?
+    @State private var showReviewModal = false
 
     private let steps: [(step: Int, statusKey: String, title: String)] = [
         (1, "confirmed", "Confirmed"),
@@ -101,54 +176,80 @@ struct CustomerOrderStatusView: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.97, green: 0.97, blue: 0.97).ignoresSafeArea()
+            Color.white.ignoresSafeArea()
 
-            if viewModel.isLoading {
-                ProgressView("Loading status...")
-                    .tint(.cakeBrown)
-            } else if let error = viewModel.errorMessage {
-                VStack(spacing: 10) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 34))
-                        .foregroundColor(.orange)
-                    Text(error)
-                        .font(.urbanistRegular(14))
-                        .foregroundColor(.cakeGrey)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
-                }
-            } else {
-                let liveOrder = viewModel.order
-                let statusText = liveOrder?.statusLabel ?? fallbackOrder.status
-                let statusColor = liveOrder?.statusColor ?? fallbackOrder.statusColor
-                let currentStep = max(1, min(5, liveOrder?.currentStep ?? fallbackOrder.currentStep))
-                let deliveryDateText = liveOrder?.formattedDeliveryDate ?? fallbackOrder.deliveryDate
+            VStack(spacing: 0) {
+                headerBar
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 16) {
-                        headerCard(
-                            cakeName: liveOrder?.cakeName ?? fallbackOrder.cakeName,
-                            statusText: statusText,
-                            statusColor: statusColor,
-                            deliveryDateText: deliveryDateText
-                        )
-
-                        statusTimelineCard(currentStep: currentStep, deliveryDateText: deliveryDateText)
-
-                        bakerInfoCard(
-                            name: liveOrder?.artisanName ?? fallbackOrder.bakerName,
-                            rating: liveOrder?.artisanRating ?? fallbackOrder.bakerRating,
-                            address: liveOrder?.artisanAddress ?? fallbackOrder.bakerAddress
-                        )
+                if viewModel.isLoading {
+                    ProgressView("Loading status...")
+                        .tint(.cakeBrown)
+                        .frame(maxHeight: .infinity)
+                } else if let error = viewModel.errorMessage {
+                    VStack(spacing: 10) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 34))
+                            .foregroundColor(.orange)
+                        Text(error)
+                            .font(.urbanistRegular(14))
+                            .foregroundColor(.cakeGrey)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 24)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 14)
-                    .padding(.bottom, 30)
+                    .frame(maxHeight: .infinity)
+                } else {
+                    let liveOrder = viewModel.order
+                    let cakeName = liveOrder?.cakeName ?? fallbackOrder.cakeName
+                    let statusText = liveOrder?.statusLabel ?? fallbackOrder.status
+                    let statusColor = liveOrder?.statusColor ?? fallbackOrder.statusColor
+                    let currentStep = max(1, min(5, liveOrder?.currentStep ?? fallbackOrder.currentStep))
+                    let deliveryDateText = liveOrder?.formattedDeliveryDate ?? fallbackOrder.deliveryDate
+                    let category = resolvedOrderCategory(liveOrder)
+                    let budgetMin = resolvedBudgetMin(liveOrder)
+                    let budgetMax = resolvedBudgetMax(liveOrder)
+
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 16) {
+                            // Order Details (Date, Budget, Category)
+                            orderDetailsCard(
+                                deliveryDate: deliveryDateText,
+                                budgetMin: budgetMin,
+                                budgetMax: budgetMax,
+                                category: category,
+                                cakeName: cakeName,
+                                statusText: statusText,
+                                statusColor: statusColor
+                            )
+
+                            // Status Timeline
+                            statusTimelineCard(currentStep: currentStep, deliveryDateText: deliveryDateText)
+
+                            // Baker Info
+                            bakerInfoCard(
+                                name: liveOrder?.artisanName ?? fallbackOrder.bakerName,
+                                rating: liveOrder?.artisanRating ?? fallbackOrder.bakerRating,
+                                address: liveOrder?.artisanAddress ?? fallbackOrder.bakerAddress,
+                                artisanId: liveOrder?.artisanId ?? "",
+                                onReviewTapped: { showReviewModal = true }
+                            )
+                        }
+                        .padding(.horizontal, 15)
+                        .padding(.top, 14)
+                        .padding(.bottom, 30)
+                    }
                 }
             }
         }
-        .navigationTitle("Order Status")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .sheet(isPresented: $showReviewModal) {
+            ReviewModalView(
+                isPresented: $showReviewModal,
+                bakerName: viewModel.order?.artisanName ?? fallbackOrder.bakerName,
+                orderID: orderID,
+                artisanId: viewModel.order?.artisanId ?? "",
+                customerId: viewModel.order?.customerId ?? ""
+            )
+        }
         .task {
             viewModel.startListening(orderID: orderID)
         }
@@ -177,61 +278,160 @@ struct CustomerOrderStatusView: View {
         }
     }
 
-    private func headerCard(cakeName: String, statusText: String, statusColor: Color, deliveryDateText: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top, spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
-                        .frame(width: 84, height: 84)
-                    Image(systemName: "birthday.cake.fill")
-                        .font(.system(size: 30))
-                        .foregroundColor(.cakeBrown.opacity(0.6))
-                }
-
-                VStack(alignment: .leading, spacing: 7) {
-                    Text("Order ID: \(orderID.uppercased())")
-                        .font(.urbanistSemiBold(14))
-                        .foregroundColor(Color(red: 0.18, green: 0.18, blue: 0.18))
-                    Text(cakeName)
-                        .font(.urbanistBold(18))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                        .lineLimit(2)
-
-                    HStack(spacing: 12) {
-                        HStack(spacing: 5) {
-                            Image(systemName: "person.fill")
-                                .font(.system(size: 11))
-                            Text("You")
-                        }
-                        .font(.urbanistRegular(12))
-                        .foregroundColor(.cakeGrey)
-
-                        HStack(spacing: 5) {
-                            Image(systemName: "calendar")
-                                .font(.system(size: 11))
-                            Text(deliveryDateText)
-                        }
-                        .font(.urbanistRegular(12))
-                        .foregroundColor(.cakeGrey)
-                    }
-                }
-
-                Spacer()
-
-                Text(statusText)
-                    .font(.urbanistSemiBold(12))
-                    .foregroundColor(statusColor)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(statusColor.opacity(0.12))
-                    .cornerRadius(10)
+    private var headerBar: some View {
+        HStack {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.cakeBrown)
             }
+            Spacer()
+            Text("Order Status")
+                .font(.urbanistBold(18))
+                .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
+            Spacer()
+            Color.white.frame(width: 24)
         }
-        .padding(16)
-        .background(surface)
-        .cornerRadius(18)
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .padding(.horizontal, 20)
+        .frame(height: 56)
+        .background(Color.white)
+    }
+
+    private func orderDetailsCard(
+        deliveryDate: String,
+        budgetMin: Double,
+        budgetMax: Double,
+        category: String,
+        cakeName: String,
+        statusText: String,
+        statusColor: Color
+    ) -> some View {
+        let referenceImages = viewModel.order?.referenceImages ?? fallbackOrder.referenceImages
+        let remoteImageURL = viewModel.order?.imageURL
+        let displayCategory = resolvedCategory(category)
+
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 12) {
+                cakeThumbnail(
+                    referenceImages: referenceImages,
+                    imageURLString: remoteImageURL,
+                    fallbackImageName: fallbackOrder.imageName
+                )
+                .padding(.top, 4)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .center, spacing: 10) {
+                        Text("Order ID: \(orderID.uppercased())")
+                            .font(.urbanistBold(12))
+                            .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
+                            .lineLimit(2)
+
+                        Spacer(minLength: 6)
+
+                        Text(statusText)
+                            .font(.urbanistMedium(12))
+                            .foregroundColor(statusColor)
+                            .padding(.horizontal, 18)
+                            .frame(height: 25)
+                            .background(statusColor.opacity(0.18))
+                            .clipShape(Capsule())
+                    }
+                    .padding(.top, 4)
+
+                    Text(cakeName)
+                        .font(.urbanistMedium(15))
+                        .foregroundColor(Color(red: 0.11, green: 0.11, blue: 0.11))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 14)
+
+            Spacer(minLength: 2)
+
+            HStack(alignment: .center, spacing: 0) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 13, weight: .medium))
+                        Text("Date")
+                            .font(.urbanistRegular(11))
+                    }
+                    .foregroundColor(.cakeGrey)
+
+                    Text(formattedHeaderDate(deliveryDate))
+                        .font(.urbanistMedium(11))
+                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(.top, 2)
+                .padding(.bottom, 4)
+
+                Rectangle()
+                    .fill(Color(red: 0.9, green: 0.9, blue: 0.9))
+                    .frame(width: 1, height: 58)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "banknote")
+                            .font(.system(size: 13, weight: .medium))
+                        Text("Budget")
+                            .font(.urbanistRegular(11))
+                    }
+                    .foregroundColor(.cakeGrey)
+
+                    Text("Rs \(Int(budgetMin).formatted()) - \(Int(budgetMax).formatted())")
+                        .font(.urbanistMedium(10.5))
+                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(.top, 2)
+                .padding(.bottom, 4)
+
+                Rectangle()
+                    .fill(Color(red: 0.9, green: 0.9, blue: 0.9))
+                    .frame(width: 1, height: 58)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "tag")
+                            .font(.system(size: 13, weight: .medium))
+                        Text("Category")
+                            .font(.urbanistRegular(11))
+                    }
+                    .foregroundColor(.cakeGrey)
+
+                    Text(displayCategory)
+                        .font(.urbanistMedium(10.8))
+                        .foregroundColor(categoryTextColor(for: displayCategory))
+                        .frame(minWidth: 100, minHeight: 25)
+                        .padding(.horizontal, 12)
+                        .background(categoryBackgroundColor(for: displayCategory))
+                        .clipShape(Capsule())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(.top, 2)
+                .padding(.bottom, 4)
+            }
+            .frame(height: 58, alignment: .top)
+            .padding(.horizontal, 9)
+            .padding(.bottom, 10)
+        }
+        .frame(width: 363, height: 156)
+        .background(Color.white)
+        .cornerRadius(24)
+        .shadow(color: Color.black.opacity(0.07), radius: 12, x: 0, y: 4)
+        .overlay(
+            RoundedRectangle(cornerRadius: 24)
+                .stroke(Color.black.opacity(0.04), lineWidth: 1)
+        )
+        .frame(maxWidth: .infinity)
     }
 
     private func statusTimelineCard(currentStep: Int, deliveryDateText: String) -> some View {
@@ -303,28 +503,35 @@ struct CustomerOrderStatusView: View {
                 }
             }
 
-            HStack(spacing: 24) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Expected Date")
-                        .font(.urbanistSemiBold(12))
-                        .foregroundColor(accent)
-                    Text(deliveryDateText)
-                        .font(.urbanistMedium(13))
-                        .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
-                }
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top, spacing: 0) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Expected Date")
+                            .font(.urbanistSemiBold(12))
+                            .foregroundColor(accent)
+                        Text(deliveryDateText)
+                            .font(.urbanistBold(14))
+                            .foregroundColor(Color(red: 0.08, green: 0.08, blue: 0.08))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Expected Time")
-                        .font(.urbanistSemiBold(12))
-                        .foregroundColor(accent)
-                    Text(expectedTimeText())
-                        .font(.urbanistMedium(13))
-                        .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
-                }
+                    Rectangle()
+                        .fill(Color(red: 0.80, green: 0.80, blue: 0.80))
+                        .frame(width: 1, height: 38)
+                        .padding(.horizontal, 12)
 
-                Spacer()
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Expected Time")
+                            .font(.urbanistSemiBold(12))
+                            .foregroundColor(accent)
+                        Text(expectedTimeText().lowercased())
+                            .font(.urbanistBold(14))
+                            .foregroundColor(Color(red: 0.08, green: 0.08, blue: 0.08))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
             }
-            .padding(.top, 10)
+            .padding(.top, 14)
 
             Button {
                 Task {
@@ -351,7 +558,7 @@ struct CustomerOrderStatusView: View {
         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 3)
     }
 
-    private func bakerInfoCard(name: String, rating: String, address: String) -> some View {
+    private func bakerInfoCard(name: String, rating: String, address: String, artisanId: String, onReviewTapped: @escaping () -> Void) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Baker Details")
                 .font(.urbanistBold(16))
@@ -394,7 +601,7 @@ struct CustomerOrderStatusView: View {
             }
 
             Button {
-                // Review flow can be wired to Firestore reviews collection.
+                onReviewTapped()
             } label: {
                 Text("Write a Review")
                     .font(.urbanistBold(15))
@@ -410,6 +617,196 @@ struct CustomerOrderStatusView: View {
         .background(surface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+    }
+
+    @ViewBuilder
+    private func cakeThumbnail(referenceImages: [String], imageURLString: String?, fallbackImageName: String) -> some View {
+        let size: CGFloat = 80
+
+        Group {
+            if let firstReferenceImage = referenceImages.first,
+               let imageData = Data(base64Encoded: firstReferenceImage),
+               let uiImage = UIImage(data: imageData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+            } else if let imageURLString, !imageURLString.isEmpty, let imageURL = URL(string: imageURLString) {
+                AsyncImage(url: imageURL) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    default:
+                        thumbnailPlaceholder
+                    }
+                }
+            } else if !fallbackImageName.isEmpty {
+                Image(fallbackImageName)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                thumbnailPlaceholder
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: Color.black.opacity(0.10), radius: 8, x: 0, y: 4)
+    }
+
+    private var thumbnailPlaceholder: some View {
+        RoundedRectangle(cornerRadius: 16)
+            .fill(Color(red: 0.93, green: 0.90, blue: 0.87))
+            .overlay(
+                Image(systemName: "photo.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(.cakeBrown.opacity(0.35))
+            )
+    }
+    /*
+    private func truncatedCakeName(_ name: String) -> String {
+        let normalizedName = name
+            .replacingOccurrences(of: "\n", with: " ")
+            .split(whereSeparator: \.isWhitespace)
+
+        guard normalizedName.count > 5 else {
+            return normalizedName.joined(separator: " ")
+        }
+
+        return normalizedName.prefix(5).joined(separator: " ") + "..."
+    } */
+
+    private func resolvedCategory(_ category: String) -> String {
+        let trimmed = category.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "No category" : trimmed
+    }
+
+    private func resolvedOrderCategory(_ liveOrder: CakeOrder?) -> String {
+        let candidates = [
+            liveOrder?.category,
+            viewModel.requestCategory,
+            fallbackOrder.category
+        ]
+
+        for candidate in candidates {
+            let trimmed = candidate?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !trimmed.isEmpty {
+                return trimmed
+            }
+        }
+
+        return "No category"
+    }
+
+    private func resolvedBudgetMin(_ liveOrder: CakeOrder?) -> Double {
+        let liveValue = liveOrder?.budgetMin ?? 0
+        if liveValue > 0 { return liveValue }
+        if let requestValue = viewModel.requestBudgetMin, requestValue > 0 { return requestValue }
+        return fallbackOrder.budgetMin
+    }
+
+    private func resolvedBudgetMax(_ liveOrder: CakeOrder?) -> Double {
+        let liveValue = liveOrder?.budgetMax ?? 0
+        if liveValue > 0 { return liveValue }
+        if let requestValue = viewModel.requestBudgetMax, requestValue > 0 { return requestValue }
+        return fallbackOrder.budgetMax
+    }
+
+    private func formattedHeaderDate(_ rawDate: String) -> String {
+        guard let parsedDate = parseHeaderDate(rawDate) else {
+            return rawDate
+        }
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd MMM yyyy"
+        return formatter.string(from: parsedDate)
+    }
+
+    private func parseHeaderDate(_ rawDate: String) -> Date? {
+        let patterns = ["dd/MM/yyyy", "dd/ MM/ yyyy", "d/M/yyyy", "dd MMM yyyy"]
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+
+        for pattern in patterns {
+            formatter.dateFormat = pattern
+            if let parsed = formatter.date(from: rawDate.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                return parsed
+            }
+        }
+
+        return nil
+    }
+
+    private func categoryBackgroundColor(for category: String) -> Color {
+        let categoryLower = category.lowercased()
+        switch categoryLower {
+        case let cat where cat.contains("wedding"):
+            return Color(red: 1.0, green: 0.95, blue: 0.97)
+        case let cat where cat.contains("birthday"):
+            return Color(red: 0.99, green: 0.95, blue: 0.90)
+        case let cat where cat.contains("anniversary"):
+            return Color(red: 0.95, green: 0.99, blue: 0.95)
+        case let cat where cat.contains("baby"):
+            return Color(red: 0.98, green: 0.96, blue: 1.0)
+        case let cat where cat.contains("cupcake"):
+            return Color(red: 1.0, green: 0.98, blue: 0.94)
+        case let cat where cat.contains("buttercream"):
+            return Color(red: 0.99, green: 1.0, blue: 0.95)
+        case let cat where cat.contains("corporate"):
+            return Color(red: 0.95, green: 0.98, blue: 1.0)
+        case let cat where cat.contains("engagement"):
+            return Color(red: 1.0, green: 0.96, blue: 0.92)
+        case let cat where cat.contains("graduation"):
+            return Color(red: 0.94, green: 0.97, blue: 1.0)
+        case let cat where cat.contains("baptism"):
+            return Color(red: 0.96, green: 0.99, blue: 1.0)
+        case let cat where cat.contains("retirement"):
+            return Color(red: 1.0, green: 0.96, blue: 0.94)
+        case let cat where cat.contains("farewell"):
+            return Color(red: 0.98, green: 0.97, blue: 1.0)
+        case let cat where cat.contains("vegan"):
+            return Color(red: 0.96, green: 1.0, blue: 0.96)
+        case let cat where cat.contains("sculpted"):
+            return Color(red: 0.98, green: 0.95, blue: 0.99)
+        default:
+            return Color(red: 0.96, green: 0.96, blue: 0.96)
+        }
+    }
+
+    private func categoryTextColor(for category: String) -> Color {
+        let categoryLower = category.lowercased()
+        switch categoryLower {
+        case let cat where cat.contains("wedding"):
+            return Color(red: 0.8, green: 0.3, blue: 0.6)
+        case let cat where cat.contains("birthday"):
+            return Color(red: 0.85, green: 0.5, blue: 0.25)
+        case let cat where cat.contains("anniversary"):
+            return Color(red: 0.2, green: 0.6, blue: 0.4)
+        case let cat where cat.contains("baby"):
+            return Color(red: 0.6, green: 0.3, blue: 0.8)
+        case let cat where cat.contains("cupcake"):
+            return Color(red: 0.8, green: 0.5, blue: 0.2)
+        case let cat where cat.contains("buttercream"):
+            return Color(red: 0.7, green: 0.6, blue: 0.1)
+        case let cat where cat.contains("corporate"):
+            return Color(red: 0.2, green: 0.5, blue: 0.8)
+        case let cat where cat.contains("engagement"):
+            return Color(red: 0.85, green: 0.35, blue: 0.3)
+        case let cat where cat.contains("graduation"):
+            return Color(red: 0.3, green: 0.5, blue: 0.7)
+        case let cat where cat.contains("baptism"):
+            return Color(red: 0.2, green: 0.6, blue: 0.7)
+        case let cat where cat.contains("retirement"):
+            return Color(red: 0.8, green: 0.4, blue: 0.3)
+        case let cat where cat.contains("farewell"):
+            return Color(red: 0.5, green: 0.3, blue: 0.7)
+        case let cat where cat.contains("vegan"):
+            return Color(red: 0.2, green: 0.7, blue: 0.2)
+        case let cat where cat.contains("sculpted"):
+            return Color(red: 0.7, green: 0.2, blue: 0.7)
+        default:
+            return Color(red: 0.4, green: 0.4, blue: 0.4)
+        }
     }
 
     private func stepDateText(step: Int, statusKey: String) -> String {
@@ -550,7 +947,10 @@ private enum CalendarAlert: Identifiable {
                 currentStep: 3,
                 bakerName: "Cake Haven by Dinithi",
                 bakerRating: "5.0 (41 reviews)",
-                bakerAddress: "Colombo 02"
+                bakerAddress: "Colombo 02",
+                category: "Birthday Cake",
+                budgetMin: 8000,
+                budgetMax: 12000
             )
         )
     }

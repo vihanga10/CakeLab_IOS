@@ -14,8 +14,12 @@ struct CustomerOrder: Identifiable {
     let bakerRating: String
     let bakerAddress: String
     let imageName: String
+    let referenceImages: [String]
+    let category: String
+    let budgetMin: Double
+    let budgetMax: Double
 
-    init(id: String, cakeName: String, status: String, statusColor: Color, deliveryDate: String, currentStep: Int, bakerName: String, bakerRating: String, bakerAddress: String, imageName: String = "") {
+    init(id: String, cakeName: String, status: String, statusColor: Color, deliveryDate: String, currentStep: Int, bakerName: String, bakerRating: String, bakerAddress: String, imageName: String = "", referenceImages: [String] = [], category: String = "", budgetMin: Double = 0, budgetMax: Double = 0) {
         self.id = id
         self.cakeName = cakeName
         self.status = status
@@ -26,6 +30,10 @@ struct CustomerOrder: Identifiable {
         self.bakerRating = bakerRating
         self.bakerAddress = bakerAddress
         self.imageName = imageName
+        self.referenceImages = referenceImages
+        self.category = category
+        self.budgetMin = budgetMin
+        self.budgetMax = budgetMax
     }
 
     init(from order: CakeOrder) {
@@ -39,6 +47,10 @@ struct CustomerOrder: Identifiable {
         self.bakerRating = order.artisanRating
         self.bakerAddress = order.artisanAddress
         self.imageName = ""
+        self.referenceImages = order.referenceImages
+        self.category = order.category
+        self.budgetMin = order.budgetMin
+        self.budgetMax = order.budgetMax
     }
 }
 
@@ -98,7 +110,7 @@ struct CustomerOrdersView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(red: 0.97, green: 0.97, blue: 0.97).ignoresSafeArea()
+                Color.white.ignoresSafeArea()
 
                 VStack(spacing: 0) {
 
@@ -124,25 +136,18 @@ struct CustomerOrdersView: View {
                             emptyState(message: "No active orders")
                         } else {
                             ScrollView(showsIndicators: false) {
-                                VStack(spacing: 0) {
-                                    ForEach(Array(viewModel.activeOrders.enumerated()), id: \.element.id) { idx, order in
+                                VStack(spacing: 16) {
+                                    ForEach(viewModel.activeOrders, id: \.id) { order in
                                         NavigationLink {
                                             CustomerOrderStatusView(orderID: order.id, fallbackOrder: order)
                                         } label: {
                                             OrderCard(order: order, stepLabels: stepLabels)
                                         }
                                         .buttonStyle(.plain)
-                                        if idx < viewModel.activeOrders.count - 1 {
-                                            Divider()
-                                                .padding(.horizontal, 16)
-                                        }
                                     }
                                 }
-                                .background(Color.white)
-                                .cornerRadius(14)
-                                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
                                 .padding(.horizontal, 16)
-                                .padding(.bottom, 20)
+                                .padding(.vertical, 16)
                             }
                         }
                     } else {
@@ -150,20 +155,13 @@ struct CustomerOrdersView: View {
                             emptyState(message: "No completed orders yet")
                         } else {
                             ScrollView(showsIndicators: false) {
-                                VStack(spacing: 0) {
-                                    ForEach(Array(viewModel.completedOrders.enumerated()), id: \.element.id) { idx, order in
+                                VStack(spacing: 16) {
+                                    ForEach(viewModel.completedOrders, id: \.id) { order in
                                         OrderCard(order: order, stepLabels: stepLabels)
-                                        if idx < viewModel.completedOrders.count - 1 {
-                                            Divider()
-                                                .padding(.horizontal, 16)
-                                        }
                                     }
                                 }
-                                .background(Color.white)
-                                .cornerRadius(14)
-                                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
                                 .padding(.horizontal, 16)
-                                .padding(.bottom, 20)
+                                .padding(.vertical, 16)
                             }
                         }
                     }
@@ -226,75 +224,91 @@ struct OrderCard: View {
             // ── Order Row ──────────────────────────────────────────────
             HStack(alignment: .top, spacing: 12) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 10)
+                    RoundedRectangle(cornerRadius: 12)
                         .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
                         .frame(width: 80, height: 80)
-                    if UIImage(named: order.imageName) != nil {
+                    
+                    if !order.referenceImages.isEmpty,
+                       let imageData = Data(base64Encoded: order.referenceImages[0]),
+                       let uiImage = UIImage(data: imageData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 80, height: 80)
+                            .clipped()
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    } else if UIImage(named: order.imageName) != nil {
                         Image(order.imageName)
                             .resizable()
                             .scaledToFill()
                             .frame(width: 80, height: 80)
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                     } else {
                         Image(systemName: "birthday.cake.fill")
-                            .font(.system(size: 28))
+                            .font(.system(size: 32))
                             .foregroundColor(.cakeBrown.opacity(0.4))
                     }
                 }
+                .frame(width: 80, height: 80)
 
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 0) {
                     Text(order.cakeName)
-                        .font(.urbanistBold(13))
+                        .font(.urbanistBold(15))
                         .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
                         .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
 
-                    HStack(spacing: 8) {
+                    HStack(alignment: .top, spacing: 10) {
                         statusBadge
-                        Spacer()
+
+                        Spacer(minLength: 0)
+
                         VStack(alignment: .trailing, spacing: 2) {
                             Text("Delivery Date:")
-                                .font(.urbanistRegular(10))
+                                .font(.urbanistRegular(11))
                                 .foregroundColor(.cakeGrey)
                             Text(order.deliveryDate)
-                                .font(.urbanistSemiBold(11))
+                                .font(.urbanistSemiBold(12))
                                 .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
                         }
                     }
+                    .padding(.top, 14)
                 }
+                
+                Spacer(minLength: 0)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
-            .padding(.bottom, 14)
+            .padding(.horizontal, 14)
+            .padding(.top, 14)
+            .padding(.bottom, 10)
 
             // ── Progress Tracker ───────────────────────────────────────
             OrderProgressTracker(currentStep: order.currentStep, labels: stepLabels)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+                .padding(.horizontal, 14)
+                .padding(.top, 4)
+                .padding(.bottom, 10)
 
             Divider()
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 18)
 
             // ── Baker Info ─────────────────────────────────────────────
             HStack(spacing: 12) {
                 ZStack {
                     Circle()
                         .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
-                        .frame(width: 46, height: 46)
+                        .frame(width: 48, height: 48)
                     Image(systemName: "person.fill")
-                        .font(.system(size: 20))
+                        .font(.system(size: 22))
                         .foregroundColor(.cakeBrown.opacity(0.5))
                 }
                 VStack(alignment: .leading, spacing: 3) {
                     Text(order.bakerName)
-                        .font(.urbanistBold(13))
+                        .font(.urbanistBold(14))
                         .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
                     HStack(spacing: 3) {
                         Image(systemName: "star.fill")
-                            .font(.system(size: 10))
+                            .font(.system(size: 11))
                             .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.1))
                         Text(order.bakerRating)
-                            .font(.urbanistRegular(11))
+                            .font(.urbanistRegular(12))
                             .foregroundColor(.cakeGrey)
                     }
                     HStack(spacing: 4) {
@@ -304,12 +318,17 @@ struct OrderCard: View {
                         Text(order.bakerAddress)
                             .font(.urbanistRegular(11))
                             .foregroundColor(.cakeGrey)
+                            .lineLimit(1)
                     }
                 }
+                Spacer()
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
         }
+        .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 3)
     }
 
     private var statusBadge: some View {
@@ -330,7 +349,7 @@ struct OrderProgressTracker: View {
     private let totalSteps = 5
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             // Circles + connecting lines
             HStack(spacing: 0) {
                 ForEach(1...totalSteps, id: \.self) { step in
@@ -396,7 +415,6 @@ struct OrderProgressTracker: View {
                   : Color(red: 0.80, green: 0.80, blue: 0.80))
             .frame(height: 2)
             .frame(maxWidth: .infinity)
-            .offset(y: -8) // align with circle centers
     }
 }
 

@@ -33,6 +33,10 @@ struct CakeOrder: Identifiable, Sendable {
     let artisanRating: String
     let artisanAddress: String
     let imageURL: String?
+    let referenceImages: [String]
+    let category: String
+    let budgetMin: Double
+    let budgetMax: Double
 
     // Resolved from status string
     var statusColor: Color {
@@ -63,6 +67,10 @@ struct CakeOrder: Identifiable, Sendable {
         return f.string(from: deliveryDate)
     }
 
+    var budgetText: String {
+        "Rs \(Int(budgetMin).formatted()) - \(Int(budgetMax).formatted())"
+    }
+
     // MARK: - Init from Firestore DocumentSnapshot
     init?(document: DocumentSnapshot) {
         guard
@@ -90,5 +98,9 @@ struct CakeOrder: Identifiable, Sendable {
         self.artisanRating  = artisanRating
         self.artisanAddress = artisanAddress
         self.imageURL       = data["imageURL"] as? String
+        self.referenceImages = data["referenceImages"] as? [String] ?? []
+        self.category       = data["category"] as? String ?? ""
+        self.budgetMin      = data["budgetMin"] as? Double ?? 0
+        self.budgetMax      = data["budgetMax"] as? Double ?? 0
     }
 }

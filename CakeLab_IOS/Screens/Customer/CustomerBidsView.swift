@@ -657,6 +657,10 @@ struct BidsReceivedView: View {
             "bakerID": bid.bakerID,
             "bakerId": bid.bakerID,
             "cakeName": request.title,
+            "category": request.category,
+            "categories": request.category.isEmpty ? [] : [request.category],
+            "budgetMin": request.budgetMin,
+            "budgetMax": request.budgetMax,
             "status": "confirmed",
             "currentStep": 1,
             "deliveryDate": Timestamp(date: finalDeliveryDate),
@@ -666,6 +670,7 @@ struct BidsReceivedView: View {
             "artisanRating": "New baker",
             "artisanAddress": "Address not provided",
             "imageURL": "",
+            "referenceImages": request.referenceImages,
             "createdAt": Timestamp(date: Date()),
             "requestDocumentID": request.id,
             "bidID": bid.id,
@@ -734,7 +739,6 @@ struct BidsReceivedView: View {
             activeSheet = nil
             NotificationCenter.default.post(name: .orderDidChange, object: nil)
             WidgetDataSyncManager.shared.refreshFromCurrentSession()
-            successMessage = "Payment completed. Your order is now active for both customer and baker."
 
             await self.viewModel.loadBids(requestID: request.id, customerID: request.customerID)
         } catch {
@@ -937,7 +941,7 @@ struct PaymentCheckoutView: View {
         } else if !userAddress.isEmpty {
             return userAddress
         }
-        return "No 65/B, Flower Road, Dehiwala"
+        return "-"
     }
 
     var body: some View {
@@ -973,7 +977,7 @@ struct PaymentCheckoutView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 15)
                                 .background(Color.cakeBrown)
-                                .cornerRadius(14)
+                                .clipShape(Capsule())
                         }
                         .disabled(!isValidPayment)
                         .opacity(isValidPayment ? 1 : 0.45)

@@ -97,7 +97,7 @@ struct CustomerHomeView: View {
                         .background(Color(red: 0.94, green: 0.94, blue: 0.94))
                         .clipShape(Capsule())
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
+                        .padding(.bottom, 20) 
                         
                         // MARK: - Dream Cake Request Card
                         VStack(alignment: .leading, spacing: 0) {

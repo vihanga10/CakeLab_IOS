@@ -148,7 +148,7 @@ private struct LanguageButton: View {
 }
 
 // MARK: - TopRoundedRectangle reuse note
-// TopRoundedRectangle is defined in OnboardingPageView.swift (private).
+// TopRoundedRectangle is defined in OnboardingView.swift (private).
 // We redeclare it here for this standalone screen.
 private struct TopRoundedRectangle: Shape {
     let cornerRadius: CGFloat
