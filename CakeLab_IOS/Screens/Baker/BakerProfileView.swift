@@ -2,6 +2,7 @@ import SwiftUI
 import Charts
 import FirebaseFirestore
 import FirebaseAuth
+import UIKit
 
 // MARK: - Baker Profile View (Tab 3 — Portfolio)
 @MainActor
@@ -18,6 +19,12 @@ struct BakerProfileView: View {
     private var completedOrdersText: String { "\(profileData.completedOrders)" }
     private var reviewsText: String { "\(profileData.reviewCount)" }
     private var avgRatingText: String { String(format: "%.1f", profileData.rating) }
+    private var locationText: String {
+        let address = profileData.address.trimmingCharacters(in: .whitespacesAndNewlines)
+        let city = profileData.city.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = [address, city].filter { !$0.isEmpty }
+        return parts.isEmpty ? "No address added" : parts.joined(separator: ", ")
+    }
     private var memberSinceText: String {
         let f = DateFormatter()
         f.dateFormat = "MMMM yyyy"
@@ -28,57 +35,66 @@ struct BakerProfileView: View {
         NavigationStack {
             ZStack {
                 Color.white.ignoresSafeArea()
+                VStack(spacing: 0) {
+                    Text("My Profile")
+                        .font(.urbanistBold(18))
+                        .foregroundColor(Color(hex: "5D3714"))
+                        .padding(.top, 18)
+                        .padding(.bottom, 10)
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 0) {
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 0) {
 
-                        // MARK: Profile Header
-                        profileHeaderSection
-                            .padding(.bottom, 16)
+                            // MARK: Profile Header
+                            profileHeaderSection
+                                .padding(.bottom, 16)
 
-                        // MARK: Stats Row
-                        statsRow
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 20)
+                            // MARK: Stats Row
+                            statsRow
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 20)
 
-                        // MARK: Category Tags
-                        categoryTagsSection
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 20)
+                            // MARK: Category Tags
+                            categoryTagsSection
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 20)
 
-                        // MARK: About / Bio
-                        bioSection
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 20)
+                            // MARK: About / Bio
+                            bioSection
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 20)
 
-                        // MARK: Portfolio Gallery
-                        portfolioSection
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 20)
+                            // MARK: Portfolio Gallery
+                            portfolioSection
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 20)
 
-                        // MARK: Performance Charts
-                        performanceSection
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 20)
+                            // MARK: Performance Charts
+                            performanceSection
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 20)
 
-                        // MARK: Earnings Summary
-                        earningsSection
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 20)
+                            // MARK: Earnings Summary
+                            earningsSection
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 20)
 
-                        // MARK: Profile Menu
-                        profileMenuSection
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 20)
+                            // MARK: Profile Menu
+                            profileMenuSection
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 20)
 
-                        // MARK: Settings
-                        settingsSection
-                            .padding(.horizontal, 20)
-                            .padding(.bottom, 100)
+                            // MARK: Settings
+                            settingsSection
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 100)
+                        }
                     }
                 }
             }
         }
+        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
         .task {
             await loadProfileData()
             await loadMonthlyOrdersData()
@@ -122,7 +138,7 @@ struct BakerProfileView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "mappin.and.ellipse")
                         .font(.system(size: 11, weight: .medium))
-                    Text(profileData.address)
+                    Text(locationText)
                         .font(.urbanistRegular(12))
                         .lineLimit(2)
                 }
@@ -136,7 +152,11 @@ struct BakerProfileView: View {
 
     private var coverImage: some View {
         Group {
-            if let url = URL(string: profileData.coverImageURL) {
+            if let coverImage = decodeBase64Image(profileData.coverImageBase64) {
+                Image(uiImage: coverImage)
+                    .resizable()
+                    .scaledToFill()
+            } else if let url = URL(string: profileData.coverImageURL) {
                 AsyncImage(url: url) { phase in
                     switch phase {
                     case .success(let image): image.resizable().scaledToFill()
@@ -158,7 +178,13 @@ struct BakerProfileView: View {
                 .frame(width: 110, height: 110)
                 .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 3)
 
-            if let url = URL(string: profileData.profileImageURL) {
+            if let profileImage = decodeBase64Image(profileData.profileImageBase64) {
+                Image(uiImage: profileImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 102, height: 102)
+                    .clipShape(Circle())
+            } else if let url = URL(string: profileData.profileImageURL) {
                 AsyncImage(url: url) { phase in
                     switch phase {
                     case .success(let image):
@@ -338,6 +364,7 @@ struct BakerProfileView: View {
             profileData = BakerProfileData(
                 shopName: resolveShopName(artisanData: artisanData),
                 address: resolveAddress(artisanData: artisanData),
+                city: resolveCity(artisanData: artisanData),
                 isOnline: artisanData["isOnline"] as? Bool ?? true,
                 rating: artisanData["rating"] as? Double ?? 0,
                 reviewCount: artisanData["reviewCount"] as? Int ?? 0,
@@ -346,7 +373,9 @@ struct BakerProfileView: View {
                 createdAt: resolveCreatedAt(artisanData: artisanData),
                 specialties: resolveSpecialties(artisanData: artisanData),
                 profileImageURL: resolveProfileImageURL(artisanData: artisanData),
+                profileImageBase64: artisanData["profileImageBase64"] as? String ?? "",
                 coverImageURL: artisanData["coverImageURL"] as? String ?? "",
+                coverImageBase64: artisanData["coverImageBase64"] as? String ?? "",
                 portfolioImages: resolvePortfolioImages(artisanData: artisanData)
             )
         } catch {
@@ -377,8 +406,13 @@ struct BakerProfileView: View {
     }
 
     private func resolveAddress(artisanData: [String: Any]) -> String {
-        let options = [artisanData["location"] as? String, artisanData["address"] as? String, user.address, user.city]
+        let options = [artisanData["location"] as? String, artisanData["address"] as? String, user.address]
         return options.compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }.first(where: { !$0.isEmpty }) ?? "No address added"
+    }
+
+    private func resolveCity(artisanData: [String: Any]) -> String {
+        let options = [artisanData["city"] as? String, user.city]
+        return options.compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }.first(where: { !$0.isEmpty }) ?? ""
     }
 
     private func resolveAbout(artisanData: [String: Any]) -> String {
@@ -413,6 +447,22 @@ struct BakerProfileView: View {
             output.append(item)
         }
         return output
+    }
+
+    private func decodeBase64Image(_ rawBase64: String) -> UIImage? {
+        let trimmed = rawBase64.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        // Supports both plain Base64 and data URL format.
+        let payload: String
+        if let commaIndex = trimmed.firstIndex(of: ",") {
+            payload = String(trimmed[trimmed.index(after: commaIndex)...])
+        } else {
+            payload = trimmed
+        }
+
+        guard let data = Data(base64Encoded: payload) else { return nil }
+        return UIImage(data: data)
     }
 
     private var ratingBreakdown: [RatingData] {
@@ -966,6 +1016,7 @@ struct EarningsData {
 private struct BakerProfileData {
     let shopName: String
     let address: String
+    let city: String
     let isOnline: Bool
     let rating: Double
     let reviewCount: Int
@@ -974,12 +1025,15 @@ private struct BakerProfileData {
     let createdAt: Date
     let specialties: [String]
     let profileImageURL: String
+    let profileImageBase64: String
     let coverImageURL: String
+    let coverImageBase64: String
     let portfolioImages: [String]
 
     static let empty = BakerProfileData(
         shopName: "Baker Shop",
         address: "No address added",
+        city: "",
         isOnline: true,
         rating: 0,
         reviewCount: 0,
@@ -988,7 +1042,9 @@ private struct BakerProfileData {
         createdAt: Date(),
         specialties: ["Custom Cakes"],
         profileImageURL: "",
+        profileImageBase64: "",
         coverImageURL: "",
+        coverImageBase64: "",
         portfolioImages: ["cake.portrait.1", "cake.portrait.2", "cake.portrait.3", "cake.portrait.4", "cake.portrait.5", "cake.portrait.6"]
     )
 }
