@@ -256,9 +256,21 @@ struct CustomerHomeView: View {
                                                     Circle()
                                                         .fill(Color(red: 0.93, green: 0.91, blue: 0.88))
                                                         .frame(width: 82, height: 82)
-                                                    Image(systemName: "birthday.cake.fill")
-                                                        .font(.system(size: 30))
-                                                        .foregroundColor(.cakeBrown.opacity(0.45))
+                                                    
+                                                    // Display reference image or fallback to cake icon
+                                                    if !order.referenceImages.isEmpty,
+                                                       let imageData = Data(base64Encoded: order.referenceImages[0]),
+                                                       let uiImage = UIImage(data: imageData) {
+                                                        Image(uiImage: uiImage)
+                                                            .resizable()
+                                                            .scaledToFill()
+                                                            .frame(width: 74, height: 74)
+                                                            .clipShape(Circle())
+                                                    } else {
+                                                        Image(systemName: "birthday.cake.fill")
+                                                            .font(.system(size: 30))
+                                                            .foregroundColor(.cakeBrown.opacity(0.45))
+                                                    }
                                                 }
                                                 Text("Order No:\n\(order.id.prefix(6))")
                                                     .font(.urbanistRegular(11))

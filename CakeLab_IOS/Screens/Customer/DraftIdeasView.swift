@@ -34,7 +34,7 @@ struct DraftIdeasView: View {
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 14) {
                             ForEach(drafts) { draft in
-                                DraftRequestCard(draft: draft)
+                                DraftRequestCard(user: user, draft: draft)
                             }
                         }
                         .padding(.horizontal, 16)
@@ -50,6 +50,11 @@ struct DraftIdeasView: View {
         }
         .refreshable {
             await fetchDrafts()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("customerRequestDidChange"))) { _ in
+            Task {
+                await fetchDrafts()
+            }
         }
     }
 
@@ -120,29 +125,33 @@ struct DraftIdeasView: View {
 
 // MARK: - Draft Request Card
 private struct DraftRequestCard: View {
+    let user: AppUser
     let draft: CakeRequestRecord
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
+            HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Text(draft.displayTitle)
-                            .font(.urbanistSemiBold(15))
-                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                        Text("Draft")
-                            .font(.urbanistSemiBold(10))
-                            .foregroundColor(Color(red: 0.55, green: 0.45, blue: 0.35))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Color(red: 0.93, green: 0.88, blue: 0.82))
-                            .cornerRadius(8)
-                    }
+                    Text(draft.displayTitle)
+                        .font(.urbanistSemiBold(15))
+                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .lineLimit(2)
                     Text(draft.displayCategory)
-                        .font(.urbanistRegular(12))
-                        .foregroundColor(.cakeGrey)
+                        .font(.urbanistMedium(11))
+                        .foregroundColor(categoryTextColor(for: draft.displayCategory))
+                        .frame(height: 22)
+                        .padding(.horizontal, 10)
+                        .background(categoryBackgroundColor(for: draft.displayCategory))
+                        .clipShape(Capsule())
                 }
                 Spacer()
+                Text("Draft")
+                    .font(.urbanistSemiBold(10))
+                    .foregroundColor(Color(red: 0.55, green: 0.45, blue: 0.35))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color(red: 0.93, green: 0.88, blue: 0.82))
+                    .cornerRadius(8)
             }
 
             VStack(alignment: .leading, spacing: 6) {
@@ -181,21 +190,97 @@ private struct DraftRequestCard: View {
                         .foregroundColor(.cakeGrey)
                 }
                 Spacer()
-                Text("Continue Editing")
-                    .font(.urbanistSemiBold(12))
-                    .foregroundColor(.cakeBrown)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .overlay(
-                        Capsule().stroke(Color.cakeBrown, lineWidth: 1.5)
-                    )
-                    .clipShape(Capsule())
+                NavigationLink(destination: CreateCakeRequestView(user: user, initialDraft: draft)) {
+                    Text("Continue Editing")
+                        .font(.urbanistSemiBold(12))
+                        .foregroundColor(.cakeBrown)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .overlay(
+                            Capsule().stroke(Color.cakeBrown, lineWidth: 1.5)
+                        )
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(16)
         .background(Color.white)
         .cornerRadius(12)
         .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
+    }
+    
+    // MARK: - Category Color Mapping
+    private func categoryBackgroundColor(for category: String) -> Color {
+        let categoryLower = category.lowercased()
+        switch categoryLower {
+        case let cat where cat.contains("wedding"):
+            return Color(red: 1.0, green: 0.95, blue: 0.97) // Pink pastel
+        case let cat where cat.contains("birthday"):
+            return Color(red: 0.99, green: 0.95, blue: 0.90) // Peach pastel
+        case let cat where cat.contains("anniversary"):
+            return Color(red: 0.95, green: 0.99, blue: 0.95) // Mint pastel
+        case let cat where cat.contains("baby"):
+            return Color(red: 0.98, green: 0.96, blue: 1.0) // Lavender pastel
+        case let cat where cat.contains("cupcake"):
+            return Color(red: 1.0, green: 0.98, blue: 0.94) // Cream pastel
+        case let cat where cat.contains("buttercream"):
+            return Color(red: 0.99, green: 1.0, blue: 0.95) // Light yellow pastel
+        case let cat where cat.contains("corporate"):
+            return Color(red: 0.95, green: 0.98, blue: 1.0) // Sky blue pastel
+        case let cat where cat.contains("engagement"):
+            return Color(red: 1.0, green: 0.96, blue: 0.92) // Coral pastel
+        case let cat where cat.contains("graduation"):
+            return Color(red: 0.94, green: 0.97, blue: 1.0) // Light blue pastel
+        case let cat where cat.contains("baptism"):
+            return Color(red: 0.96, green: 0.99, blue: 1.0) // Ice blue pastel
+        case let cat where cat.contains("retirement"):
+            return Color(red: 1.0, green: 0.96, blue: 0.94) // Salmon pastel
+        case let cat where cat.contains("farewell"):
+            return Color(red: 0.98, green: 0.97, blue: 1.0) // Soft purple pastel
+        case let cat where cat.contains("vegan"):
+            return Color(red: 0.96, green: 1.0, blue: 0.96) // Pale green pastel
+        case let cat where cat.contains("sculpted"):
+            return Color(red: 0.98, green: 0.95, blue: 0.99) // Lilac pastel
+        default:
+            return Color(red: 0.96, green: 0.96, blue: 0.96) // Gray pastel
+        }
+    }
+    
+    private func categoryTextColor(for category: String) -> Color {
+        let categoryLower = category.lowercased()
+        switch categoryLower {
+        case let cat where cat.contains("wedding"):
+            return Color(red: 0.8, green: 0.3, blue: 0.6) // Rose
+        case let cat where cat.contains("birthday"):
+            return Color(red: 0.85, green: 0.5, blue: 0.25) // Burnt orange
+        case let cat where cat.contains("anniversary"):
+            return Color(red: 0.2, green: 0.6, blue: 0.4) // Teal
+        case let cat where cat.contains("baby"):
+            return Color(red: 0.6, green: 0.3, blue: 0.8) // Purple
+        case let cat where cat.contains("cupcake"):
+            return Color(red: 0.8, green: 0.5, blue: 0.2) // Orange
+        case let cat where cat.contains("buttercream"):
+            return Color(red: 0.7, green: 0.6, blue: 0.1) // Golden
+        case let cat where cat.contains("corporate"):
+            return Color(red: 0.2, green: 0.5, blue: 0.8) // Blue
+        case let cat where cat.contains("engagement"):
+            return Color(red: 0.85, green: 0.35, blue: 0.3) // Red
+        case let cat where cat.contains("graduation"):
+            return Color(red: 0.3, green: 0.5, blue: 0.7) // Slate blue
+        case let cat where cat.contains("baptism"):
+            return Color(red: 0.2, green: 0.6, blue: 0.7) // Cyan
+        case let cat where cat.contains("retirement"):
+            return Color(red: 0.8, green: 0.4, blue: 0.3) // Terracotta
+        case let cat where cat.contains("farewell"):
+            return Color(red: 0.5, green: 0.3, blue: 0.7) // Plum
+        case let cat where cat.contains("vegan"):
+            return Color(red: 0.2, green: 0.7, blue: 0.2) // Forest green
+        case let cat where cat.contains("sculpted"):
+            return Color(red: 0.7, green: 0.2, blue: 0.7) // Magenta
+        default:
+            return Color(red: 0.4, green: 0.4, blue: 0.4) // Dark gray
+        }
     }
 }
 

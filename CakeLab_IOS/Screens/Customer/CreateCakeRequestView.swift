@@ -8,6 +8,7 @@ import FirebaseStorage
 struct CreateCakeRequestView: View {
     let user: AppUser
     let selectedArtisan: ArtisanProfile?
+    let initialDraft: CakeRequestRecord?
     
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var notificationManager: NotificationManager
@@ -38,14 +39,16 @@ struct CreateCakeRequestView: View {
     @State private var referenceImagesBase64: [String] = []
     @State private var actionInProgress = false
     @State private var imageSizeWarning = ""
+    @State private var hasAppliedInitialDraft = false
     
-    init(user: AppUser, selectedArtisan: ArtisanProfile? = nil) {
+    init(user: AppUser, selectedArtisan: ArtisanProfile? = nil, initialDraft: CakeRequestRecord? = nil) {
         self.user = user
         self.selectedArtisan = selectedArtisan
+        self.initialDraft = initialDraft
     }
     
-    private let categories  = ["Wedding Cake", "Anniversary Cake", "Cupcakes", "Birthday Cake",
-                               "Baby Shower", "Buttercream Cakes", "Corporate Cakes", "Graduation Cakes", "Baptism Cakes", "Retirement Cakes", "Farewell Cakes", "Vegan Cakes",  "Sculpted Cakes", "Normal Cakes", "Engagement Cake"]
+    @State private var categories  = ["Wedding Cake", "Anniversary Cake", "Cupcakes", "Birthday Cake",
+                                      "Baby Shower", "Buttercream Cakes", "Corporate Cakes", "Graduation Cakes", "Baptism Cakes", "Retirement Cakes", "Farewell Cakes", "Vegan Cakes",  "Sculpted Cakes", "Normal Cakes", "Engagement Cake"]
     @State private var cakeStyles   = ["Buttercream", "Fondant", "Floral", "Minimalist", "Drip", "Luxury / Designer", "Theme", "Naked", "Semi-Naked"]
     @State private var dietaryOpts  = ["Gluten Free", "Nut Free", "Soy-Free", "Vegan", "Keto", "Dairy-Free", "Halal", "Eggless", "Sugar-Free"]
     @State private var flavours     = ["Vanilla", "Chocolate", "Red Velvet", "Cheese", "Blueberry", "Butterscotch", "Fruit & nut", "Pineapple", "Coffee", "Carrot", "Coconut", "Matcha", "Mango", "Strawberry", "Raspberry", "Banana", "Cookies & Cream", "Almond", "Oreo", "Peanut Butter", "Champagne", "Green Tea", "Passionfruit", "Rose", "Watermelon", "Durian", "Maple", "Pear", "Pumpkin Spice", "Rum", "Saffron",
@@ -69,6 +72,10 @@ struct CreateCakeRequestView: View {
     private var timeFormatter: DateFormatter {
         let f = DateFormatter(); f.timeStyle = .short; return f
     }
+
+    private var headerTitle: String {
+        initialDraft == nil ? "Create Cake Request" : "Edit Draft Request"
+    }
     
     var body: some View {
         ZStack(alignment: .top) {
@@ -86,7 +93,7 @@ struct CreateCakeRequestView: View {
                     Spacer()
                     
                     VStack(spacing: 2) {
-                        Text("Create Cake Request")
+                        Text(headerTitle)
                             .font(.urbanistBold(18))
                             .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
                     }
@@ -313,7 +320,7 @@ struct CreateCakeRequestView: View {
                             ChipSelector(
                                 title: "Category",
                                 helpText: "Choose main category",
-                                options: .constant(categories),
+                                options: $categories,
                                 selected: $selectedCategories,
                                 showAddButton: false
                             )
@@ -607,6 +614,9 @@ struct CreateCakeRequestView: View {
                 }
                 .presentationDetents([.fraction(0.45)])
             }
+            .onAppear {
+                applyInitialDraftIfNeeded()
+            }
         }
     }
     
@@ -627,7 +637,7 @@ struct CreateCakeRequestView: View {
             await persistRequest(
                 in: db,
                 collection: "draftRequests",
-                documentID: db.collection("draftRequests").document().documentID,
+                documentID: initialDraft?.id ?? db.collection("draftRequests").document().documentID,
                 customerID: userID,
                 customerProfile: customerProfile,
                 status: "draft",
@@ -642,13 +652,14 @@ struct CreateCakeRequestView: View {
         await persistRequest(
             in: db,
             collection: "cakeRequests",
-            documentID: db.collection("cakeRequests").document().documentID,
+            documentID: initialDraft?.id ?? db.collection("cakeRequests").document().documentID,
             customerID: userID,
             customerProfile: customerProfile,
             status: "open",
             timestampField: "createdAt",
             successText: "Request published successfully!",
             triggerNotification: true,
+            cleanupDraftID: initialDraft?.id,
             requestTitle: title
         )
     }
@@ -669,7 +680,7 @@ struct CreateCakeRequestView: View {
         await persistRequest(
             in: db,
             collection: "draftRequests",
-            documentID: db.collection("draftRequests").document().documentID,
+            documentID: initialDraft?.id ?? db.collection("draftRequests").document().documentID,
             customerID: userID,
             customerProfile: customerProfile,
             status: "draft",
@@ -782,6 +793,7 @@ struct CreateCakeRequestView: View {
         timestampField: String,
         successText: String,
         triggerNotification: Bool = false,
+        cleanupDraftID: String? = nil,
         requestTitle: String = ""
     ) async {
         let requestData = buildRequestData(
@@ -794,6 +806,11 @@ struct CreateCakeRequestView: View {
         
         do {
             try await db.collection(collection).document(documentID).setData(requestData, merge: true)
+
+            if let cleanupDraftID,
+               collection == "cakeRequests" {
+                try? await db.collection("draftRequests").document(cleanupDraftID).delete()
+            }
             
             // Trigger notification IMMEDIATELY after save (before dismiss)
             if triggerNotification {
@@ -802,6 +819,8 @@ struct CreateCakeRequestView: View {
                 notificationManager.notifyRequestPosted(requestTitle: title, userID: customerID)
                 print("✅ [CreateCakeRequestView] Notification triggered successfully")
             }
+
+            NotificationCenter.default.post(name: NSNotification.Name("customerRequestDidChange"), object: nil)
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 dismiss()
@@ -857,6 +876,10 @@ struct CreateCakeRequestView: View {
             data["targetArtisanAddress"] = artisan.location
             data["targetArtisanRating"] = artisan.rating
             data["isDirectRequest"] = true
+        } else if let initialDraft, initialDraft.isDirectRequest {
+            data["targetArtisanId"] = initialDraft.targetArtisanId
+            data["targetArtisanName"] = initialDraft.targetArtisanName
+            data["isDirectRequest"] = true
         }
         
         if timestampField != "createdAt", data["createdAt"] == nil {
@@ -895,6 +918,49 @@ struct CreateCakeRequestView: View {
                     RoundedRectangle(cornerRadius: 8)
                         .stroke(Color(red: 0.85, green: 0.85, blue: 0.85), lineWidth: 1)
                 )
+        }
+    }
+
+    private func applyInitialDraftIfNeeded() {
+        guard !hasAppliedInitialDraft, let draft = initialDraft else { return }
+        hasAppliedInitialDraft = true
+
+        title = draft.title
+        description = draft.description
+        expectedDate = draft.expectedDate
+        expectedTime = draft.expectedTime
+        budgetMin = draft.budgetMin
+        budgetMax = draft.budgetMax
+
+        let restoredCategories = draft.categories.isEmpty
+            ? [draft.category].filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            : draft.categories
+
+        selectedCategories = Set(restoredCategories)
+        selectedStyles = Set(draft.styles)
+        selectedDietary = Set(draft.dietary)
+        selectedTier = draft.tier > 0 ? draft.tier : nil
+        cakeSize = draft.cakeSize
+        sugarLevel = draft.sugarLevel
+        selectedFlavours = Set(draft.flavours)
+        fillingFlavour = draft.fillingFlavour
+        specialInstructions = draft.specialInstructions
+        referenceImagesBase64 = draft.referenceImages
+
+        for value in restoredCategories where !categories.contains(value) {
+            categories.append(value)
+        }
+        for value in draft.styles where !cakeStyles.contains(value) {
+            cakeStyles.append(value)
+        }
+        for value in draft.dietary where !dietaryOpts.contains(value) {
+            dietaryOpts.append(value)
+        }
+        for value in draft.flavours where !flavours.contains(value) {
+            flavours.append(value)
+        }
+        if draft.tier > 7 && !extraTiers.contains(draft.tier) {
+            extraTiers.append(draft.tier)
         }
     }
     
