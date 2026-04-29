@@ -19,6 +19,9 @@ struct PaymentRecord: Identifiable {
 
     var isSuccess: Bool { status == "success" }
     var isApplePay: Bool { method.lowercased().contains("apple") }
+    var isGooglePay: Bool { method.lowercased().contains("google") }
+    var isCash: Bool { method.lowercased().contains("cash") }
+    var isCard: Bool { method.lowercased().contains("card") && !isApplePay && !isGooglePay }
     var maskedCard: String { cardLast4.isEmpty ? "" : "•••• \(cardLast4)" }
 }
 
@@ -342,15 +345,11 @@ struct PaymentRecordCard: View {
                 // Method icon
                 ZStack {
                     RoundedRectangle(cornerRadius: 13)
-                        .fill(
-                            record.isApplePay
-                            ? Color.black.opacity(0.07)
-                            : Color(red: 0.92, green: 0.90, blue: 0.87)
-                        )
+                        .fill(paymentMethodBackgroundColor())
                         .frame(width: 54, height: 54)
-                    Image(systemName: record.isApplePay ? "apple.logo" : "creditcard.fill")
-                        .font(.system(size: record.isApplePay ? 22 : 20))
-                        .foregroundColor(record.isApplePay ? .black : .cakeBrown)
+                    Image(systemName: paymentMethodIcon())
+                        .font(.system(size: paymentMethodIconSize()))
+                        .foregroundColor(paymentMethodIconColor())
                 }
 
                 // Details
@@ -364,59 +363,39 @@ struct PaymentRecordCard: View {
                         .font(.urbanistRegular(13))
                         .foregroundColor(Color(red: 0.42, green: 0.42, blue: 0.42))
 
-                    HStack(spacing: 6) {
-                        if record.isApplePay {
-                            HStack(spacing: 4) {
-                                Image(systemName: "apple.logo")
-                                    .font(.system(size: 10))
-                                Text("Apple Pay")
-                                    .font(.urbanistSemiBold(11))
-                            }
-                            .foregroundColor(.black)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Color.black.opacity(0.08))
-                            .clipShape(Capsule())
-                        } else if !record.maskedCard.isEmpty {
-                            Text(record.maskedCard)
-                                .font(.urbanistSemiBold(11))
-                                .foregroundColor(Color(red: 93/255, green: 55/255, blue: 20/255))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(Color(red: 0.92, green: 0.88, blue: 0.83))
-                                .clipShape(Capsule())
-                        }
-
-                        Text(dateFmt.string(from: record.paidAt))
-                            .font(.urbanistRegular(11))
-                            .foregroundColor(.cakeGrey)
-                            .lineLimit(1)
-                    }
+                    // Payment Method Display
+                    paymentMethodBadge()
                 }
 
                 Spacer(minLength: 4)
 
-                // Amount + Status
+                // Amount + Status + Date
                 VStack(alignment: .trailing, spacing: 6) {
                     Text("LKR \(currencyFmt.string(for: record.total) ?? "0")")
                         .font(.urbanistBold(15))
                         .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
 
-                    Text(record.isSuccess ? "Paid" : record.status.capitalized)
-                        .font(.urbanistSemiBold(11))
-                        .foregroundColor(
-                            record.isSuccess
-                            ? Color(red: 0.10, green: 0.58, blue: 0.35)
-                            : .orange
-                        )
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(
-                            record.isSuccess
-                            ? Color(red: 0.10, green: 0.58, blue: 0.35).opacity(0.11)
-                            : Color.orange.opacity(0.11)
-                        )
-                        .clipShape(Capsule())
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text(record.isSuccess ? "Paid" : record.status.capitalized)
+                            .font(.urbanistSemiBold(11))
+                            .foregroundColor(
+                                record.isSuccess
+                                ? Color(red: 0.10, green: 0.58, blue: 0.35)
+                                : .orange
+                            )
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                record.isSuccess
+                                ? Color(red: 0.10, green: 0.58, blue: 0.35).opacity(0.11)
+                                : Color.orange.opacity(0.11)
+                            )
+                            .clipShape(Capsule())
+
+                        Text(dateFmt.string(from: record.paidAt))
+                            .font(.urbanistRegular(10))
+                            .foregroundColor(.cakeGrey)
+                    }
                 }
             }
             .padding(.horizontal, 16)
@@ -475,6 +454,107 @@ struct PaymentRecordCard: View {
                 .font(.urbanistRegular(10))
                 .foregroundColor(.cakeGrey)
         }
+    }
+
+    // MARK: - Payment Method Helpers
+    private func paymentMethodIcon() -> String {
+        if record.isApplePay {
+            return "apple.logo"
+        } else if record.isGooglePay {
+            return "g.circle.fill"
+        } else if record.isCash {
+            return "banknote.fill"
+        } else {
+            return "creditcard.fill"
+        }
+    }
+
+    private func paymentMethodIconSize() -> CGFloat {
+        record.isApplePay ? 22 : 20
+    }
+
+    private func paymentMethodIconColor() -> Color {
+        if record.isApplePay {
+            return .black
+        } else if record.isGooglePay {
+            return Color(red: 0.2, green: 0.5, blue: 0.95)
+        } else if record.isCash {
+            return Color(red: 0.2, green: 0.65, blue: 0.2)
+        } else {
+            return .cakeBrown
+        }
+    }
+
+    private func paymentMethodBackgroundColor() -> Color {
+        if record.isApplePay {
+            return Color.black.opacity(0.07)
+        } else if record.isGooglePay {
+            return Color(red: 0.2, green: 0.5, blue: 0.95).opacity(0.1)
+        } else if record.isCash {
+            return Color(red: 0.2, green: 0.65, blue: 0.2).opacity(0.1)
+        } else {
+            return Color(red: 0.92, green: 0.90, blue: 0.87)
+        }
+    }
+
+    @ViewBuilder
+    private func paymentMethodBadge() -> some View {
+        if record.isApplePay {
+            HStack(spacing: 4) {
+                Image(systemName: "apple.logo")
+                    .font(.system(size: 10))
+                Text("Apple Pay")
+                    .font(.urbanistSemiBold(11))
+            }
+            .foregroundColor(.black)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Color.black.opacity(0.08))
+            .clipShape(Capsule())
+        } else if record.isGooglePay {
+            HStack(spacing: 4) {
+                Image(systemName: "g.circle.fill")
+                    .font(.system(size: 10))
+                Text("Google Pay")
+                    .font(.urbanistSemiBold(11))
+            }
+            .foregroundColor(Color(red: 0.2, green: 0.5, blue: 0.95))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Color(red: 0.2, green: 0.5, blue: 0.95).opacity(0.1))
+            .clipShape(Capsule())
+        } else if record.isCash {
+            HStack(spacing: 4) {
+                Image(systemName: "banknote.fill")
+                    .font(.system(size: 10))
+                Text("Cash")
+                    .font(.urbanistSemiBold(11))
+            }
+            .foregroundColor(Color(red: 0.2, green: 0.65, blue: 0.2))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Color(red: 0.2, green: 0.65, blue: 0.2).opacity(0.1))
+            .clipShape(Capsule())
+        } else {
+            HStack(spacing: 4) {
+                Image(systemName: "creditcard.fill")
+                    .font(.system(size: 10))
+                Text(fullCardNumber(record.cardLast4))
+                    .font(.urbanistSemiBold(11))
+            }
+            .foregroundColor(Color(red: 93/255, green: 55/255, blue: 20/255))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(Color(red: 0.92, green: 0.88, blue: 0.83))
+            .clipShape(Capsule())
+        }
+    }
+
+    private func fullCardNumber(_ last4: String) -> String {
+        if last4.isEmpty {
+            return "•••• •••• •••• ••••"
+        }
+        return "•••• •••• •••• \(last4)"
     }
 }
 
