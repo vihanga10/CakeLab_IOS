@@ -47,7 +47,11 @@ struct CustomerHomeView: View {
                         // MARK: - Header Section
                         HStack(alignment: .center, spacing: 12) {
                             // Profile avatar (clickable)
-                            NavigationLink(destination: CustomerProfileDetailView(user: user)) {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    selectedTab = 3
+                                }
+                            } label: {
                                 if let profileAvatar = profileAvatar {
                                     Image(uiImage: profileAvatar)
                                         .resizable()
