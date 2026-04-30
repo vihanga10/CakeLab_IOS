@@ -3,6 +3,7 @@ import MapKit
 import CoreLocation
 import Combine
 import FirebaseFirestore
+import UIKit
 
 // MARK: - Artisans Near You View
 @MainActor
@@ -10,7 +11,7 @@ struct ArtisansNearYouView: View {
     let user: AppUser
     @Environment(\.dismiss) var dismiss
 
-    @StateObject private var viewModel = ArtisansNearYouViewModel()
+    @StateObject private var viewModel: ArtisansNearYouViewModel
     @State private var position: MapCameraPosition = .region(
         MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 7.8731, longitude: 80.7718),
@@ -22,6 +23,15 @@ struct ArtisansNearYouView: View {
     @State private var searchText = ""
     @State private var showDistrictPicker = false
 
+    init(user: AppUser) {
+        self.user = user
+        _viewModel = StateObject(
+            wrappedValue: ArtisansNearYouViewModel(
+                customerDistrict: SriLankaDistricts.canonical(user.city)
+            )
+        )
+    }
+
     private var filteredArtisans: [ArtisanProfile] {
         viewModel.filteredArtisans(searchText: searchText)
     }
@@ -31,29 +41,11 @@ struct ArtisansNearYouView: View {
     }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
+            Color.white.ignoresSafeArea()
+
             VStack(spacing: 0) {
-                HStack {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.cakeBrown)
-                    }
-                    Spacer()
-                    Text("Artisans Near You")
-                        .font(.urbanistBold(18))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                    Spacer()
-                    Button(action: {}) {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 18))
-                            .foregroundColor(.cakeBrown)
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .background(Color.white)
-                .shadow(color: Color.black.opacity(0.04), radius: 2)
+                headerBar
 
                 VStack(spacing: 0) {
                     Map(position: $position) {
@@ -119,7 +111,7 @@ struct ArtisansNearYouView: View {
                                 HStack(spacing: 8) {
                                     Image(systemName: "list.bullet.circle.fill")
                                         .font(.system(size: 14))
-                                    Text(viewModel.selectedDistrict == nil ? "Select district" : "Change district")
+                                    Text(viewModel.selectedDistrict ?? "Select district")
                                         .font(.urbanistRegular(13))
                                 }
                                 .foregroundColor(Color(red: 0.7, green: 0.5, blue: 0.2))
@@ -200,14 +192,7 @@ struct ArtisansNearYouView: View {
 
                         VStack(spacing: 12) {
                             HStack(spacing: 12) {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
-                                        .frame(width: 60, height: 60)
-                                    Image(systemName: "storefront.fill")
-                                        .font(.system(size: 24))
-                                        .foregroundColor(.cakeBrown.opacity(0.5))
-                                }
+                                artisanImageView(artisan: artisan, size: 60, cornerRadius: 10)
 
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(artisan.name)
@@ -283,6 +268,7 @@ struct ArtisansNearYouView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
         .task {
             await viewModel.loadArtisansFromDatabase()
             moveToBestVisibleRegion()
@@ -292,7 +278,7 @@ struct ArtisansNearYouView: View {
         }
         .sheet(isPresented: $showDistrictPicker) {
             DistrictPickerSheet(
-                districts: viewModel.sriLankanDistricts,
+                districts: SriLankaDistricts.all,
                 selectedDistrict: viewModel.selectedDistrict,
                 onSelect: { district in
                     viewModel.applyDistrictFilter(district)
@@ -326,6 +312,85 @@ struct ArtisansNearYouView: View {
         if !onlyIfAutomatic {
             centerMap(on: first)
         }
+    }
+
+    private var headerBar: some View {
+        HStack {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.cakeBrown)
+            }
+            Spacer()
+            VStack(spacing: 2) {
+                Text("Artisans Near You")
+                    .font(.urbanistBold(18))
+                    .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
+            }
+            Spacer()
+            Color.white.frame(width: 24)
+        }
+        .padding(.horizontal, 20)
+        .frame(height: 56)
+        .background(Color.white)
+    }
+
+    @ViewBuilder
+    private func artisanImageView(artisan: ArtisanProfile, size: CGFloat, cornerRadius: CGFloat) -> some View {
+        if let image = decodeBase64Image(artisan.profileImageBase64) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: size, height: size)
+                .clipped()
+                .cornerRadius(cornerRadius)
+        } else if let rawURL = artisan.imageURL,
+                  !rawURL.isEmpty,
+                  let imageURL = URL(string: rawURL) {
+            AsyncImage(url: imageURL) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                default:
+                    imageFallback(size: size)
+                }
+            }
+            .frame(width: size, height: size)
+            .clipped()
+            .cornerRadius(cornerRadius)
+        } else {
+            imageFallback(size: size)
+                .cornerRadius(cornerRadius)
+        }
+    }
+
+    @ViewBuilder
+    private func imageFallback(size: CGFloat) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+                .frame(width: size, height: size)
+            Image(systemName: "storefront.fill")
+                .font(.system(size: max(20, size * 0.38)))
+                .foregroundColor(.cakeBrown.opacity(0.5))
+        }
+    }
+
+    private func decodeBase64Image(_ rawBase64: String) -> UIImage? {
+        let trimmed = rawBase64.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let payload: String
+        if let commaIndex = trimmed.firstIndex(of: ",") {
+            payload = String(trimmed[trimmed.index(after: commaIndex)...])
+        } else {
+            payload = trimmed
+        }
+
+        guard let data = Data(base64Encoded: payload) else { return nil }
+        return UIImage(data: data)
     }
 
     @ViewBuilder
@@ -363,10 +428,12 @@ private final class ArtisansNearYouViewModel: ObservableObject {
     private let db = Firestore.firestore()
     private let geocoder = CLGeocoder()
     private var geocodeCache: [String: CLLocationCoordinate2D] = [:]
+    private let customerDistrict: String?
 
-    let sriLankanDistricts: [String] = [
-        "Ampara", "Anuradhapura", "Badulla", "Batticaloa", "Colombo", "Galle", "Gampaha", "Hambantota", "Jaffna", "Kalutara", "Kandy", "Kegalle", "Kilinochchi", "Kurunegala", "Mannar", "Matale", "Matara", "Monaragala", "Mullaitivu", "Nuwara Eliya", "Polonnaruwa", "Puttalam", "Ratnapura", "Trincomalee", "Vavuniya"
-    ]
+    init(customerDistrict: String?) {
+        self.customerDistrict = customerDistrict
+        self.selectedDistrict = customerDistrict
+    }
 
     func loadArtisansFromDatabase() async {
         isLoading = true
@@ -385,7 +452,11 @@ private final class ArtisansNearYouViewModel: ObservableObject {
             let hydrated = await hydrateMissingCoordinates(for: merged)
 
             artisans = hydrated
-            scopedArtisans = hydrated
+            if let customerDistrict {
+                applyDistrictFilter(customerDistrict)
+            } else {
+                scopedArtisans = hydrated
+            }
 
             if hydrated.isEmpty {
                 errorMessage = "No artisan profiles available in database."
@@ -403,34 +474,23 @@ private final class ArtisansNearYouViewModel: ObservableObject {
         return scopedArtisans.filter { artisan in
             artisan.name.lowercased().contains(text)
             || artisan.location.lowercased().contains(text)
+            || artisan.city.lowercased().contains(text)
             || artisan.specialties.contains(where: { $0.lowercased().contains(text) })
         }
     }
 
     func applyDistrictFilter(_ district: String) {
-        selectedDistrict = district
+        let resolvedDistrict = SriLankaDistricts.canonical(district) ?? district
+        selectedDistrict = resolvedDistrict
         errorMessage = nil
 
-        let normalizedDistrict = normalize(district)
-        let districtCompact = normalizedDistrict.replacingOccurrences(of: " ", with: "")
         let matches = artisans.filter { artisan in
-            let locationText = normalize(artisan.location)
-            if locationText.contains(normalizedDistrict) {
-                return true
-            }
-            if locationText.contains("\(normalizedDistrict) district") {
-                return true
-            }
-            let compactLocationText = locationText.replacingOccurrences(of: " ", with: "")
-            if compactLocationText.contains(districtCompact) {
-                return true
-            }
-            return false
+            SriLankaDistricts.canonical(artisan.city) == resolvedDistrict
         }
 
         scopedArtisans = matches
         if matches.isEmpty {
-            errorMessage = "No bakers found in \(district)."
+            errorMessage = "No bakers found in \(resolvedDistrict)."
         }
     }
 
@@ -440,62 +500,79 @@ private final class ArtisansNearYouViewModel: ObservableObject {
         scopedArtisans = artisans
     }
 
-    private func normalize(_ text: String) -> String {
-        text
-            .lowercased()
-            .replacingOccurrences(of: ",", with: " ")
-            .replacingOccurrences(of: ".", with: " ")
-            .replacingOccurrences(of: "-", with: " ")
-            .components(separatedBy: .whitespacesAndNewlines)
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
-    }
-
     private func fetchBakersFromUsersCollection() async throws -> [ArtisanProfile] {
         let snapshot = try await db.collection("users")
             .whereField("role", isEqualTo: "baker")
             .limit(to: 200)
             .getDocuments()
 
-        return snapshot.documents.compactMap { document in
-            guard let data = document.data() as? [String: Any] else { return nil }
+        var fallbackProfiles: [ArtisanProfile] = []
+        fallbackProfiles.reserveCapacity(snapshot.documents.count)
+
+        for document in snapshot.documents {
+            guard let userData = document.data() as? [String: Any] else { continue }
+
+            let artisanSnapshot = try await loadArtisanDocument(forUserID: document.documentID)
+            let artisanData = artisanSnapshot?.data() ?? [:]
+            let source = artisanData.isEmpty ? userData : artisanData
+            let profileID = artisanSnapshot?.documentID ?? document.documentID
 
             let name = [
-                data["name"] as? String,
-                data["shopName"] as? String,
-                data["email"] as? String
+                source["name"] as? String,
+                source["shopName"] as? String,
+                userData["name"] as? String,
+                userData["email"] as? String
             ]
             .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first(where: { !$0.isEmpty })
 
-            guard let resolvedName = name else { return nil }
+            guard let resolvedName = name else { continue }
 
-            let address = [
-                data["address"] as? String,
-                data["city"] as? String,
-                data["location"] as? String
-            ]
-            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .first(where: { !$0.isEmpty }) ?? ""
+            let city = SriLankaDistricts.canonical(source["city"] as? String)
+                ?? SriLankaDistricts.detect(in: source["location"] as? String)
+                ?? ""
+            let address = (source["address"] as? String) ?? (userData["address"] as? String)
+            let location = SriLankaDistricts.displayLocation(address: address, city: city)
 
-            let latitude = asDouble(data["latitude"]) ?? 0
-            let longitude = asDouble(data["longitude"]) ?? 0
-            let rating = asDouble(data["rating"]) ?? 0
-            let reviewCount = asInt(data["reviewCount"]) ?? 0
+            let latitude = asDouble(source["latitude"]) ?? 0
+            let longitude = asDouble(source["longitude"]) ?? 0
+            let rating = asDouble(source["rating"]) ?? 0
+            let reviewCount = asInt(source["reviewCount"]) ?? 0
+            let specialties = (source["specialties"] as? [String] ?? [])
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
 
-            return ArtisanProfile(
-                id: document.documentID,
-                name: resolvedName,
-                rating: rating,
-                reviewCount: reviewCount,
-                specialties: data["specialties"] as? [String] ?? [],
-                location: address,
-                isOnline: data["isOnline"] as? Bool ?? true,
-                imageURL: data["imageURL"] as? String,
-                latitude: latitude,
-                longitude: longitude
+            fallbackProfiles.append(
+                ArtisanProfile(
+                    id: profileID,
+                    name: resolvedName,
+                    rating: rating,
+                    reviewCount: reviewCount,
+                    specialties: specialties,
+                    city: city,
+                    location: location,
+                    isOnline: source["isOnline"] as? Bool ?? true,
+                    imageURL: (source["imageURL"] as? String) ?? (source["avatarURL"] as? String),
+                    profileImageBase64: source["profileImageBase64"] as? String ?? "",
+                    latitude: latitude,
+                    longitude: longitude
+                )
             )
         }
+
+        return fallbackProfiles
+    }
+
+    private func loadArtisanDocument(forUserID userID: String) async throws -> DocumentSnapshot? {
+        let direct = try await db.collection("artisans").document(userID).getDocument()
+        if direct.exists { return direct }
+
+        let byUID = try await db.collection("artisans")
+            .whereField("uid", isEqualTo: userID)
+            .limit(to: 1)
+            .getDocuments()
+
+        return byUID.documents.first
     }
 
     private func mergeProfiles(primary: [ArtisanProfile], fallback: [ArtisanProfile]) -> [ArtisanProfile] {
@@ -546,9 +623,11 @@ private final class ArtisansNearYouViewModel: ObservableObject {
                         rating: artisan.rating,
                         reviewCount: artisan.reviewCount,
                         specialties: artisan.specialties,
+                        city: artisan.city,
                         location: artisan.location,
                         isOnline: artisan.isOnline,
                         imageURL: artisan.imageURL,
+                        profileImageBase64: artisan.profileImageBase64,
                         latitude: cached.latitude,
                         longitude: cached.longitude
                     )
@@ -557,7 +636,8 @@ private final class ArtisansNearYouViewModel: ObservableObject {
             }
 
             do {
-                let placemarks = try await geocoder.geocodeAddressString(artisan.location)
+                let geocodingQuery = SriLankaDistricts.geocodingQuery(address: artisan.location, city: artisan.city)
+                let placemarks = try await geocoder.geocodeAddressString(geocodingQuery)
                 if let coordinate = placemarks.first?.location?.coordinate {
                     geocodeCache[artisan.location] = coordinate
                     output.append(
@@ -567,9 +647,11 @@ private final class ArtisansNearYouViewModel: ObservableObject {
                             rating: artisan.rating,
                             reviewCount: artisan.reviewCount,
                             specialties: artisan.specialties,
+                            city: artisan.city,
                             location: artisan.location,
                             isOnline: artisan.isOnline,
                             imageURL: artisan.imageURL,
+                            profileImageBase64: artisan.profileImageBase64,
                             latitude: coordinate.latitude,
                             longitude: coordinate.longitude
                         )
@@ -619,68 +701,144 @@ private struct DistrictPickerSheet: View {
 struct ArtisanNearCard: View {
     let artisan: ArtisanProfile
     let onTap: () -> Void
+    private let chipPalette: [Color] = [
+        Color(red: 0.88, green: 0.88, blue: 0.97),
+        Color(red: 0.95, green: 0.85, blue: 0.76),
+        Color(red: 0.86, green: 0.94, blue: 0.90),
+        Color(red: 0.98, green: 0.90, blue: 0.82)
+    ]
+
+    private var displaySpecialties: [String] {
+        let trimmed = artisan.specialties
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return trimmed.isEmpty ? ["No category"] : trimmed
+    }
 
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 12) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
-                            .frame(width: 72, height: 72)
-                        Image(systemName: "storefront.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(.cakeBrown.opacity(0.5))
-                    }
-                    VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .top, spacing: 14) {
+                artisanImage(size: 80)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .top) {
                         Text(artisan.name)
-                            .font(.urbanistBold(14))
-                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                        HStack(spacing: 4) {
-                            Image(systemName: "star.fill")
-                                .font(.system(size: 11))
-                                .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.1))
-                            Text(artisan.ratingText)
-                                .font(.urbanistSemiBold(12))
-                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                            Text(artisan.reviewsText)
-                                .font(.urbanistRegular(11))
-                                .foregroundColor(.cakeGrey)
-                        }
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 6) {
-                                ForEach(artisan.specialties, id: \.self) { tag in
-                                    Text(tag)
-                                        .font(.urbanistRegular(10))
-                                        .foregroundColor(.cakeBrown)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 3)
-                                        .background(Color.cakeBrown.opacity(0.12))
-                                        .cornerRadius(10)
-                                }
+                            .font(.urbanistBold(18))
+                            .foregroundColor(Color(hex: "5D3714"))
+                            .lineLimit(1)
+                        Spacer()
+                        Circle()
+                            .fill(artisan.isOnline ? Color(red: 0.15, green: 0.72, blue: 0.25) : Color.gray.opacity(0.45))
+                            .frame(width: 12, height: 12)
+                            .overlay(
+                                Circle()
+                                    .stroke((artisan.isOnline ? Color(red: 0.15, green: 0.72, blue: 0.25) : Color.gray.opacity(0.45)).opacity(0.25), lineWidth: 5)
+                            )
+                    }
+
+                    HStack(spacing: 6) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color(red: 1.0, green: 0.88, blue: 0.0))
+                        Text("\(artisan.ratingText) \(artisan.reviewsText)")
+                            .font(.urbanistRegular(13))
+                            .foregroundColor(Color(hex: "5B5B5B"))
+                    }
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(Array(displaySpecialties.prefix(3).enumerated()), id: \.element) { index, tag in
+                                Text(tag)
+                                    .font(.urbanistMedium(12))
+                                    .foregroundColor(Color(hex: "5D3714"))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 7)
+                                    .background(chipPalette[index % chipPalette.count])
+                                    .clipShape(Capsule())
                             }
                         }
                     }
-                    Spacer()
-                    Circle()
-                        .fill(artisan.isOnline ? Color(red: 0.15, green: 0.72, blue: 0.25) : Color.gray.opacity(0.4))
-                        .frame(width: 11, height: 11)
-                }
-                HStack(spacing: 5) {
-                    Image(systemName: "mappin.circle.fill")
-                        .font(.system(size: 12))
-                        .foregroundColor(.cakeGrey)
-                    Text(artisan.location)
-                        .font(.urbanistRegular(11))
-                        .foregroundColor(.cakeGrey)
-                        .lineLimit(1)
+
+                    HStack(spacing: 8) {
+                        Image(systemName: "mappin")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color(hex: "7C7C7C"))
+                        Text(artisan.location)
+                            .font(.urbanistRegular(13))
+                            .foregroundColor(Color(hex: "434343"))
+                            .lineLimit(1)
+                    }
                 }
             }
-            .padding(12)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
             .background(Color.white)
-            .cornerRadius(14)
-            .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 2)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(Color.black.opacity(0.04), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.10), radius: 10, x: 0, y: 4)
         }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func artisanImage(size: CGFloat) -> some View {
+        if let image = decodeBase64Image(artisan.profileImageBase64) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: size, height: size)
+                .clipped()
+                .cornerRadius(14)
+        } else if let rawURL = artisan.imageURL,
+                  !rawURL.isEmpty,
+                  let imageURL = URL(string: rawURL) {
+            AsyncImage(url: imageURL) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                default:
+                    artisanImageFallback(size: size)
+                }
+            }
+            .frame(width: size, height: size)
+            .clipped()
+            .cornerRadius(14)
+        } else {
+            artisanImageFallback(size: size)
+        }
+    }
+
+    @ViewBuilder
+    private func artisanImageFallback(size: CGFloat) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+                .frame(width: size, height: size)
+            Image(systemName: "storefront.fill")
+                .font(.system(size: max(24, size * 0.32)))
+                .foregroundColor(.cakeBrown.opacity(0.5))
+        }
+        .frame(width: size, height: size)
+    }
+
+    private func decodeBase64Image(_ rawBase64: String) -> UIImage? {
+        let trimmed = rawBase64.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let payload: String
+        if let commaIndex = trimmed.firstIndex(of: ",") {
+            payload = String(trimmed[trimmed.index(after: commaIndex)...])
+        } else {
+            payload = trimmed
+        }
+
+        guard let data = Data(base64Encoded: payload) else { return nil }
+        return UIImage(data: data)
     }
 }
 

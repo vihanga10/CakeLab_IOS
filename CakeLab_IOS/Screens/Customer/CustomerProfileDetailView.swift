@@ -973,6 +973,7 @@ struct EditProfileView: View {
     @State private var localCity = ""
     @State private var localPostalCode = ""
     @State private var localDateOfBirth: Date? = nil
+    @State private var showDistrictPicker = false
 
     var body: some View {
         ZStack {
@@ -994,7 +995,7 @@ struct EditProfileView: View {
                             readOnlyField(label: "Email Address", value: viewModel.user.email)
                             formField(label: "Phone Number", placeholder: "+94 74 234 5436", text: $localPhoneNumber)
                             formField(label: "Address", placeholder: "e.g No 8, Flower Road", text: $localAddress)
-                            formField(label: "City", placeholder: "e.g colombo", text: $localCity)
+                            districtField(label: "City", selectedDistrict: $localCity)
                             formField(label: "Postal Code", placeholder: "e.g 403848", text: $localPostalCode)
                         }
                         .padding(.horizontal, 20)
@@ -1077,7 +1078,7 @@ struct EditProfileView: View {
             localFullName = viewModel.user.name
             localPhoneNumber = viewModel.user.phoneNumber ?? ""
             localAddress = viewModel.user.address ?? ""
-            localCity = viewModel.user.city ?? ""
+            localCity = SriLankaDistricts.canonical(viewModel.user.city) ?? (viewModel.user.city ?? "")
             localPostalCode = viewModel.user.postalCode ?? ""
             localDateOfBirth = viewModel.user.dateOfBirth
             // Load avatar from local storage
@@ -1085,6 +1086,17 @@ struct EditProfileView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("profileAvatarUpdated"))) { _ in
             localAvatar = viewModel.loadAvatarFromUserDefaults()
+        }
+        .sheet(isPresented: $showDistrictPicker) {
+            DistrictPickerSheet(
+                districts: SriLankaDistricts.all,
+                selectedDistrict: localCity.isEmpty ? nil : localCity,
+                onSelect: { district in
+                    localCity = district
+                    showDistrictPicker = false
+                }
+            )
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -1176,6 +1188,36 @@ struct EditProfileView: View {
     }
 
     @ViewBuilder
+    private func districtField(label: String, selectedDistrict: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(label)
+                .font(.urbanistMedium(15))
+                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+            Button {
+                showDistrictPicker = true
+            } label: {
+                HStack(spacing: 10) {
+                    Text(selectedDistrict.wrappedValue.isEmpty ? "Select district" : selectedDistrict.wrappedValue)
+                        .font(.urbanistRegular(14))
+                        .foregroundColor(selectedDistrict.wrappedValue.isEmpty ? Color(hex: "7D7D7D") : Color(red: 0.1, green: 0.1, blue: 0.1))
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.cakeBrown)
+                }
+                .padding(.horizontal, 14)
+                .frame(height: 46)
+                .background(Color.white)
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Color.black.opacity(0.35), lineWidth: 1)
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
     private func readOnlyField(label: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(label)
@@ -1193,6 +1235,34 @@ struct EditProfileView: View {
                     Capsule()
                         .stroke(Color.black.opacity(0.35), lineWidth: 1)
                 )
+        }
+    }
+}
+
+private struct DistrictPickerSheet: View {
+    let districts: [String]
+    let selectedDistrict: String?
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        NavigationStack {
+            List(districts, id: \.self) { district in
+                Button {
+                    onSelect(district)
+                } label: {
+                    HStack {
+                        Text(district)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        if selectedDistrict == district {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.cakeBrown)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Select District")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }

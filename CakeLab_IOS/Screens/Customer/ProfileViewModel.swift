@@ -90,11 +90,14 @@ final class ProfileViewModel: ObservableObject {
         errorMessage = nil
         
         do {
+            let resolvedCity = SriLankaDistricts.canonical(city)
+            let resolvedAddress = address.trimmingCharacters(in: .whitespacesAndNewlines)
+
             // Update local user object with form data
             user.name = name
             user.phoneNumber = phone.isEmpty ? nil : phone
-            user.address = address.isEmpty ? nil : address
-            user.city = city.isEmpty ? nil : city
+            user.address = resolvedAddress.isEmpty ? nil : resolvedAddress
+            user.city = resolvedCity
             user.postalCode = postalCode.isEmpty ? nil : postalCode
             user.dateOfBirth = dob
             

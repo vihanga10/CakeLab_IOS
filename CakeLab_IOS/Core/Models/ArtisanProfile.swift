@@ -12,6 +12,7 @@ import FirebaseFirestore
 //   location    : String    — human-readable address
 //   isOnline    : Bool      — whether the artisan is currently active/available
 //   imageURL    : String?   — optional Firebase Storage URL for profile image
+//   profileImageBase64 : String — optional base64 encoded profile image string
 //   createdAt   : Timestamp — when the artisan profile was created
 
 struct ArtisanProfile: Identifiable, Sendable {
@@ -20,9 +21,11 @@ struct ArtisanProfile: Identifiable, Sendable {
     let rating: Double
     let reviewCount: Int
     let specialties: [String]
+    let city: String
     let location: String
     let isOnline: Bool
     let imageURL: String?
+    let profileImageBase64: String
     let latitude: Double
     let longitude: Double
 
@@ -37,9 +40,11 @@ struct ArtisanProfile: Identifiable, Sendable {
         rating: Double,
         reviewCount: Int,
         specialties: [String],
+        city: String,
         location: String,
         isOnline: Bool,
         imageURL: String?,
+        profileImageBase64: String,
         latitude: Double,
         longitude: Double
     ) {
@@ -48,9 +53,11 @@ struct ArtisanProfile: Identifiable, Sendable {
         self.rating = rating
         self.reviewCount = reviewCount
         self.specialties = specialties
+        self.city = city
         self.location = location
         self.isOnline = isOnline
         self.imageURL = imageURL
+        self.profileImageBase64 = profileImageBase64
         self.latitude = latitude
         self.longitude = longitude
     }
@@ -69,13 +76,17 @@ struct ArtisanProfile: Identifiable, Sendable {
 
         guard let name = rawName else { return nil }
 
-        let location = [
-            data["location"] as? String,
+        let city = SriLankaDistricts.canonical(data["city"] as? String)
+            ?? SriLankaDistricts.detect(in: data["location"] as? String)
+            ?? SriLankaDistricts.detect(in: data["address"] as? String)
+            ?? ""
+        let address = [
             data["address"] as? String,
-            data["city"] as? String
+            data["location"] as? String
         ]
         .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
-        .first(where: { !$0.isEmpty }) ?? ""
+        .first(where: { !$0.isEmpty })
+        let location = SriLankaDistricts.displayLocation(address: address, city: city)
 
         let rating = Self.asDouble(data["rating"]) ?? 0
         let reviewCount = Self.asInt(data["reviewCount"]) ?? 0
@@ -87,9 +98,11 @@ struct ArtisanProfile: Identifiable, Sendable {
         self.rating      = rating
         self.reviewCount = reviewCount
         self.specialties = data["specialties"] as? [String] ?? []
+        self.city        = city
         self.location    = location
         self.isOnline    = data["isOnline"]    as? Bool     ?? false
         self.imageURL    = data["imageURL"]    as? String
+        self.profileImageBase64 = data["profileImageBase64"] as? String ?? ""
         self.latitude    = latitude
         self.longitude   = longitude
     }

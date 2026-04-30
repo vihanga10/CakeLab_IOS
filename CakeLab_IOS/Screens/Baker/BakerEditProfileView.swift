@@ -28,6 +28,7 @@ struct BakerEditProfileView: View {
     @State private var isLoading = false
     @State private var showSuccessMessage = false
     @State private var errorMessage = ""
+    @State private var showDistrictPicker = false
 
     @Environment(\.dismiss) private var dismiss
 
@@ -136,6 +137,17 @@ struct BakerEditProfileView: View {
             Button("OK") { errorMessage = "" }
         } message: {
             Text(errorMessage)
+        }
+        .sheet(isPresented: $showDistrictPicker) {
+            DistrictPickerSheet(
+                districts: SriLankaDistricts.all,
+                selectedDistrict: city.isEmpty ? nil : city,
+                onSelect: { district in
+                    city = district
+                    showDistrictPicker = false
+                }
+            )
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -303,7 +315,7 @@ struct BakerEditProfileView: View {
             readOnlyField(label: "Email Address", value: email)
             formField(label: "Phone Number", placeholder: "+94 74 234 5436", text: $phoneNumber)
             formField(label: "Address", placeholder: "e.g No 8, Flower Road", text: $address)
-            formField(label: "City", placeholder: "e.g colombo", text: $city)
+            districtField(label: "City", selectedDistrict: $city)
 
             bioField
         }
@@ -346,6 +358,36 @@ struct BakerEditProfileView: View {
                     Capsule()
                         .stroke(Color.black.opacity(0.35), lineWidth: 1)
                 )
+        }
+    }
+
+    private func districtField(label: String, selectedDistrict: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(label)
+                .font(.urbanistBold(14))
+                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+
+            Button {
+                showDistrictPicker = true
+            } label: {
+                HStack(spacing: 10) {
+                    Text(selectedDistrict.wrappedValue.isEmpty ? "Select district" : selectedDistrict.wrappedValue)
+                        .font(.urbanistRegular(14))
+                        .foregroundColor(selectedDistrict.wrappedValue.isEmpty ? Color(hex: "7D7D7D") : Color(red: 0.1, green: 0.1, blue: 0.1))
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.cakeBrown)
+                }
+                .padding(.horizontal, 14)
+                .frame(height: 46)
+                .background(Color.white)
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Color.black.opacity(0.35), lineWidth: 1)
+                )
+            }
         }
     }
     
@@ -450,7 +492,7 @@ struct BakerEditProfileView: View {
         email = user.email
         phoneNumber = user.phoneNumber ?? ""
         address = user.address ?? ""
-        city = user.city ?? ""
+        city = SriLankaDistricts.canonical(user.city) ?? (user.city ?? "")
 
         do {
             let artisanSnapshot = try await loadArtisanDocument(db: db, userID: user.id)
@@ -459,7 +501,7 @@ struct BakerEditProfileView: View {
                 email = user.email
                 phoneNumber = data["phoneNumber"] as? String ?? ""
                 address = data["address"] as? String ?? (user.address ?? "")
-                city = data["city"] as? String ?? (user.city ?? "")
+                city = SriLankaDistricts.canonical(data["city"] as? String) ?? (user.city ?? "")
                 bio = data["about"] as? String ?? ""
                 let savedSpecialties = data["specialties"] as? [String] ?? []
                 selectedCategories = savedSpecialties
@@ -514,14 +556,18 @@ struct BakerEditProfileView: View {
         defer { isLoading = false }
 
         let db = Firestore.firestore()
+        let resolvedCity = SriLankaDistricts.canonical(city)
+        let resolvedAddress = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        let resolvedLocation = SriLankaDistricts.displayLocation(address: resolvedAddress, city: resolvedCity)
 
         let profileData: [String: Any] = [
             "shopName": bakeryName,
             "name": bakeryName,
             "email": user.email,
             "phoneNumber": phoneNumber,
-            "address": address,
-            "city": city,
+            "address": resolvedAddress,
+            "city": resolvedCity as Any,
+            "location": resolvedLocation,
             "about": bio,
             "specialties": selectedCategories,
             "isOnline": isActive,
@@ -532,11 +578,46 @@ struct BakerEditProfileView: View {
 
         do {
             try await db.collection("artisans").document(user.id).setData(profileData, merge: true)
-            print("✅ Profile updated successfully!")
+            try await db.collection("users").document(user.id).setData([
+                "name": bakeryName,
+                "phoneNumber": phoneNumber,
+                "address": resolvedAddress,
+                "city": resolvedCity as Any,
+                "updatedAt": Timestamp(date: Date())
+            ], merge: true)
+            print("Profile updated successfully!")
             showSuccessMessage = true
         } catch {
             errorMessage = "Failed to save profile: \(error.localizedDescription)"
-            print("❌ Error saving profile: \(error.localizedDescription)")
+            print("Error saving profile: \(error.localizedDescription)")
+        }
+    }
+}
+
+private struct DistrictPickerSheet: View {
+    let districts: [String]
+    let selectedDistrict: String?
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        NavigationStack {
+            List(districts, id: \.self) { district in
+                Button {
+                    onSelect(district)
+                } label: {
+                    HStack {
+                        Text(district)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        if selectedDistrict == district {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(.cakeBrown)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Select District")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
