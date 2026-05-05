@@ -1,34 +1,47 @@
 import SwiftUI
 import MapKit
+import FirebaseFirestore
+import FirebaseAuth
 
 // MARK: - Baker Home View
 @MainActor
 struct BakerHomeView: View {
     let user: AppUser
-    @State private var isLocationActive = true
-    @State private var selectedCity = "Colombo"
+    @State private var bakerCity = ""
+    @State private var filterCity: String? = nil
     @State private var showLocationSheet = false
     @State private var showAllMatching = false
     @State private var showAllOpen = false
     @State private var showAllActive = false
     @State private var selectedRequest: CakeRequest?
     @State private var showBidDetail = false
+    @State private var profileAvatar: UIImage? = nil
     @StateObject private var matchingRequestsVM = BakerMatchingRequestsViewModel()
     @EnvironmentObject var notificationManager: NotificationManager
 
-    // Mock stats
-    private let activeOrders = 3
-    private let upcomingDeliveries = 2
-    private let earnings = "LKR 48,500"
+    // Live stats – loaded from Firestore
+    @State private var activeOrdersList: [CakeOrder] = []
+    @State private var upcomingDeliveriesCount: Int = 0
+    @State private var earningsThisMonth: String = "LKR 0"
+    @State private var isLoadingStats = false
     
     private var newRequests: Int {
-        matchingRequestsVM.matchingRequests.count
+        filteredRequests.count
+    }
+
+    private var filteredRequests: [CakeRequestRecord] {
+        guard let city = filterCity, !city.isEmpty else {
+            return matchingRequestsVM.matchingRequests
+        }
+        return matchingRequestsVM.matchingRequests.filter {
+            $0.customerCity.lowercased() == city.lowercased()
+        }
     }
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                Color(red: 0.97, green: 0.96, blue: 0.94).ignoresSafeArea()
+                Color.white.ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
@@ -58,7 +71,7 @@ struct BakerHomeView: View {
                             .padding(.bottom, 24)
 
                         // MARK: Active Orders Preview
-                        sectionHeader("Active Orders", count: activeOrders) {
+                        sectionHeader("Active Orders", count: activeOrdersList.count) {
                             showAllActive = true
                         }
                         .padding(.horizontal, 20)
@@ -103,114 +116,180 @@ struct BakerHomeView: View {
                 BakerOrdersView(user: user)
             }
             .sheet(isPresented: $showLocationSheet) {
-                LocationPickerSheet(selectedCity: $selectedCity, isActive: $isLocationActive)
+                LocationPickerSheet(filterCity: $filterCity)
             }
             .task {
                 await matchingRequestsVM.loadMatchingRequests()
+                await loadLiveStats()
+            }
+            .onAppear {
+                loadProfileAvatar()
+                loadBakerCity()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("profileAvatarUpdated"))) { _ in
+                loadProfileAvatar()
             }
             .onReceive(NotificationCenter.default.publisher(for: .bidDidChange)) { _ in
                 Task {
                     await matchingRequestsVM.loadMatchingRequests()
                 }
             }
+            .onReceive(NotificationCenter.default.publisher(for: .orderDidChange)) { _ in
+                Task { await loadLiveStats() }
+            }
         }
     }
 
     // MARK: - Header
     private var bakerHeader: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .center, spacing: 12) {
+            Group {
+                if let profileAvatar = profileAvatar {
+                    Image(uiImage: profileAvatar)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 48, height: 48)
+                        .clipShape(Circle())
+                } else {
+                    ZStack {
+                        Circle()
+                            .fill(Color(red: 0.90, green: 0.86, blue: 0.82))
+                            .frame(width: 48, height: 48)
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 22))
+                            .foregroundColor(.cakeBrown)
+                    }
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
                 Text(greetingText())
-                    .font(.urbanistRegular(14))
-                    .foregroundColor(.cakeGrey)
-                Text(user.name.isEmpty ? "Baker" : user.name)
-                    .font(.urbanistBold(22))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                Text("Ready to bake something amazing?")
                     .font(.urbanistRegular(13))
                     .foregroundColor(.cakeGrey)
+                Text(user.name.isEmpty ? user.email : user.name)
+                    .font(.urbanistSemiBold(15))
+                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .lineLimit(1)
             }
+
             Spacer()
-            HStack(spacing: 12) {
-                // Notification bell
-                ZStack {
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: 44, height: 44)
-                        .shadow(color: Color.black.opacity(0.07), radius: 4, x: 0, y: 2)
-                    NotificationBellButton(notificationService: notificationManager.notificationService, userType: "baker")
-                }
-                // Avatar
-                Circle()
-                    .fill(Color.cakeBrown.opacity(0.18))
-                    .frame(width: 44, height: 44)
-                    .overlay(
-                        Text(String(user.name.prefix(1)).uppercased())
-                            .font(.urbanistBold(18))
-                            .foregroundColor(.cakeBrown)
-                    )
-            }
+
+            NotificationBellButton(notificationService: notificationManager.notificationService, userType: "baker")
         }
         .padding(.horizontal, 20)
-        .padding(.top, 20)
+        .padding(.top, 16)
+        .padding(.bottom, 16)
     }
 
     // MARK: - Location Banner
     private var locationBanner: some View {
-        Button { showLocationSheet = true } label: {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(isLocationActive ? Color.green.opacity(0.15) : Color.gray.opacity(0.12))
-                        .frame(width: 36, height: 36)
-                    Image(systemName: isLocationActive ? "location.fill" : "location.slash")
-                        .font(.system(size: 15))
-                        .foregroundColor(isLocationActive ? .green : .gray)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(isLocationActive ? "Location Filter Active" : "Location Filter Off")
+        VStack(alignment: .center, spacing: 0) {
+            Text("Matching Cake Requests")
+                .font(.urbanistBold(17))
+                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .frame(maxWidth: .infinity, alignment: .center)
+                .multilineTextAlignment(.center)
+
+            Spacer().frame(height: 10)
+
+            Text(locationBannerSubtitle)
+                .font(.urbanistRegular(12))
+                .foregroundColor(Color(red: 95/255, green: 95/255, blue: 95/255))
+                .lineSpacing(3)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+
+            Spacer().frame(height: 16)
+
+            Button { showLocationSheet = true } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "mappin.and.ellipse")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white)
+                    Text(locationFilterButtonText)
                         .font(.urbanistSemiBold(13))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                    Text(isLocationActive ? "Showing requests near \(selectedCity)" : "Tap to enable location filtering")
-                        .font(.urbanistRegular(12))
-                        .foregroundColor(.cakeGrey)
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12))
-                    .foregroundColor(.cakeGrey)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(Color.cakeBrown)
+                .clipShape(Capsule())
             }
-            .padding(14)
-            .background(Color.white)
-            .cornerRadius(14)
-            .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 2)
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 22)
+        .background(Color(red: 235/255, green: 228/255, blue: 222/255))
+        .cornerRadius(16)
+    }
+
+    private var locationFilterButtonText: String {
+        if let city = filterCity, !city.isEmpty {
+            return "location based filter is active for \(city)"
+        }
+        return "showing all matching requests – tap to filter"
+    }
+
+    private var locationBannerSubtitle: String {
+        if let city = filterCity, !city.isEmpty {
+            return "Explore customer requests near \(city) that match your expertise and specialties."
+        }
+        return "Explore all customer requests that match your expertise and specialties."
     }
 
     // MARK: - Stats
     private var statsSection: some View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
-                statCard(icon: "bag.fill", title: "\(activeOrders)", subtitle: "Active Orders", color: Color.cakeBrown)
-                statCard(icon: "sparkles", title: "\(newRequests)", subtitle: "New Matching", color: Color(red: 0.2, green: 0.6, blue: 0.4))
+                statCard(
+                    icon: "bag.fill",
+                    title: "\(activeOrdersList.count)",
+                    subtitle: "Active Orders",
+                    cardBg:   Color(red: 248/255, green: 240/255, blue: 249/255),
+                    squareBg: Color(red: 228/255, green: 185/255, blue: 230/255),
+                    iconColor: Color(red: 110/255, green:  61/255, blue: 113/255)
+                )
+                statCard(
+                    icon: "sparkles",
+                    title: "\(newRequests)",
+                    subtitle: "New Matching",
+                    cardBg:   Color(red: 245/255, green: 245/255, blue: 254/255),
+                    squareBg: Color(red: 219/255, green: 220/255, blue: 255/255),
+                    iconColor: Color(red:  98/255, green:  81/255, blue: 162/255)
+                )
             }
             HStack(spacing: 12) {
-                statCard(icon: "calendar.badge.clock", title: "\(upcomingDeliveries)", subtitle: "Upcoming Deliveries", color: Color(red: 0.3, green: 0.45, blue: 0.8))
-                statCard(icon: "banknote.fill", title: earnings, subtitle: "Earnings This Month", color: Color(red: 0.7, green: 0.45, blue: 0.1))
+                statCard(
+                    icon: "calendar.badge.clock",
+                    title: "\(upcomingDeliveriesCount)",
+                    subtitle: "Upcoming Deliveries",
+                    cardBg:   Color(red: 237/255, green: 246/255, blue: 255/255),
+                    squareBg: Color(red: 220/255, green: 237/255, blue: 255/255),
+                    iconColor: Color(red:  35/255, green:  83/255, blue: 143/255)
+                )
+                statCard(
+                    icon: "banknote.fill",
+                    title: earningsThisMonth,
+                    subtitle: "Earnings This Month",
+                    cardBg:   Color(red: 245/255, green: 254/255, blue: 245/255),
+                    squareBg: Color(red: 199/255, green: 230/255, blue: 195/255),
+                    iconColor: Color(red:  68/255, green: 108/255, blue:  42/255)
+                )
             }
         }
     }
 
-    private func statCard(icon: String, title: String, subtitle: String, color: Color) -> some View {
+    private func statCard(icon: String, title: String, subtitle: String,
+                          cardBg: Color, squareBg: Color, iconColor: Color) -> some View {
         HStack(spacing: 12) {
             ZStack {
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(color.opacity(0.12))
+                    .fill(squareBg)
                     .frame(width: 44, height: 44)
                 Image(systemName: icon)
                     .font(.system(size: 20))
-                    .foregroundColor(color)
+                    .foregroundColor(iconColor)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -225,7 +304,7 @@ struct BakerHomeView: View {
             Spacer()
         }
         .padding(14)
-        .background(Color.white)
+        .background(cardBg)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
         .frame(maxWidth: .infinity)
@@ -303,8 +382,28 @@ struct BakerHomeView: View {
                     .background(Color(red: 0.97, green: 0.96, blue: 0.94))
                     .cornerRadius(12)
                 }
+            } else if filteredRequests.isEmpty {
+                VStack(spacing: 12) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "mappin.slash")
+                            .font(.system(size: 20))
+                            .foregroundColor(.cakeGrey.opacity(0.5))
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("No Requests in \(filterCity ?? "")")
+                                .font(.urbanistSemiBold(14))
+                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                            Text("Try selecting a different city or \"None\" to see all requests")
+                                .font(.urbanistRegular(12))
+                                .foregroundColor(.cakeGrey)
+                        }
+                        Spacer()
+                    }
+                    .padding(16)
+                    .background(Color(red: 0.97, green: 0.96, blue: 0.94))
+                    .cornerRadius(12)
+                }
             } else {
-                ForEach(matchingRequestsVM.matchingRequests.prefix(2)) { cakeReq in
+                ForEach(Array(filteredRequests.prefix(2))) { cakeReq in
                     let req = cakeReq.toCakeRequest()
                     MatchingRequestCard(request: req) {
                         selectedRequest = req
@@ -318,8 +417,38 @@ struct BakerHomeView: View {
     // MARK: - Active Orders Preview
     private var activeOrdersPreview: some View {
         VStack(spacing: 12) {
-            ForEach(mockActiveOrders.prefix(2)) { order in
-                BakerActiveOrderCard(order: order)
+            if isLoadingStats {
+                ProgressView()
+                    .tint(.cakeBrown)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(20)
+            } else if activeOrdersList.isEmpty {
+                HStack(spacing: 12) {
+                    Image(systemName: "tray.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.cakeGrey.opacity(0.5))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("No Active Orders")
+                            .font(.urbanistSemiBold(14))
+                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        Text("Confirmed orders will appear here")
+                            .font(.urbanistRegular(12))
+                            .foregroundColor(.cakeGrey)
+                    }
+                    Spacer()
+                }
+                .padding(16)
+                .background(Color(red: 0.97, green: 0.96, blue: 0.94))
+                .cornerRadius(12)
+            } else {
+                ForEach(Array(activeOrdersList.prefix(2))) { order in
+                    NavigationLink {
+                        BakerOrderStatusView(orderID: order.id)
+                    } label: {
+                        BakerActiveOrderCardFromCakeOrder(order: order)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
     }
@@ -339,94 +468,188 @@ struct BakerHomeView: View {
     private func greetingText() -> String {
         let hour = Calendar.current.component(.hour, from: Date())
         switch hour {
-        case 5..<12: return "Good Morning ☀️"
-        case 12..<17: return "Good Afternoon 🌤️"
-        case 17..<21: return "Good Evening 🌙"
-        default:      return "Good Night 🌙"
+        case 5..<12: return "Good Morning"
+        case 12..<17: return "Good Afternoon"
+        case 17..<21: return "Good Evening"
+        default:      return "Good Night"
+        }
+    }
+
+    private func loadProfileAvatar() {
+        guard let base64String = UserDefaults.standard.string(forKey: "profileAvatar_\(user.id)") else {
+            profileAvatar = nil
+            return
+        }
+
+        guard let imageData = Data(base64Encoded: base64String) else {
+            profileAvatar = nil
+            return
+        }
+
+        profileAvatar = UIImage(data: imageData)
+    }
+
+    private func loadBakerCity() {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        Task {
+            do {
+                let doc = try await db.collection("artisans").document(uid).getDocument()
+                if let city = doc.data()?["city"] as? String, !city.isEmpty {
+                    bakerCity = city
+                    if filterCity == nil {
+                        filterCity = city
+                    }
+                }
+            } catch {
+                print("Failed to load baker city: \(error)")
+            }
+        }
+    }
+
+    // MARK: - Live Stats Loader
+    private func loadLiveStats() async {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        isLoadingStats = true
+        await loadActiveOrders(bakerUID: uid)
+        await loadEarningsThisMonth(bakerUID: uid)
+        isLoadingStats = false
+    }
+
+    private func loadActiveOrders(bakerUID: String) async {
+        let db = Firestore.firestore()
+        let statuses = ["confirmed", "baking", "decorating", "quality_check"]
+        var seen = Set<String>()
+        var orders: [CakeOrder] = []
+        do {
+            for key in ["artisanId", "bakerID", "bakerId"] {
+                let snap = try await db.collection("orders")
+                    .whereField(key, isEqualTo: bakerUID)
+                    .whereField("status", in: statuses)
+                    .getDocuments()
+                for doc in snap.documents {
+                    guard !seen.contains(doc.documentID),
+                          let order = CakeOrder(document: doc) else { continue }
+                    seen.insert(doc.documentID)
+                    orders.append(order)
+                }
+            }
+        } catch {
+            print("BakerHome: active orders error – \(error.localizedDescription)")
+        }
+        activeOrdersList = orders.sorted { $0.deliveryDate < $1.deliveryDate }
+        // Upcoming deliveries = the 5 with the closest delivery dates
+        upcomingDeliveriesCount = min(5, activeOrdersList.count)
+    }
+
+    private func loadEarningsThisMonth(bakerUID: String) async {
+        let db = Firestore.firestore()
+        let statuses = ["completed", "delivered", "done"]
+        var seen = Set<String>()
+        var completed: [CakeOrder] = []
+        do {
+            for key in ["artisanId", "bakerID", "bakerId"] {
+                let snap = try await db.collection("orders")
+                    .whereField(key, isEqualTo: bakerUID)
+                    .whereField("status", in: statuses)
+                    .getDocuments()
+                for doc in snap.documents {
+                    guard !seen.contains(doc.documentID),
+                          let order = CakeOrder(document: doc) else { continue }
+                    seen.insert(doc.documentID)
+                    completed.append(order)
+                }
+            }
+        } catch {
+            print("BakerHome: earnings error – \(error.localizedDescription)")
+        }
+        let cal = Calendar.current
+        let now = Date()
+        let thisMonth = cal.component(.month, from: now)
+        let thisYear  = cal.component(.year,  from: now)
+        let monthly = completed.filter {
+            cal.component(.month, from: $0.deliveryDate) == thisMonth &&
+            cal.component(.year,  from: $0.deliveryDate) == thisYear
+        }
+        // Consistent with BakerOrdersView: 3,500 LKR per completed order
+        let total = Double(monthly.count) * 3_500
+        if total >= 1_000_000 {
+            earningsThisMonth = String(format: "LKR %.1fM", total / 1_000_000)
+        } else if total >= 1_000 {
+            earningsThisMonth = String(format: "LKR %.0fK", total / 1_000)
+        } else {
+            earningsThisMonth = String(format: "LKR %.0f", total)
         }
     }
 }
 
 // MARK: - Location Picker Sheet
 struct LocationPickerSheet: View {
-    @Binding var selectedCity: String
-    @Binding var isActive: Bool
+    @Binding var filterCity: String?
     @Environment(\.dismiss) private var dismiss
 
-    private let cities = ["Colombo", "Gampaha", "Kandy", "Galle", "Matara",
-                          "Negombo", "Kurunegala", "Ratnapura", "Anuradhapura", "Jaffna"]
+    @State private var localSelection: String?
+
+    private let districts = SriLankaDistricts.all
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 20) {
-                // Toggle
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Location Filter")
-                            .font(.urbanistBold(16))
-                        Text("Show requests near your location")
-                            .font(.urbanistRegular(13))
-                            .foregroundColor(.cakeGrey)
-                    }
-                    Spacer()
-                    Toggle("", isOn: $isActive)
-                        .tint(.cakeBrown)
-                }
-                .padding(16)
-                .background(Color(red: 0.97, green: 0.96, blue: 0.94))
-                .cornerRadius(14)
-
-                if isActive {
-                    Text("Select Your City")
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("Select City to Filter")
                         .font(.urbanistSemiBold(15))
                         .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
 
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                        ForEach(cities, id: \.self) { city in
-                            Button {
-                                selectedCity = city
-                            } label: {
-                                Text(city)
-                                    .font(.urbanistMedium(14))
-                                    .foregroundColor(selectedCity == city ? .white : Color(red: 0.1, green: 0.1, blue: 0.1))
-                                    .padding(.vertical, 12)
-                                    .frame(maxWidth: .infinity)
-                                    .background(selectedCity == city ? Color.cakeBrown : Color.white)
-                                    .cornerRadius(12)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke(selectedCity == city ? Color.clear : Color(red: 0.88, green: 0.88, blue: 0.88), lineWidth: 1)
-                                    )
+                        // None option — shows all matching requests
+                        districtButton(title: "None", isSelected: localSelection == nil) {
+                            localSelection = nil
+                        }
+
+                        ForEach(districts, id: \.self) { district in
+                            districtButton(title: district, isSelected: localSelection == district) {
+                                localSelection = district
                             }
                         }
                     }
-                }
 
-                Spacer()
-
-                Button {
-                    dismiss()
-                } label: {
-                    Text("Confirm")
-                        .font(.urbanistBold(16))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color.cakeBrown)
-                        .cornerRadius(16)
+                    Button {
+                        filterCity = localSelection
+                        dismiss()
+                    } label: {
+                        Text("Confirm")
+                            .font(.urbanistBold(16))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.cakeBrown)
+                            .cornerRadius(16)
+                    }
+                    .padding(.top, 8)
                 }
+                .padding(20)
             }
-            .padding(20)
-            .navigationTitle("Baker Location")
+            .navigationTitle("Filter by City")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .foregroundColor(.cakeBrown)
-                }
-            }
         }
+        .onAppear { localSelection = filterCity }
         .presentationDetents([.medium, .large])
+    }
+
+    private func districtButton(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.urbanistMedium(14))
+                .foregroundColor(isSelected ? .white : Color(red: 0.1, green: 0.1, blue: 0.1))
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity)
+                .background(isSelected ? Color.cakeBrown : Color.white)
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(isSelected ? Color.clear : Color(red: 0.88, green: 0.88, blue: 0.88), lineWidth: 1)
+                )
+        }
     }
 }
 
@@ -451,7 +674,7 @@ struct MatchingRequestCard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // ── Top Section ──────────────────────────────
+            // ── Main Content ──────────────────────────────
             HStack(alignment: .top, spacing: 12) {
                 // Reference image or Category icon
                 if !request.referenceImages.isEmpty,
@@ -474,13 +697,16 @@ struct MatchingRequestCard: View {
                     }
                 }
 
-                VStack(alignment: .leading, spacing: 5) {
+                // Right content — height locked to image height
+                VStack(alignment: .leading, spacing: 0) {
                     Text(request.title)
                         .font(.urbanistBold(14))
                         .foregroundColor(Color(red: 0.12, green: 0.12, blue: 0.12))
-                        .lineLimit(1)
+                        .lineLimit(2)
 
-                    // Category chip + Date on same row
+                    Spacer()
+
+                    // Row 1: Category chip + Date (date right-aligned)
                     HStack(spacing: 6) {
                         Text(request.category.name)
                             .font(.urbanistMedium(10))
@@ -490,6 +716,8 @@ struct MatchingRequestCard: View {
                             .background(chipColor)
                             .cornerRadius(6)
 
+                        Spacer()
+
                         HStack(spacing: 3) {
                             Image(systemName: "calendar")
                                 .font(.system(size: 10))
@@ -498,39 +726,38 @@ struct MatchingRequestCard: View {
                         }
                         .foregroundColor(.cakeGrey)
                     }
-                }
 
-                Spacer()
+                    Spacer(minLength: 12)
+
+                    // Row 2: Customer city (from DB) + Bid count (bids right-aligned)
+                    HStack(spacing: 4) {
+                        Image(systemName: "mappin.and.ellipse")
+                            .font(.system(size: 10))
+                            .foregroundColor(.cakeGrey)
+                        Text(request.location)
+                            .font(.urbanistRegular(11))
+                            .foregroundColor(.cakeGrey)
+                            .lineLimit(1)
+
+                        Spacer()
+
+                        HStack(spacing: 4) {
+                            Image(systemName: "person.2.fill")
+                                .font(.system(size: 10))
+                            Text("\(request.bidCount) bids")
+                                .font(.urbanistMedium(10))
+                        }
+                        .foregroundColor(.cakeBrown)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.cakeBrown.opacity(0.10))
+                        .cornerRadius(6)
+                    }
+                }
+                .frame(height: 80)
             }
             .padding(.horizontal, 14)
             .padding(.top, 12)
-            .padding(.bottom, 8)
-
-            // ── Location + Bid Count Row ──────────────────
-            HStack(spacing: 6) {
-                Image(systemName: "mappin.and.ellipse")
-                    .font(.system(size: 11))
-                    .foregroundColor(.cakeGrey)
-                Text(request.location)
-                    .font(.urbanistRegular(11))
-                    .foregroundColor(.cakeGrey)
-                    .lineLimit(1)
-
-                Spacer()
-
-                HStack(spacing: 4) {
-                    Image(systemName: "person.2.fill")
-                        .font(.system(size: 10))
-                    Text("\(request.bidCount) bids")
-                        .font(.urbanistMedium(10))
-                }
-                .foregroundColor(.cakeBrown)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(Color.cakeBrown.opacity(0.10))
-                .cornerRadius(6)
-            }
-            .padding(.horizontal, 14)
             .padding(.bottom, 8)
 
             // ── Divider ──────────────────────────────────
@@ -558,16 +785,16 @@ struct MatchingRequestCard: View {
                             .font(.urbanistSemiBold(15))
                             .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.082))
                             .frame(width: 120)
-                            .padding(.vertical, 8)
+                            .padding(.vertical, 6)
                             .background(Color(red: 0.906, green: 0.871, blue: 0.847))
                             .cornerRadius(9)
                     }
                 }
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 9)
+            .padding(.vertical, 10)
         }
-        .frame(height: 170)
+        .frame(height: 155)
         .background(Color(red: 0.98, green: 0.98, blue: 0.98))
         .cornerRadius(14)
         .shadow(color: Color.black.opacity(0.09), radius: 10, x: 0, y: 4)
