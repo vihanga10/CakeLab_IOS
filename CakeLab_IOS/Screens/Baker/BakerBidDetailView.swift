@@ -21,12 +21,25 @@ struct BakerBidDetailView: View {
     @State private var showConfirmation = false
     @State private var bidSubmitted = false
     @State private var isSubmittingBid = false
+    @State private var submissionError: String?
     @Environment(\.dismiss) private var dismiss
 
     private var formattedAlternativeDate: String {
         let f = DateFormatter()
         f.dateFormat = "MMM dd, yyyy"
         return f.string(from: alternativeDate)
+    }
+
+    private var parsedBidAmount: Double? {
+        let normalized = bidAmount
+            .replacingOccurrences(of: ",", with: "")
+            .replacingOccurrences(of: " ", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return Double(normalized)
+    }
+
+    private var canPlaceBid: Bool {
+        parsedBidAmount != nil && !isSubmittingBid
     }
 
     var body: some View {
@@ -66,6 +79,17 @@ struct BakerBidDetailView: View {
                 if showConfirmation { confirmationOverlay }
             }
         )
+        .alert(
+            "Unable to Submit Bid",
+            isPresented: Binding(
+                get: { submissionError != nil },
+                set: { if !$0 { submissionError = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) { submissionError = nil }
+        } message: {
+            Text(submissionError ?? "")
+        }
     }
 
     // MARK: - Request Details Card
@@ -210,12 +234,18 @@ struct BakerBidDetailView: View {
                         .font(.urbanistSemiBold(16))
                         .padding(.trailing, 14)
                         .padding(.vertical, 14)
+                        .onChange(of: bidAmount) { newValue in
+                            let filtered = newValue.filter { $0.isNumber || $0 == "," || $0 == "." || $0 == " " }
+                            if filtered != newValue {
+                                bidAmount = filtered
+                            }
+                        }
                 }
                 .background(Color.white)
                 .cornerRadius(14)
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
-                        .stroke(bidAmount.isEmpty ? Color(red: 0.88, green: 0.88, blue: 0.88) : Color.cakeBrown, lineWidth: 1.5)
+                        .stroke(parsedBidAmount == nil ? Color(red: 0.88, green: 0.88, blue: 0.88) : Color.cakeBrown, lineWidth: 1.5)
                 )
             }
 
@@ -334,12 +364,14 @@ struct BakerBidDetailView: View {
                         .foregroundColor(.cakeGrey)
                     Text(bidAmount.isEmpty ? "Enter amount" : "LKR \(bidAmount)")
                         .font(.urbanistBold(18))
-                        .foregroundColor(bidAmount.isEmpty ? .cakeGrey : .cakeBrown)
+                        .foregroundColor(parsedBidAmount == nil ? .cakeGrey : .cakeBrown)
                 }
                 Spacer()
                 Button {
-                    if !bidAmount.isEmpty {
+                    if canPlaceBid {
                         showConfirmation = true
+                    } else {
+                        submissionError = "Enter a valid bid amount before continuing."
                     }
                 } label: {
                     Text("Place Bid")
@@ -347,10 +379,10 @@ struct BakerBidDetailView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 32)
                         .padding(.vertical, 16)
-                        .background(bidAmount.isEmpty ? Color.cakeGrey.opacity(0.4) : Color.cakeBrown)
+                        .background(canPlaceBid ? Color.cakeBrown : Color.cakeGrey.opacity(0.4))
                         .cornerRadius(16)
                 }
-                .disabled(bidAmount.isEmpty)
+                .disabled(!canPlaceBid)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
@@ -442,9 +474,18 @@ struct BakerBidDetailView: View {
     }
     
     private func submitBid() async {
-        guard let bakerID = Auth.auth().currentUser?.uid,
-              let amount = Double(bidAmount),
-              !request.requestDocumentID.isEmpty else {
+        guard let bakerID = Auth.auth().currentUser?.uid else {
+            submissionError = "You need to be signed in as a baker before submitting a bid."
+            return
+        }
+
+        guard let amount = parsedBidAmount else {
+            submissionError = "Enter a valid bid amount. You can use digits with spaces or commas."
+            return
+        }
+
+        guard !request.requestDocumentID.isEmpty else {
+            submissionError = "This request is missing its document ID, so the bid cannot be saved."
             return
         }
         
@@ -509,6 +550,7 @@ struct BakerBidDetailView: View {
             }
         } catch {
             isSubmittingBid = false
+            submissionError = error.localizedDescription
             print("Error submitting bid: \(error)")
         }
     }

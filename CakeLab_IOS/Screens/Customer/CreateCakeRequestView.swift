@@ -58,6 +58,8 @@ struct CreateCakeRequestView: View {
     @State private var showCamera         = false
     @State private var cameraImage: UIImage?          = nil
     @State private var isSaving = false
+    @State private var isPublishing = false
+    @State private var isSavingDraft = false
     
     // Tier add
     @State private var showAddTierAlert = false
@@ -511,16 +513,16 @@ struct CreateCakeRequestView: View {
                         VStack(spacing: 12) {
                             Button {
                                 if !actionInProgress {
+                                    isPublishing = true
                                     actionInProgress = true
                                     Task {
                                         await publishRequest()
-                                        DispatchQueue.main.async {
-                                            actionInProgress = false
-                                        }
+                                        isPublishing = false
+                                        actionInProgress = false
                                     }
                                 }
                             } label: {
-                                if isSaving {
+                                if isPublishing {
                                     ProgressView()
                                         .tint(.white)
                                 } else {
@@ -539,16 +541,16 @@ struct CreateCakeRequestView: View {
                             
                             Button {
                                 if !actionInProgress {
+                                    isSavingDraft = true
                                     actionInProgress = true
                                     Task {
                                         await saveDraft()
-                                        DispatchQueue.main.async {
-                                            actionInProgress = false
-                                        }
+                                        isSavingDraft = false
+                                        actionInProgress = false
                                     }
                                 }
                             } label: {
-                                if isSaving {
+                                if isSavingDraft {
                                     ProgressView()
                                         .tint(Color(red: 0.2, green: 0.2, blue: 0.2))
                                 } else {

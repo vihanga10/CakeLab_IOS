@@ -52,45 +52,48 @@ struct BakerHomeView: View {
                         // MARK: Location Banner
                         locationBanner
                             .padding(.horizontal, 20)
-                            .padding(.bottom, 20)
+                            .padding(.bottom, 28)
 
                         // MARK: Stats Cards
                         statsSection
                             .padding(.horizontal, 20)
-                            .padding(.bottom, 24)
+                            .padding(.bottom, 28)
 
                         // MARK: Matching Requests Preview
-                        sectionHeader("Matching Requests", count: newRequests) {
-                            showAllMatching = true
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 12)
-
-                        matchingRequestsPreview
+                        VStack(alignment: .leading, spacing: 14) {
+                            sectionHeader("Matching Requests", count: newRequests) {
+                                showAllMatching = true
+                            }
                             .padding(.horizontal, 20)
-                            .padding(.bottom, 24)
+
+                            matchingRequestsPreview
+                                .padding(.horizontal, 20)
+                        }
+                        .padding(.bottom, 28)
 
                         // MARK: Active Orders Preview
-                        sectionHeader("Active Orders", count: activeOrdersList.count) {
-                            showAllActive = true
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 12)
-
-                        activeOrdersPreview
+                        VStack(alignment: .leading, spacing: 14) {
+                            sectionHeader("Active Orders", count: activeOrdersList.count) {
+                                showAllActive = true
+                            }
                             .padding(.horizontal, 20)
-                            .padding(.bottom, 24)
+
+                            activeOrdersPreview
+                                .padding(.horizontal, 20)
+                        }
+                        .padding(.bottom, 28)
 
                         // MARK: Other Open Requests
-                        sectionHeader("Other Open Requests", count: 4) {
-                            showAllOpen = true
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 12)
-
-                        otherOpenRequestsPreview
+                        VStack(alignment: .leading, spacing: 14) {
+                            sectionHeader("Other Open Requests", count: 4) {
+                                showAllOpen = true
+                            }
                             .padding(.horizontal, 20)
-                            .padding(.bottom, 100)
+
+                            otherOpenRequestsPreview
+                                .padding(.horizontal, 20)
+                        }
+                        .padding(.bottom, 100)
                     }
                 }
                 
@@ -314,17 +317,13 @@ struct BakerHomeView: View {
     private func sectionHeader(_ title: String, count: Int, action: @escaping () -> Void) -> some View {
         HStack {
             Text(title)
-                .font(.urbanistBold(17))
+                .font(.urbanistBold(15))
                 .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
             Spacer()
             Button(action: action) {
-                HStack(spacing: 4) {
-                    Text("See all")
-                        .font(.urbanistSemiBold(13))
-                    Text("(\(count))")
-                        .font(.urbanistRegular(12))
-                }
-                .foregroundColor(.cakeBrown)
+                Text("See all")
+                    .font(.urbanistSemiBold(13))
+                    .foregroundColor(.cakeBrown)
             }
         }
     }
@@ -423,23 +422,20 @@ struct BakerHomeView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(20)
             } else if activeOrdersList.isEmpty {
-                HStack(spacing: 12) {
-                    Image(systemName: "tray.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.cakeGrey.opacity(0.5))
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("No Active Orders")
-                            .font(.urbanistSemiBold(14))
-                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                        Text("Confirmed orders will appear here")
-                            .font(.urbanistRegular(12))
-                            .foregroundColor(.cakeGrey)
-                    }
-                    Spacer()
+                VStack(spacing: 8) {
+                    Image(systemName: "cart.badge.plus")
+                        .font(.system(size: 34))
+                        .foregroundColor(.cakeBrown.opacity(0.35))
+                    Text("No active orders yet")
+                        .font(.urbanistSemiBold(13))
+                        .foregroundColor(.cakeGrey)
+                    Text("New orders will appear here once customers place them")
+                        .font(.urbanistRegular(12))
+                        .foregroundColor(.cakeGrey.opacity(0.7))
+                        .multilineTextAlignment(.center)
                 }
-                .padding(16)
-                .background(Color(red: 0.97, green: 0.96, blue: 0.94))
-                .cornerRadius(12)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
             } else {
                 ForEach(Array(activeOrdersList.prefix(2))) { order in
                     NavigationLink {

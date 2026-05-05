@@ -4,36 +4,50 @@ import FirebaseFirestore
 // MARK: - Baker Matching Requests View (Nav Tab 1)
 @MainActor
 struct BakerMatchingRequestsView: View {
+    @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
     @State private var selectedSpecialty: String = "All"
     @State private var selectedRequest: CakeRequest?
     @State private var showBidDetail = false
     @StateObject private var viewModel = BakerMatchingRequestsViewModel()
-    
+
     private var filtered: [CakeRequestRecord] {
         let baseRequests = viewModel.matchingRequests
-        
+
         let afterSearch = searchText.isEmpty ? baseRequests : baseRequests.filter { request in
             request.displayTitle.localizedCaseInsensitiveContains(searchText)
         }
-        
+
         if selectedSpecialty == "All" {
             return afterSearch
         } else {
             return afterSearch.filter { viewModel.matches(request: $0, specialty: selectedSpecialty) }
         }
     }
-    
+
     private var filterOptions: [String] {
         ["All"] + viewModel.bakerSpecialties
     }
-    
+
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(red: 0.97, green: 0.96, blue: 0.94).ignoresSafeArea()
-                
+                Color.white.ignoresSafeArea()
+
                 VStack(spacing: 0) {
+                    // MARK: - Custom Header
+                    HStack {
+                        Spacer()
+                        Text("Matching Requests")
+                            .font(.urbanistBold(18))
+                            .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .frame(height: 56)
+                    .background(Color.white)
+
+                    // MARK: - Search Bar
                     HStack(spacing: 10) {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(.cakeGrey)
@@ -42,13 +56,13 @@ struct BakerMatchingRequestsView: View {
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
-                    .background(Color.white)
+                    .background(Color(red: 0.96, green: 0.96, blue: 0.96))
                     .cornerRadius(14)
-                    .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
                     .padding(.horizontal, 20)
-                    .padding(.top, 12)
+                    .padding(.top, 16)
                     .padding(.bottom, 14)
-                    
+
+                    // MARK: - Specialty Filter Chips
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 10) {
                             ForEach(filterOptions, id: \.self) { specialty in
@@ -60,16 +74,16 @@ struct BakerMatchingRequestsView: View {
                                         .foregroundColor(selectedSpecialty == specialty ? .white : Color(red: 0.1, green: 0.1, blue: 0.1))
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 8)
-                                        .background(selectedSpecialty == specialty ? Color.cakeBrown : Color.white)
+                                        .background(selectedSpecialty == specialty ? Color.cakeBrown : Color(red: 0.95, green: 0.95, blue: 0.95))
                                         .cornerRadius(20)
-                                        .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 1)
                                 }
                             }
                         }
                         .padding(.horizontal, 20)
                     }
                     .padding(.bottom, 14)
-                    
+
+                    // MARK: - Content
                     if viewModel.isLoading {
                         Spacer()
                         ProgressView("Loading matching requests...")
@@ -115,7 +129,7 @@ struct BakerMatchingRequestsView: View {
                                     Spacer()
                                 }
                                 .padding(.horizontal, 20)
-                                
+
                                 ForEach(filtered) { request in
                                     let cakeRequest = request.toCakeRequest()
                                     MatchingRequestCard(request: cakeRequest) {
@@ -125,11 +139,12 @@ struct BakerMatchingRequestsView: View {
                                     .padding(.horizontal, 20)
                                 }
                             }
+                            .padding(.top, 4)
                             .padding(.bottom, 100)
                         }
                     }
                 }
-                
+
                 NavigationLink(
                     destination: Group {
                         if let req = selectedRequest {
@@ -142,8 +157,7 @@ struct BakerMatchingRequestsView: View {
                 }
                 .hidden()
             }
-            .navigationTitle("Matching Requests")
-            .navigationBarTitleDisplayMode(.large)
+            .toolbar(.hidden, for: .navigationBar)
             .task {
                 await viewModel.loadMatchingRequests()
             }

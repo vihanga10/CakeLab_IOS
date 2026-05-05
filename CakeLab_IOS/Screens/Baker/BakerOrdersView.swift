@@ -22,8 +22,20 @@ struct BakerOrdersView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(red: 0.97, green: 0.96, blue: 0.94).ignoresSafeArea()
+                Color.white.ignoresSafeArea()
                 VStack(spacing: 0) {
+                    // MARK: Custom Header (matches BakerMatchingRequestsView)
+                    HStack {
+                        Spacer()
+                        Text("Orders")
+                            .font(.urbanistBold(18))
+                            .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
+                        Spacer()
+                    }
+                    .padding(.horizontal, 20)
+                    .frame(height: 56)
+                    .background(Color.white)
+
                     // MARK: Segmented Tabs
                     HStack(spacing: 0) {
                         ForEach(OrderTab.allCases, id: \.self) { tab in
@@ -60,8 +72,7 @@ struct BakerOrdersView: View {
                     }
                 }
             }
-            .navigationTitle("Orders")
-            .navigationBarTitleDisplayMode(.large)
+            .toolbar(.hidden, for: .navigationBar)
         }
         .task {
             await loadActiveOrdersData()
@@ -141,7 +152,7 @@ struct BakerOrdersView: View {
     // MARK: - Active Orders
     private var activeOrdersList: some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: 14) {
+            VStack(spacing: 16) {
                 if isLoadingActive {
                     ProgressView("Loading active orders...")
                         .tint(.cakeBrown)
@@ -164,10 +175,10 @@ struct BakerOrdersView: View {
                             BakerActiveOrderCardFromCakeOrder(order: order)
                         }
                         .buttonStyle(.plain)
-                        .padding(.horizontal, 20)
                     }
                 }
             }
+            .padding(.horizontal, 16)
             .padding(.top, 16)
             .padding(.bottom, 100)
         }
@@ -635,65 +646,119 @@ struct BakerCompletedOrderCardFromCakeOrder: View {
 struct BakerActiveOrderCardFromCakeOrder: View {
     let order: CakeOrder
 
+    private let stepLabels = ["Confirmed", "Baking", "Decorating", "Quality\nChecking", "Delivered"]
+
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
+
+            // ── Order Row ──────────────────────────────────────────────
             HStack(alignment: .top, spacing: 12) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(red: 0.95, green: 0.93, blue: 0.90))
-                        .frame(width: 52, height: 52)
-                    Image(systemName: "birthday.cake")
-                        .font(.system(size: 20))
-                        .foregroundColor(.cakeBrown.opacity(0.75))
-                }
+                        .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+                        .frame(width: 80, height: 80)
 
-                VStack(alignment: .leading, spacing: 4) {
+                    if !order.referenceImages.isEmpty,
+                       let imageData = Data(base64Encoded: order.referenceImages[0]),
+                       let uiImage = UIImage(data: imageData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 80, height: 80)
+                            .clipped()
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    } else {
+                        Image(systemName: "birthday.cake.fill")
+                            .font(.system(size: 32))
+                            .foregroundColor(.cakeBrown.opacity(0.4))
+                    }
+                }
+                .frame(width: 80, height: 80)
+
+                VStack(alignment: .leading, spacing: 0) {
                     Text(order.cakeName)
-                        .font(.urbanistSemiBold(14))
+                        .font(.urbanistBold(15))
                         .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
                         .lineLimit(2)
-                    Text(order.statusLabel)
-                        .font(.urbanistSemiBold(11))
-                        .foregroundColor(order.statusColor)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(order.statusColor.opacity(0.12))
-                        .cornerRadius(8)
+
+                    HStack(alignment: .top, spacing: 10) {
+                        Text(order.statusLabel)
+                            .font(.urbanistSemiBold(11))
+                            .foregroundColor(order.statusColor)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(order.statusColor.opacity(0.12))
+                            .cornerRadius(8)
+
+                        Spacer(minLength: 0)
+
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("Delivery Date:")
+                                .font(.urbanistRegular(11))
+                                .foregroundColor(.cakeGrey)
+                            Text(order.formattedDeliveryDate)
+                                .font(.urbanistSemiBold(12))
+                                .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
+                        }
+                    }
+                    .padding(.top, 14)
                 }
 
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 3) {
-                    Text("Delivery")
-                        .font(.urbanistRegular(10))
-                        .foregroundColor(.cakeGrey)
-                    Text(order.formattedDeliveryDate)
-                        .font(.urbanistSemiBold(12))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                }
-            }
-            .padding(14)
-
-            Divider().padding(.horizontal, 14)
-
-            HStack(spacing: 8) {
-                Image(systemName: "person.crop.circle")
-                    .foregroundColor(.cakeBrown)
-                Text(order.artisanName)
-                    .font(.urbanistRegular(12))
-                    .foregroundColor(.cakeGrey)
-                Spacer()
-                Text(order.artisanAddress)
-                    .font(.urbanistRegular(11))
-                    .foregroundColor(.cakeGrey)
-                    .lineLimit(1)
+                Spacer(minLength: 0)
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(.top, 14)
+            .padding(.bottom, 10)
+
+            // ── Progress Tracker ───────────────────────────────────────
+            OrderProgressTracker(currentStep: order.currentStep, labels: stepLabels)
+                .padding(.horizontal, 14)
+                .padding(.top, 4)
+                .padding(.bottom, 10)
+
+            Divider()
+                .padding(.horizontal, 18)
+
+            // ── Bakery Info ────────────────────────────────────────────
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+                        .frame(width: 48, height: 48)
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(.cakeBrown.opacity(0.5))
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(order.artisanName)
+                        .font(.urbanistBold(14))
+                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    HStack(spacing: 3) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.1))
+                        Text(order.artisanRating)
+                            .font(.urbanistRegular(12))
+                            .foregroundColor(.cakeGrey)
+                    }
+                    HStack(spacing: 4) {
+                        Image(systemName: "mappin.circle.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.cakeGrey)
+                        Text(order.artisanAddress)
+                            .font(.urbanistRegular(11))
+                            .foregroundColor(.cakeGrey)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
         }
         .background(Color.white)
         .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05), radius: 7, x: 0, y: 2)
+        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 3)
     }
 }
 
