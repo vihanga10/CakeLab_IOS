@@ -79,7 +79,6 @@ struct BakerHomeView: View {
                             .padding(.horizontal, 20)
 
                             activeOrdersPreview
-                                .padding(.horizontal, 20)
                         }
                         .padding(.bottom, 28)
 
@@ -415,12 +414,26 @@ struct BakerHomeView: View {
 
     // MARK: - Active Orders Preview
     private var activeOrdersPreview: some View {
-        VStack(spacing: 12) {
+        Group {
             if isLoadingStats {
-                ProgressView()
-                    .tint(.cakeBrown)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(20)
+                // Loading skeleton — horizontal scrolling circles
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 16) {
+                        ForEach(0..<3, id: \.self) { _ in
+                            VStack(spacing: 10) {
+                                Circle()
+                                    .fill(Color(red: 0.91, green: 0.91, blue: 0.91))
+                                    .frame(width: 90, height: 90)
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(Color(red: 0.91, green: 0.91, blue: 0.91))
+                                    .frame(width: 68, height: 22)
+                            }
+                            .frame(width: 100)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 4)
+                }
             } else if activeOrdersList.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "cart.badge.plus")
@@ -435,15 +448,50 @@ struct BakerHomeView: View {
                         .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
+                .padding(.horizontal, 20)
                 .padding(.vertical, 20)
             } else {
-                ForEach(Array(activeOrdersList.prefix(2))) { order in
-                    NavigationLink {
-                        BakerOrderStatusView(orderID: order.id)
-                    } label: {
-                        BakerActiveOrderCardFromCakeOrder(order: order)
+                // Horizontal scrolling circles — mirrors customer home screen
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 16) {
+                        ForEach(activeOrdersList) { order in
+                            NavigationLink {
+                                BakerOrderStatusView(orderID: order.id)
+                            } label: {
+                                VStack(spacing: 10) {
+                                    ZStack {
+                                        Circle()
+                                            .stroke(Color(red: 0.15, green: 0.65, blue: 0.22), lineWidth: 2.5)
+                                            .frame(width: 90, height: 90)
+                                        Circle()
+                                            .fill(Color(red: 0.93, green: 0.91, blue: 0.88))
+                                            .frame(width: 82, height: 82)
+                                        if !order.referenceImages.isEmpty,
+                                           let imageData = Data(base64Encoded: order.referenceImages[0]),
+                                           let uiImage = UIImage(data: imageData) {
+                                            Image(uiImage: uiImage)
+                                                .resizable()
+                                                .scaledToFill()
+                                                .frame(width: 74, height: 74)
+                                                .clipShape(Circle())
+                                        } else {
+                                            Image(systemName: "birthday.cake.fill")
+                                                .font(.system(size: 30))
+                                                .foregroundColor(.cakeBrown.opacity(0.45))
+                                        }
+                                    }
+                                    Text("Order No:\n\(order.id.prefix(6))")
+                                        .font(.urbanistRegular(11))
+                                        .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
+                                        .multilineTextAlignment(.center)
+                                }
+                                .frame(width: 100)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
-                    .buttonStyle(.plain)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 4)
                 }
             }
         }
