@@ -1,47 +1,171 @@
 import SwiftUI
+import Combine
 
-// Customer Tab View
+// MARK: - Singleton nav state
+// All views reference CustomerNavState.shared directly — no environment
+// propagation needed, so it works correctly through NavigationStack pushes.
+final class CustomerNavState: ObservableObject {
+    static let shared = CustomerNavState()
+    @Published var selectedTab: Int = 0
+    @Published var depth: Int = 0
+    // Per-tab reset counters — incrementing a tab's counter forces its
+    // NavigationStack to recreate (pops to root), even if selectedTab doesn't change.
+    @Published var tabResetIDs: [Int: Int] = [0: 0, 1: 0, 2: 0, 3: 0]
+    var isOnSubScreen: Bool { depth > 0 }
+    private init() {}
+
+    func navigateTo(_ tag: Int) {
+        tabResetIDs[tag, default: 0] += 1
+        selectedTab = tag
+    }
+}
+
+// MARK: - All-unselected tab bar embedded inside every sub-screen
+struct CustomerSubScreenTabBar: View {
+    let onSelectTab: (Int) -> Void
+
+    private let tabs: [(icon: String, tag: Int)] = [
+        ("house.fill",          0),
+        ("birthday.cake.fill",  1),
+        ("list.clipboard.fill", 2),
+        ("person.fill",         3)
+    ]
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(tabs.enumerated()), id: \.element.tag) { index, tab in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        onSelectTab(tab.tag)
+                    }
+                } label: {
+                    Image(systemName: tab.icon)
+                        .font(.system(size: 21, weight: .semibold))
+                        .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
+                        .frame(width: 50, height: 50)
+                        .background(
+                            Circle()
+                                .fill(Color(red: 0.9, green: 0.9, blue: 0.9).opacity(0.45))
+                        )
+                }
+                .buttonStyle(.plain)
+                if index < tabs.count - 1 { Spacer(minLength: 12) }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(height: 68)
+        .background(
+            ZStack {
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(red: 0.94, green: 0.94, blue: 0.94).opacity(0.75),
+                        Color(red: 0.92, green: 0.92, blue: 0.92).opacity(0.85)
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                Color(red: 0.93, green: 0.93, blue: 0.93).opacity(0.5)
+                Color(red: 0.96, green: 0.96, blue: 0.96).opacity(0.2)
+            }
+        )
+        .cornerRadius(26)
+        .overlay(
+            RoundedRectangle(cornerRadius: 26)
+                .stroke(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color(red: 0.85, green: 0.85, blue: 0.85).opacity(0.6),
+                            Color(red: 0.88, green: 0.88, blue: 0.88).opacity(0.3),
+                            Color(red: 0.9,  green: 0.9,  blue: 0.9 ).opacity(0.4)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1.5
+                )
+        )
+        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
+        .padding(.horizontal, 18)
+        .padding(.bottom, 1)
+    }
+}
+
+// MARK: - ViewModifier applied to every sub-screen
+// Embeds the tab bar directly inside the pushed view via safeAreaInset,
+// and tracks navigation depth on the singleton so CustomerTabBar reflects
+// the unselected state while on a sub-screen.
+struct CustomerSubScreenModifier: ViewModifier {
+    @Environment(\.dismiss) private var dismiss
+
+    func body(content: Content) -> some View {
+        ZStack(alignment: .bottom) {
+            // Content first — painted underneath
+            content
+                .onAppear  { CustomerNavState.shared.depth += 1 }
+                .onDisappear { CustomerNavState.shared.depth = max(0, CustomerNavState.shared.depth - 1) }
+
+            // Tab bar last — always on top, always receives touches
+            CustomerSubScreenTabBar { tag in
+                CustomerNavState.shared.navigateTo(tag)
+                dismiss()
+            }
+        }
+    }
+}
+
+extension View {
+    func asCustomerSubScreen() -> some View {
+        modifier(CustomerSubScreenModifier())
+    }
+}
+
+// MARK: - Customer Tab View
 struct CustomerTabView: View {
     let user: AppUser
     @Binding var widgetRoute: WidgetDeepLinkRoute?
-    @State private var selectedTab: Int = 0
     @State private var notificationsShown = false
+    @ObservedObject private var navState = CustomerNavState.shared
     @EnvironmentObject var notificationManager: NotificationManager
+
+    private var selectedTabBinding: Binding<Int> {
+        Binding(
+            get: { CustomerNavState.shared.selectedTab },
+            set: { CustomerNavState.shared.selectedTab = $0 }
+        )
+    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Main content area
             Group {
-                switch selectedTab {
-                case 0: CustomerHomeView(user: user, selectedTab: $selectedTab)
+                switch navState.selectedTab {
+                case 0: CustomerHomeView(user: user, selectedTab: selectedTabBinding)
+                    .id(navState.tabResetIDs[0])
                 case 1: CustomerBidsView(user: user)
+                    .id(navState.tabResetIDs[1])
                 case 2: CustomerOrdersView(user: user)
+                    .id(navState.tabResetIDs[2])
                 case 3: CustomerProfileDetailView(user: user)
-                default: CustomerHomeView(user: user, selectedTab: $selectedTab)
+                    .id(navState.tabResetIDs[3])
+                default: CustomerHomeView(user: user, selectedTab: selectedTabBinding)
+                    .id(navState.tabResetIDs[0])
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            // Custom tab bar
-            CustomerTabBar(selectedTab: $selectedTab)
+            CustomerTabBar(selectedTab: selectedTabBinding)
         }
         .ignoresSafeArea(.keyboard)
         .onChange(of: widgetRoute) { _, newRoute in
             guard let newRoute else { return }
-
             switch newRoute {
-            case .customerStatus:
-                selectedTab = 2
-            case .customerActiveList:
-                selectedTab = 0
-            default:
-                break
+            case .customerStatus:     CustomerNavState.shared.selectedTab = 2
+            case .customerActiveList: CustomerNavState.shared.selectedTab = 0
+            default: break
             }
-
             widgetRoute = nil
         }
         .task {
-            // Show customer notifications only once on login
             if !notificationsShown {
                 notificationManager.reloadNotifications(for: "customer")
                 notificationsShown = true
@@ -51,9 +175,10 @@ struct CustomerTabView: View {
     }
 }
 
-// Custom Tab Bar
+// MARK: - Custom Tab Bar
 struct CustomerTabBar: View {
     @Binding var selectedTab: Int
+    @ObservedObject private var navState = CustomerNavState.shared
 
     private struct TabItem {
         let icon: String
@@ -68,17 +193,20 @@ struct CustomerTabBar: View {
         TabItem(icon: "person.fill",         label: "Profile", tag: 3)
     ]
 
+    private func changePage(to tag: Int) {
+        CustomerNavState.shared.navigateTo(tag)
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             ForEach(Array(tabs.enumerated()), id: \.element.tag) { index, tab in
                 Button {
                     withAnimation(.easeInOut(duration: 0.15)) {
-                        selectedTab = tab.tag
+                        changePage(to: tab.tag)
                     }
                 } label: {
                     ZStack {
-                        if selectedTab == tab.tag {
-                            // Selected tab: centered capsule with icon and label
+                        if !navState.isOnSubScreen && selectedTab == tab.tag {
                             HStack(spacing: 8) {
                                 Image(systemName: tab.icon)
                                     .font(.system(size: 18, weight: .semibold))
@@ -94,7 +222,6 @@ struct CustomerTabBar: View {
                             .background(Color(red: 93/255, green: 55/255, blue: 20/255))
                             .clipShape(Capsule())
                         } else {
-                            // Unselected tab: icon centered in a circular touch target
                             Image(systemName: tab.icon)
                                 .font(.system(size: 21, weight: .semibold))
                                 .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
@@ -118,7 +245,6 @@ struct CustomerTabBar: View {
         .frame(height: 68)
         .background(
             ZStack {
-                // Premium liquid glass background - iOS 26 style with gray tint
                 LinearGradient(
                     gradient: Gradient(colors: [
                         Color(red: 0.94, green: 0.94, blue: 0.94).opacity(0.75),
@@ -127,12 +253,7 @@ struct CustomerTabBar: View {
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
-                
-                // Glass morphism frost layer - more gray
-                Color(red: 0.93, green: 0.93, blue: 0.93)
-                    .opacity(0.5)
-                
-                // Subtle blur simulation with gray overlay
+                Color(red: 0.93, green: 0.93, blue: 0.93).opacity(0.5)
                 Color(red: 0.96, green: 0.96, blue: 0.96).opacity(0.2)
             }
         )

@@ -11,8 +11,9 @@ struct NotificationCenterView: View {
     private var filteredNotifications: [AppNotification] {
         notificationManager.notificationService.getNotifications(for: userType)
     }
-    
-    var body: some View {
+
+    @ViewBuilder
+    private var notificationContent: some View {
         NavigationStack {
             ZStack {
                 Color.white.ignoresSafeArea()
@@ -113,6 +114,17 @@ struct NotificationCenterView: View {
                 }
             }
             .navigationBarBackButtonHidden(true)
+        }
+    }
+    
+    var body: some View {
+        Group {
+            if userType == "customer" {
+                notificationContent
+                    .asCustomerSubScreen()
+            } else {
+                notificationContent
+            }
         }
         .alert("Clear All Notifications", isPresented: $showDeleteConfirm) {
             Button("Cancel", role: .cancel) {}

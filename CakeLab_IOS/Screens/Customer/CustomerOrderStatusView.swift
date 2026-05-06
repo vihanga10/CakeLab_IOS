@@ -276,6 +276,7 @@ struct CustomerOrderStatusView: View {
                 )
             }
         }
+        .asCustomerSubScreen()
     }
 
     private var headerBar: some View {

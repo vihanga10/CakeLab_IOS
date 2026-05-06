@@ -612,6 +612,7 @@ struct BidsReceivedView: View {
         } message: {
             Text(errorMessage ?? "")
         }
+        .asCustomerSubScreen()
     }
 
     private var headerBar: some View {

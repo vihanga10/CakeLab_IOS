@@ -202,6 +202,7 @@ struct PublishedCakeDetailView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .asCustomerSubScreen()
     }
 
     private var headerBar: some View {

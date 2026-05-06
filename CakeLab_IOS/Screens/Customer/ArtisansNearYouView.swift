@@ -296,6 +296,7 @@ struct ArtisansNearYouView: View {
             )
             .presentationDetents([.medium, .large])
         }
+        .asCustomerSubScreen()
     }
 
     private func centerMap(on artisan: ArtisanProfile) {

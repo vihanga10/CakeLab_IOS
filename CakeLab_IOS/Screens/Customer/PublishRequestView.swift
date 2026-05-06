@@ -108,6 +108,7 @@ struct PublishRequestView: View {
         .refreshable {
             await fetchPublishedRequests()
         }
+        .asCustomerSubScreen()
     }
 
     private var headerBar: some View {

@@ -519,6 +519,7 @@ struct LanguageDetailContent: View {
             
             Spacer()
         }
+        .asCustomerSubScreen()
     }
 }
 
@@ -702,6 +703,7 @@ struct PrivacyDetailContent: View {
             Spacer().frame(height: 24)
         }
         .padding(.top, 20)
+        .asCustomerSubScreen()
     }
 }
 
@@ -805,6 +807,7 @@ struct HelpDetailContent: View {
             Spacer().frame(height: 24)
         }
         .padding(.top, 20)
+        .asCustomerSubScreen()
     }
 }
 
@@ -862,6 +865,7 @@ struct TermsDetailContent: View {
                 .padding(.top, 20)
             }
         }
+        .asCustomerSubScreen()
     }
 }
 
@@ -1098,6 +1102,7 @@ struct EditProfileView: View {
             )
             .presentationDetents([.medium, .large])
         }
+        .asCustomerSubScreen()
     }
 
     private var headerBar: some View {

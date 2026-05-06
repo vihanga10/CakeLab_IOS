@@ -620,8 +620,9 @@ struct CreateCakeRequestView: View {
                 applyInitialDraftIfNeeded()
             }
         }
+        .asCustomerSubScreen()
     }
-    
+
     // MARK: - Save to Firebase
     @MainActor
     private func publishRequest() async {

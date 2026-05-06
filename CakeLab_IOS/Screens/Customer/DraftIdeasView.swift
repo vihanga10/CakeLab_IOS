@@ -56,6 +56,7 @@ struct DraftIdeasView: View {
                 await fetchDrafts()
             }
         }
+        .asCustomerSubScreen()
     }
 
     private var headerBar: some View {

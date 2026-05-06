@@ -205,6 +205,7 @@ struct PaymentHistoryView: View {
         .task {
             await vm.load(customerID: user.id)
         }
+        .asCustomerSubScreen()
     }
 
     private var headerBar: some View {
