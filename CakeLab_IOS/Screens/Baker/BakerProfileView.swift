@@ -321,14 +321,34 @@ struct BakerProfileView: View {
                     .font(.urbanistBold(16))
                     .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
                 Spacer()
-                Text("6 photos")
+                Text("\(profileData.portfolioWorks.count)/6 selected")
                     .font(.urbanistRegular(12))
                     .foregroundColor(.cakeGrey)
             }
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ForEach(profileData.portfolioImages.prefix(6), id: \.self) { imageRef in
-                    PortfolioThumbnail(imageRef: imageRef)
+            if profileData.portfolioWorks.isEmpty {
+                VStack(spacing: 10) {
+                    Image(systemName: "photo.on.rectangle.angled")
+                        .font(.system(size: 24))
+                        .foregroundColor(.cakeBrown.opacity(0.7))
+                    Text("No portfolio works published yet")
+                        .font(.urbanistSemiBold(14))
+                        .foregroundColor(Color(hex: "5D3714"))
+                    Text("Use Edit Portfolio to add your previous work and choose what appears here.")
+                        .font(.urbanistRegular(12))
+                        .foregroundColor(.cakeGrey)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 22)
+                .padding(.horizontal, 8)
+                .background(Color(red: 0.98, green: 0.96, blue: 0.94))
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+            } else {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    ForEach(profileData.portfolioWorks.prefix(6)) { work in
+                        PortfolioThumbnail(work: work)
+                    }
                 }
             }
         }
@@ -376,7 +396,7 @@ struct BakerProfileView: View {
                 profileImageBase64: artisanData["profileImageBase64"] as? String ?? "",
                 coverImageURL: artisanData["coverImageURL"] as? String ?? "",
                 coverImageBase64: artisanData["coverImageBase64"] as? String ?? "",
-                portfolioImages: resolvePortfolioImages(artisanData: artisanData)
+                portfolioWorks: resolvePortfolioWorks(artisanData: artisanData)
             )
         } catch {
             print("ERROR BakerProfileView.loadProfileData: \(error.localizedDescription)")
@@ -437,16 +457,21 @@ struct BakerProfileView: View {
         return user.avatarURL ?? ""
     }
 
-    private func resolvePortfolioImages(artisanData: [String: Any]) -> [String] {
-        let urls = artisanData["portfolioImages"] as? [String] ?? artisanData["portfolioURLs"] as? [String] ?? []
-        if urls.count >= 6 { return Array(urls.prefix(6)) }
-
-        var output = urls
-        let fallback = ["cake.portrait.1", "cake.portrait.2", "cake.portrait.3", "cake.portrait.4", "cake.portrait.5", "cake.portrait.6"]
-        for item in fallback where output.count < 6 {
-            output.append(item)
+    private func resolvePortfolioWorks(artisanData: [String: Any]) -> [PortfolioPreviewWork] {
+        let publishedWorks = artisanData["portfolioPublishedWorks"] as? [[String: Any]] ?? []
+        let resolvedPublishedWorks = publishedWorks.compactMap(PortfolioPreviewWork.init(dictionary:))
+        if !resolvedPublishedWorks.isEmpty {
+            return Array(resolvedPublishedWorks.prefix(6))
         }
-        return output
+
+        let legacyImages = artisanData["portfolioImages"] as? [String] ?? artisanData["portfolioURLs"] as? [String] ?? []
+        return legacyImages.prefix(6).enumerated().map { index, imageRef in
+            PortfolioPreviewWork(
+                id: "legacy-\(index)",
+                title: "Portfolio Work",
+                imageReference: imageRef
+            )
+        }
     }
 
     private func decodeBase64Image(_ rawBase64: String) -> UIImage? {
@@ -788,7 +813,9 @@ struct BakerProfileView: View {
             Divider().padding(.leading, 52)
             menuRow(icon: "globe", label: "Language", color: Color(red: 0.2, green: 0.5, blue: 0.8))
             Divider().padding(.leading, 52)
-            menuRow(icon: "photo.stack.fill", label: "Edit Portfolio", color: Color.cakeBrown)
+            NavigationLink(destination: BakerPortfolioManagerView(user: user)) {
+                menuRow(icon: "photo.stack.fill", label: "Edit Portfolio", color: Color.cakeBrown)
+            }
         }
         .background(Color.white)
         .cornerRadius(18)
@@ -907,35 +934,84 @@ struct FlowLayout: View {
 }
 
 private struct PortfolioThumbnail: View {
-    let imageRef: String
+    let work: PortfolioPreviewWork
 
     var body: some View {
-        Group {
-            if imageRef.hasPrefix("http://") || imageRef.hasPrefix("https://") {
-                AsyncImage(url: URL(string: imageRef)) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    default:
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(red: 0.95, green: 0.93, blue: 0.90))
-                            .overlay(Image(systemName: "photo").foregroundColor(.cakeBrown.opacity(0.65)))
+        VStack(alignment: .leading, spacing: 6) {
+            Group {
+                if let image = decodeBase64Image(work.imageReference) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                } else if work.imageReference.hasPrefix("http://") || work.imageReference.hasPrefix("https://") {
+                    AsyncImage(url: URL(string: work.imageReference)) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFill()
+                        default:
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(red: 0.95, green: 0.93, blue: 0.90))
+                                .overlay(Image(systemName: "photo").foregroundColor(.cakeBrown.opacity(0.65)))
+                        }
                     }
+                } else {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(red: 0.95, green: 0.93, blue: 0.90))
+                        .overlay(
+                            Image(systemName: "birthday.cake")
+                                .font(.system(size: 24, weight: .semibold))
+                                .foregroundColor(.cakeBrown.opacity(0.7))
+                        )
                 }
-            } else {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(red: 0.95, green: 0.93, blue: 0.90))
-                    .overlay(
-                        Image(systemName: "birthday.cake")
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundColor(.cakeBrown.opacity(0.7))
-                    )
             }
+            .frame(height: 92)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+
+            Text(work.title)
+                .font(.urbanistMedium(11))
+                .foregroundColor(Color(hex: "5D3714"))
+                .lineLimit(1)
         }
-        .frame(height: 92)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func decodeBase64Image(_ rawBase64: String) -> UIImage? {
+        let trimmed = rawBase64.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let payload: String
+        if let commaIndex = trimmed.firstIndex(of: ",") {
+            payload = String(trimmed[trimmed.index(after: commaIndex)...])
+        } else {
+            payload = trimmed
+        }
+
+        guard let data = Data(base64Encoded: payload) else { return nil }
+        return UIImage(data: data)
+    }
+}
+
+private struct PortfolioPreviewWork: Identifiable {
+    let id: String
+    let title: String
+    let imageReference: String
+
+    init(id: String, title: String, imageReference: String) {
+        self.id = id
+        self.title = title
+        self.imageReference = imageReference
+    }
+
+    init?(dictionary: [String: Any]) {
+        let id = (dictionary["workID"] as? String ?? UUID().uuidString).trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = (dictionary["title"] as? String ?? "Portfolio Work").trimmingCharacters(in: .whitespacesAndNewlines)
+        let imageReference = (dictionary["imageBase64"] as? String ?? dictionary["imageURL"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !imageReference.isEmpty else { return nil }
+
+        self.id = id
+        self.title = title.isEmpty ? "Portfolio Work" : title
+        self.imageReference = imageReference
     }
 }
 
@@ -1028,7 +1104,7 @@ private struct BakerProfileData {
     let profileImageBase64: String
     let coverImageURL: String
     let coverImageBase64: String
-    let portfolioImages: [String]
+    let portfolioWorks: [PortfolioPreviewWork]
 
     static let empty = BakerProfileData(
         shopName: "Baker Shop",
@@ -1045,7 +1121,7 @@ private struct BakerProfileData {
         profileImageBase64: "",
         coverImageURL: "",
         coverImageBase64: "",
-        portfolioImages: ["cake.portrait.1", "cake.portrait.2", "cake.portrait.3", "cake.portrait.4", "cake.portrait.5", "cake.portrait.6"]
+        portfolioWorks: []
     )
 }
 
