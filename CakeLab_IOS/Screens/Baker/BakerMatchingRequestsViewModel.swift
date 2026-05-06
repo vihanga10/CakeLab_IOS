@@ -12,6 +12,13 @@ final class BakerMatchingRequestsViewModel: ObservableObject {
     @Published var bakerSpecialties: [String] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
+
+    /// Open requests that do NOT match the baker's specialties and are still
+    /// open (status == "open" means no baker has been confirmed/paid yet).
+    var otherOpenRequests: [CakeRequestRecord] {
+        let matchingIDs = Set(matchingRequests.map(\.id))
+        return allPublishedRequests.filter { !matchingIDs.contains($0.id) }
+    }
     
     private let db = Firestore.firestore()
     private var bakerUID: String {

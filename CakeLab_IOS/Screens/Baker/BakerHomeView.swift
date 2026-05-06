@@ -85,7 +85,7 @@ struct BakerHomeView: View {
 
                         // MARK: Other Open Requests
                         VStack(alignment: .leading, spacing: 14) {
-                            sectionHeader("Other Open Requests", count: 4) {
+                            sectionHeader("Other Open Requests", count: matchingRequestsVM.otherOpenRequests.count) {
                                 showAllOpen = true
                             }
                             .padding(.horizontal, 20)
@@ -113,7 +113,7 @@ struct BakerHomeView: View {
                 BakerMatchingRequestsView()
             }
             .navigationDestination(isPresented: $showAllOpen) {
-                EmptyView()
+                BakerOtherRequestsView(viewModel: matchingRequestsVM)
             }
             .navigationDestination(isPresented: $showAllActive) {
                 BakerOrdersView(user: user)
@@ -503,14 +503,39 @@ struct BakerHomeView: View {
         }
     }
 
-    // MARK: - Other Open Requests Preview
+    // MARK: - Other Open Requests Preview (max 3, real data)
     private var otherOpenRequestsPreview: some View {
         VStack(spacing: 12) {
-            ForEach(mockOtherRequests.prefix(2)) { req in
-                NavigationLink(destination: BakerBidDetailView(request: req)) {
-                    OtherRequestCard(request: req)
+            if matchingRequestsVM.isLoading {
+                ProgressView()
+                    .tint(.cakeBrown)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(20)
+            } else if matchingRequestsVM.otherOpenRequests.isEmpty {
+                HStack(spacing: 12) {
+                    Image(systemName: "tray.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.cakeGrey.opacity(0.5))
+                    Text("No other open requests right now")
+                        .font(.urbanistRegular(13))
+                        .foregroundColor(.cakeGrey)
+                    Spacer()
                 }
-                .buttonStyle(.plain)
+                .padding(16)
+                .background(Color(red: 0.97, green: 0.96, blue: 0.94))
+                .cornerRadius(12)
+            } else {
+                ForEach(Array(matchingRequestsVM.otherOpenRequests.prefix(3))) { record in
+                    let req = record.toCakeRequest()
+                    MatchingRequestCard(
+                        request: req,
+                        onPlaceBid: {
+                            selectedRequest = req
+                            showBidDetail = true
+                        },
+                        buttonTitle: "Can you do this?"
+                    )
+                }
             }
         }
     }
@@ -727,6 +752,7 @@ struct LocationPickerSheet: View {
 struct MatchingRequestCard: View {
     let request: CakeRequest
     var onPlaceBid: (() -> Void)? = nil
+    var buttonTitle: String = "Place Bid"
 
     private let pastelPalette: [Color] = [
         Color(red: 0.95, green: 0.84, blue: 0.92),
@@ -851,7 +877,7 @@ struct MatchingRequestCard: View {
 
                 if let onPlaceBid = onPlaceBid {
                     Button(action: onPlaceBid) {
-                        Text("Place Bid")
+                        Text(buttonTitle)
                             .font(.urbanistSemiBold(15))
                             .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.082))
                             .frame(width: 120)
