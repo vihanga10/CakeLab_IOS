@@ -9,7 +9,9 @@ struct CustomerHomeView: View {
     @Binding var selectedTab: Int
     @State private var searchText = ""
     @StateObject private var viewModel = CustomerHomeViewModel()
+    @StateObject private var artisansVM = ArtisansNearYouViewModel(customerDistrict: nil)
     @State private var profileAvatar: UIImage? = nil
+    @State private var homeSelectedArtisan: ArtisanProfile? = nil
     @EnvironmentObject var notificationManager: NotificationManager
     
     private let db = Firestore.firestore()
@@ -306,34 +308,29 @@ struct CustomerHomeView: View {
                             }
                             .padding(.horizontal, 20)
 
-                            if viewModel.isLoadingArtisans {
+                            if artisansVM.isLoading {
                                 // Loading skeleton
                                 VStack(spacing: 12) {
                                     ForEach(0..<3, id: \.self) { _ in
-                                        RoundedRectangle(cornerRadius: 14)
+                                        RoundedRectangle(cornerRadius: 24)
                                             .fill(Color(red: 0.93, green: 0.93, blue: 0.93))
-                                            .frame(height: 100)
+                                            .frame(height: 110)
                                     }
                                 }
                                 .padding(.horizontal, 20)
-                            } else if viewModel.artisans.isEmpty {
+                            } else if nearbyArtisans.isEmpty {
                                 Text("No artisans available right now.")
                                     .font(.urbanistRegular(13))
                                     .foregroundColor(.cakeGrey)
                                     .frame(maxWidth: .infinity, alignment: .center)
                                     .padding(.vertical, 20)
                             } else {
-                                // Real artisans from Firestore — same for every customer
+                                // ArtisanNearCard — filtered by customer's district, max 3
                                 VStack(spacing: 12) {
-                                    ForEach(viewModel.artisans) { artisan in
-                                        ArtisanCard(
-                                            name: artisan.name,
-                                            rating: artisan.ratingText,
-                                            reviews: artisan.reviewsText,
-                                            specialty: artisan.specialties,
-                                            location: artisan.location,
-                                            isOnline: artisan.isOnline
-                                        )
+                                    ForEach(nearbyArtisans) { artisan in
+                                        ArtisanNearCard(artisan: artisan) {
+                                            homeSelectedArtisan = artisan
+                                        }
                                     }
                                 }
                                 .padding(.horizontal, 20)
@@ -354,13 +351,97 @@ struct CustomerHomeView: View {
             .task {
                 // Refresh user data from Firestore
                 await refreshUserFromFirestore()
-                
+
                 // Run both fetches concurrently when the screen loads
                 let currentUID = Auth.auth().currentUser?.uid ?? user.id
                 async let orders: ()   = viewModel.fetchActiveOrders(for: currentUID)
-                async let artisans: () = viewModel.fetchArtisans()
+                async let artisans: () = artisansVM.loadArtisansFromDatabase()
                 await orders
                 await artisans
+            }
+            .sheet(item: $homeSelectedArtisan) { artisan in
+                NavigationStack {
+                    VStack(spacing: 0) {
+                        Text("Send Cake Request?")
+                            .font(.urbanistBold(18))
+                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                            .padding(.top, 24)
+                            .padding(.bottom, 16)
+
+                        HStack(spacing: 12) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+                                    .frame(width: 60, height: 60)
+                                Image(systemName: "storefront.fill")
+                                    .font(.system(size: 22))
+                                    .foregroundColor(.cakeBrown.opacity(0.5))
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(artisan.name)
+                                    .font(.urbanistBold(14))
+                                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                HStack(spacing: 4) {
+                                    Image(systemName: "star.fill")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.1))
+                                    Text("\(artisan.ratingText) (\(artisan.reviewCount) reviews)")
+                                        .font(.urbanistRegular(11))
+                                        .foregroundColor(.cakeGrey)
+                                }
+                                if !artisan.location.isEmpty {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "mappin.circle.fill")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.cakeGrey)
+                                        Text(artisan.location)
+                                            .font(.urbanistRegular(10))
+                                            .foregroundColor(.cakeGrey)
+                                            .lineLimit(1)
+                                    }
+                                }
+                            }
+                            Spacer()
+                            Circle()
+                                .fill(artisan.isOnline ? Color(red: 0.15, green: 0.72, blue: 0.25) : Color.gray.opacity(0.45))
+                                .frame(width: 10, height: 10)
+                        }
+                        .padding(12)
+                        .background(Color.white)
+                        .cornerRadius(12)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 20)
+
+                        Divider()
+
+                        HStack(spacing: 12) {
+                            Button {
+                                homeSelectedArtisan = nil
+                            } label: {
+                                Text("Cancel")
+                                    .font(.urbanistSemiBold(14))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(Color(red: 0.94, green: 0.94, blue: 0.94))
+                                    .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
+                                    .cornerRadius(10)
+                            }
+                            NavigationLink(destination: CreateCakeRequestView(user: user, selectedArtisan: artisan)) {
+                                Text("Send Request")
+                                    .font(.urbanistSemiBold(14))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(Color.cakeBrown)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(10)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
+                    }
+                    .background(Color.white)
+                }
+                .presentationDetents([.height(280)])
             }
         }
     }
@@ -378,6 +459,18 @@ struct CustomerHomeView: View {
         profileAvatar = UIImage(data: imageData)
     }
     
+    // MARK: - Nearby Artisans (district-filtered, max 3)
+    private var nearbyArtisans: [ArtisanProfile] {
+        let district = SriLankaDistricts.canonical(user.city ?? "")
+        if let district {
+            let filtered = artisansVM.artisans.filter {
+                SriLankaDistricts.canonical($0.city) == district
+            }
+            if !filtered.isEmpty { return Array(filtered.prefix(3)) }
+        }
+        return Array(artisansVM.artisans.prefix(3))
+    }
+
     // MARK: - Refresh User
     /// Fetches the latest user data from Firestore to reflect profile edits
     private func refreshUserFromFirestore() async {

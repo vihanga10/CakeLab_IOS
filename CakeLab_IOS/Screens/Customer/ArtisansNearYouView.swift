@@ -52,15 +52,26 @@ struct ArtisansNearYouView: View {
                         ForEach(mapArtisans, id: \.id) { artisan in
                             Annotation("", coordinate: CLLocationCoordinate2D(latitude: artisan.latitude, longitude: artisan.longitude)) {
                                 Button {
-                                    selectedArtisan = artisan
+                                    withAnimation(.easeInOut(duration: 0.18)) {
+                                        selectedArtisan = selectedArtisan?.id == artisan.id ? nil : artisan
+                                    }
                                 } label: {
-                                    ZStack {
-                                        Circle()
-                                            .fill(Color.cakeBrown)
-                                            .frame(width: 32, height: 32)
-                                        Image(systemName: "fork.knife")
-                                            .font(.system(size: 14, weight: .semibold))
-                                            .foregroundColor(.white)
+                                    VStack(spacing: 4) {
+                                        // Bubble above the pin — visible only for the selected artisan
+                                        if selectedArtisan?.id == artisan.id {
+                                            mapPinPopup(for: artisan)
+                                                .transition(.scale(scale: 0.8).combined(with: .opacity))
+                                        }
+
+                                        // Pin icon
+                                        ZStack {
+                                            Circle()
+                                                .fill(Color.cakeBrown)
+                                                .frame(width: 32, height: 32)
+                                            Image(systemName: "fork.knife")
+                                                .font(.system(size: 14, weight: .semibold))
+                                                .foregroundColor(.white)
+                                        }
                                     }
                                 }
                             }
@@ -68,13 +79,6 @@ struct ArtisansNearYouView: View {
                     }
                     .mapStyle(.standard)
                     .frame(height: 280)
-                    .overlay(alignment: .topLeading) {
-                        if let artisan = selectedArtisan {
-                            mapPinPopup(for: artisan)
-                                .padding(.top, 12)
-                                .padding(.leading, 12)
-                        }
-                    }
                     .overlay(alignment: .bottomLeading) {
                         if let district = viewModel.selectedDistrict {
                             Label("District: \(district)", systemImage: "mappin.and.ellipse")
@@ -105,33 +109,37 @@ struct ArtisansNearYouView: View {
                             .clipShape(Capsule())
                             .padding(.horizontal, 20)
 
-                            Button {
-                                showDistrictPicker = true
-                            } label: {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "list.bullet.circle.fill")
-                                        .font(.system(size: 14))
-                                    Text(viewModel.selectedDistrict ?? "Select district")
-                                        .font(.urbanistRegular(13))
+                            HStack(spacing: 12) {
+                                Button {
+                                    showDistrictPicker = true
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "list.bullet.circle.fill")
+                                            .font(.system(size: 14))
+                                        Text(viewModel.selectedDistrict ?? "Select district")
+                                            .font(.urbanistRegular(13))
+                                    }
+                                    .foregroundColor(Color(hex: "5D3714"))
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 10)
+                                    .background(Color(hex: "E9E5E1"))
+                                    .cornerRadius(8)
                                 }
-                                .foregroundColor(Color(red: 0.7, green: 0.5, blue: 0.2))
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 10)
-                                .background(Color(red: 0.97, green: 0.95, blue: 0.92))
-                                .cornerRadius(8)
+
+                                Spacer()
+
+                                if viewModel.selectedDistrict != nil {
+                                    Button {
+                                        viewModel.clearDistrictFilter()
+                                        moveToBestVisibleRegion()
+                                    } label: {
+                                        Text("Show all districts")
+                                            .font(.urbanistRegular(12))
+                                            .foregroundColor(.cakeGrey)
+                                    }
+                                }
                             }
                             .padding(.horizontal, 20)
-
-                            if viewModel.selectedDistrict != nil {
-                                Button {
-                                    viewModel.clearDistrictFilter()
-                                    moveToBestVisibleRegion()
-                                } label: {
-                                    Text("Show all districts")
-                                        .font(.urbanistRegular(12))
-                                        .foregroundColor(.cakeGrey)
-                                }
-                            }
 
                             if let errorMessage = viewModel.errorMessage {
                                 Text(errorMessage)
@@ -395,30 +403,39 @@ struct ArtisansNearYouView: View {
 
     @ViewBuilder
     private func mapPinPopup(for artisan: ArtisanProfile) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(artisan.name)
-                .font(.urbanistSemiBold(12))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-
-            HStack(spacing: 4) {
-                Image(systemName: "star.fill")
-                    .font(.system(size: 10))
-                    .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.1))
-                Text("\(artisan.ratingText)  \(artisan.reviewsText)")
-                    .font(.urbanistRegular(10))
-                    .foregroundColor(.cakeGrey)
+        VStack(spacing: 0) {
+            // Bubble card
+            VStack(alignment: .leading, spacing: 5) {
+                Text(artisan.name)
+                    .font(.urbanistSemiBold(12))
+                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                HStack(spacing: 4) {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.1))
+                    Text("\(artisan.ratingText)  \(artisan.reviewsText)")
+                        .font(.urbanistRegular(10))
+                        .foregroundColor(.cakeGrey)
+                }
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .background(Color.white)
+            .cornerRadius(10)
+            .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 3)
+
+            // Downward-pointing tail
+            Image(systemName: "arrowtriangle.down.fill")
+                .font(.system(size: 9))
+                .foregroundColor(.white)
+                .shadow(color: Color.black.opacity(0.08), radius: 1, x: 0, y: 1)
+                .offset(y: -1)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(Color.white)
-        .cornerRadius(10)
-        .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 2)
     }
 }
 
 @MainActor
-private final class ArtisansNearYouViewModel: ObservableObject {
+final class ArtisansNearYouViewModel: ObservableObject {
     @Published var artisans: [ArtisanProfile] = []
     @Published var scopedArtisans: [ArtisanProfile] = []
     @Published var isLoading = false
@@ -717,57 +734,65 @@ struct ArtisanNearCard: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(alignment: .top, spacing: 14) {
-                artisanImage(size: 80)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .top, spacing: 14) {
+                    // Left: image
+                    artisanImage(size: 80)
 
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .top) {
-                        Text(artisan.name)
-                            .font(.urbanistBold(18))
-                            .foregroundColor(Color(hex: "5D3714"))
-                            .lineLimit(1)
-                        Spacer()
-                        Circle()
-                            .fill(artisan.isOnline ? Color(red: 0.15, green: 0.72, blue: 0.25) : Color.gray.opacity(0.45))
-                            .frame(width: 12, height: 12)
-                            .overlay(
-                                Circle()
-                                    .stroke((artisan.isOnline ? Color(red: 0.15, green: 0.72, blue: 0.25) : Color.gray.opacity(0.45)).opacity(0.25), lineWidth: 5)
-                            )
-                    }
+                    // Right: name, rating, specialty chips
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .top) {
+                            Text(artisan.name)
+                                .font(.urbanistBold(15))
+                                .foregroundColor(Color(hex: "5D3714"))
+                                .lineLimit(1)
+                            Spacer()
+                            Circle()
+                                .fill(artisan.isOnline ? Color(red: 0.15, green: 0.72, blue: 0.25) : Color.gray.opacity(0.45))
+                                .frame(width: 12, height: 12)
+                                .overlay(
+                                    Circle()
+                                        .stroke((artisan.isOnline ? Color(red: 0.15, green: 0.72, blue: 0.25) : Color.gray.opacity(0.45)).opacity(0.25), lineWidth: 5)
+                                )
+                        }
 
-                    HStack(spacing: 6) {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(Color(red: 1.0, green: 0.88, blue: 0.0))
-                        Text("\(artisan.ratingText) \(artisan.reviewsText)")
-                            .font(.urbanistRegular(13))
-                            .foregroundColor(Color(hex: "5B5B5B"))
-                    }
+                        HStack(spacing: 6) {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(Color(red: 1.0, green: 0.88, blue: 0.0))
+                            Text("\(artisan.ratingText) \(artisan.reviewsText)")
+                                .font(.urbanistRegular(13))
+                                .foregroundColor(Color(hex: "5B5B5B"))
+                        }
 
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(Array(displaySpecialties.prefix(3).enumerated()), id: \.element) { index, tag in
-                                Text(tag)
-                                    .font(.urbanistMedium(12))
-                                    .foregroundColor(Color(hex: "5D3714"))
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 7)
-                                    .background(chipPalette[index % chipPalette.count])
-                                    .clipShape(Capsule())
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(Array(displaySpecialties.prefix(3).enumerated()), id: \.element) { index, tag in
+                                    Text(tag)
+                                        .font(.urbanistMedium(12))
+                                        .foregroundColor(Color(hex: "5D3714"))
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 7)
+                                        .background(chipPalette[index % chipPalette.count])
+                                        .clipShape(Capsule())
+                                }
                             }
                         }
                     }
+                }
 
-                    HStack(spacing: 8) {
+                // Full-width location row — no truncation, shows complete address
+                if !artisan.location.isEmpty {
+                    HStack(alignment: .top, spacing: 5) {
                         Image(systemName: "mappin")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(Color(hex: "7C7C7C"))
+                            .padding(.top, 1)
                         Text(artisan.location)
-                            .font(.urbanistRegular(13))
+                            .font(.urbanistRegular(12))
                             .foregroundColor(Color(hex: "434343"))
-                            .lineLimit(1)
                     }
+                    .padding(.top, 10)
                 }
             }
             .padding(.horizontal, 14)

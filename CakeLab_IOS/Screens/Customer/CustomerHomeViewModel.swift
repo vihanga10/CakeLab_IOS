@@ -57,18 +57,30 @@ final class CustomerHomeViewModel: ObservableObject {
         isLoadingOrders = false
     }
 
-    // MARK: - Fetch Artisans  (common for all customers)
-    /// Queries the "artisans" collection ordered by rating.
-    /// The same list is shown to every customer — no per-user filtering.
+    // MARK: - Fetch Artisans
+    /// Mirrors ArtisansNearYouViewModel: queries "artisans" collection first,
+    /// falls back to "users" (baker role) if the artisans collection returns nothing.
     func fetchArtisans() async {
         isLoadingArtisans = true
         do {
+            // Primary: artisans collection (higher limit for district filtering)
             let snapshot = try await db.collection("artisans")
                 .order(by: "rating", descending: true)
-                .limit(to: 10)
+                .limit(to: 100)
                 .getDocuments()
 
-            artisans = snapshot.documents.compactMap { ArtisanProfile(document: $0) }
+            var loaded = snapshot.documents.compactMap { ArtisanProfile(document: $0) }
+
+            // Fallback: users collection (baker role) — same strategy as ArtisansNearYouViewModel
+            if loaded.isEmpty {
+                let usersSnap = try await db.collection("users")
+                    .whereField("role", isEqualTo: "baker")
+                    .limit(to: 100)
+                    .getDocuments()
+                loaded = usersSnap.documents.compactMap { ArtisanProfile(document: $0) }
+            }
+
+            artisans = loaded.sorted { $0.rating > $1.rating }
         } catch {
             errorMessage = "Could not load artisans."
             print("ERROR CustomerHomeViewModel.fetchArtisans: \(error.localizedDescription)")
