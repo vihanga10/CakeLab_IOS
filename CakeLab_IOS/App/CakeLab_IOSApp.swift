@@ -27,7 +27,7 @@ struct CakeLab_IOSApp: App {
 
   var body: some Scene {
     WindowGroup {
-      SplashView()
+      ContentView()
         .preferredColorScheme(.light)
         .environmentObject(notificationManager)
         .notificationOverlay(notificationManager)

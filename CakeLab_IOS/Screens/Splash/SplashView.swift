@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SplashView: View {
+    var onFinished: (() -> Void)? = nil
     @State private var showOnboarding = false
 
     // Entry animation states
@@ -77,7 +78,11 @@ struct SplashView: View {
                 // Navigate to onboarding after delay
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) {
                     withAnimation(.easeInOut(duration: 0.4)) {
-                        showOnboarding = true
+                        if let onFinished {
+                            onFinished()
+                        } else {
+                            showOnboarding = true
+                        }
                     }
                 }
             }

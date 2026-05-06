@@ -28,13 +28,15 @@ final class SignInViewModel: ObservableObject {
     func signIn() {
         guard validate() else { return }
         Task {
+            signedInUser = nil
+            navigateToFaceID = false
             isLoading = true
             errorMessage = nil
             do {
                 let user = try await authService.signIn(email: email.trimmingCharacters(in: .whitespaces),
                                                         password: password)
                 
-                // ✅ Validate that selected role matches database role
+                // Validate that selected role matches database role
                 guard let selectedRole = selectedRole else {
                     errorMessage = AuthError.roleNotSelected.errorDescription
                     isLoading = false
@@ -42,7 +44,8 @@ final class SignInViewModel: ObservableObject {
                 }
                 
                 if user.role != selectedRole {
-                    print("❌ ERROR: Role mismatch - Selected: \(selectedRole.rawValue), Database: \(user.role.rawValue)")
+                    print("ERROR: Role mismatch - Selected: \(selectedRole.rawValue), Database: \(user.role.rawValue)")
+                    AppSessionManager.shared.discardAuthenticatedSession()
                     errorMessage = "Role mismatch. Please select '\(user.role.rawValue.capitalized)' to continue."
                     isLoading = false
                     return
@@ -59,11 +62,13 @@ final class SignInViewModel: ObservableObject {
                     credentialStore.delete(email: normalizedEmail)
                 }
                 
-                print("✅ DEBUG: Role validation passed - User is: \(user.role.rawValue)")
+                print("DEBUG: Role validation passed - User is: \(user.role.rawValue)")
                 signedInUser    = user
+                AppSessionManager.shared.registerAuthenticatedSession(for: user)
                 navigateToFaceID = true
                 WidgetDataSyncManager.shared.refreshFromCurrentSession()
             } catch {
+                signedInUser = nil
                 errorMessage = error.localizedDescription
             }
             isLoading = false
@@ -113,5 +118,12 @@ final class SignInViewModel: ObservableObject {
     private func isValidEmail(_ email: String) -> Bool {
         let regex = #"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$"#
         return email.range(of: regex, options: .regularExpression) != nil
+    }
+
+    func resetSessionState() {
+        signedInUser = nil
+        navigateToFaceID = false
+        isLoading = false
+        errorMessage = nil
     }
 }

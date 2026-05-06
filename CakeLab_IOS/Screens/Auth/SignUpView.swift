@@ -8,6 +8,7 @@ struct SignUpView: View {
     @State private var showPassword        = false
     @State private var showConfirmPassword = false
     @State private var showSignUpSuccessAlert = false
+    @State private var showSignIn = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -15,14 +16,14 @@ struct SignUpView: View {
             GeometryReader { geo in
                 ZStack(alignment: .bottom) {
 
-                    // ── Background photo ─────────────────────────────────
+                    //  Background photo 
                     Image("Signin_up")
                         .resizable()
                         .scaledToFill()
                         .frame(width: geo.size.width, height: geo.size.height)
                         .clipped()
 
-                    // ── Gradient fade photo → card ───────────────────────
+                    //  Gradient fade photo → card 
                     LinearGradient(
                         colors: [.clear, Color.white.opacity(0.15), .white],
                         startPoint: .top, endPoint: .bottom
@@ -30,7 +31,7 @@ struct SignUpView: View {
                     .frame(height: geo.size.height * 0.55)
                     .frame(maxWidth: .infinity)
 
-                    // ── White card (fixed, no scroll) ────────────────────
+                    //  White card (fixed, no scroll) 
                     VStack(spacing: 0) {
                         cardContent
                             .frame(maxWidth: .infinity)
@@ -41,7 +42,7 @@ struct SignUpView: View {
                         Color.white.frame(height: geo.safeAreaInsets.bottom)
                     }
 
-                    // ── Back chevron (under status bar) ──────────────────
+                    //  Back chevron (under status bar) 
                     VStack(spacing: 0) {
                         HStack {
                             Button { dismiss() } label: {
@@ -60,6 +61,9 @@ struct SignUpView: View {
             }
             .ignoresSafeArea()
             .navigationBarHidden(true)
+            .navigationDestination(isPresented: $showSignIn) {
+                SignInView()
+            }
             .onChange(of: vm.navigateToFaceID) { _, newVal in
                 if newVal {
                     showSignUpSuccessAlert = true
@@ -82,7 +86,7 @@ struct SignUpView: View {
 
             Spacer().frame(height: 24)
 
-            // ── Heading ───────────────────────────────────────────────
+            //  Heading 
             Text("CREATE YOUR ACCOUNT")
                 .font(.urbanistBold(24))
                 .foregroundColor(.cakeBrown)
@@ -95,7 +99,7 @@ struct SignUpView: View {
 
             Spacer().frame(height: 20)
 
-            // ── Email ─────────────────────────────────────────────────
+            //  Email 
             fieldLabel("Email Address")
             AuthTextField(placeholder: "you@example.com",
                           text: $vm.email,
@@ -103,7 +107,7 @@ struct SignUpView: View {
 
             Spacer().frame(height: 12)
 
-            // ── Password ──────────────────────────────────────────────
+            //  Password 
             fieldLabel("Password")
             AuthTextField(placeholder: "••••••••••",
                           text: $vm.password,
@@ -114,7 +118,7 @@ struct SignUpView: View {
 
             Spacer().frame(height: 12)
 
-            // ── Confirm Password ──────────────────────────────────────
+            //  Confirm Password 
             fieldLabel("Confirm Password")
             AuthTextField(placeholder: "••••••••••",
                           text: $vm.confirmPassword,
@@ -125,14 +129,14 @@ struct SignUpView: View {
 
             Spacer().frame(height: 12)
 
-            // ── Role selector ─────────────────────────────────────────
+            //  Role selector 
             fieldLabel("Who are you?")
             Spacer().frame(height: 8)
             RoleSelector(selected: $vm.selectedRole)
 
             Spacer().frame(height: 14)
 
-            // ── Error ─────────────────────────────────────────────────
+            //  Error 
             if let err = vm.errorMessage {
                 Text(err)
                     .font(.urbanistRegular(11))
@@ -142,7 +146,7 @@ struct SignUpView: View {
 
             Spacer().frame(height: 16)
 
-            // ── Sign Up button ────────────────────────────────────────
+            //  Sign Up button 
             Button { vm.signUp() } label: {
                 ZStack {
                     if vm.isLoading { ProgressView().tint(.white) }
@@ -161,23 +165,23 @@ struct SignUpView: View {
 
             Spacer().frame(height: 14)
 
-            // ── OR divider ────────────────────────────────────────────
+            //  OR divider 
             ORDivider()
 
             Spacer().frame(height: 12)
 
-            // ── Social buttons ────────────────────────────────────────
+            //  Social buttons 
             SocialButtons()
 
             Spacer().frame(height: 12)
 
-            // ── Sign In link ──────────────────────────────────────────
+            //  Sign In link 
             HStack(spacing: 4) {
                 Spacer()
                 Text("Already have an account?")
                     .font(.urbanistRegular(13))
                     .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                Button { dismiss() } label: {
+                Button { showSignIn = true } label: {
                     Text("Sign In")
                         .font(.urbanistSemiBold(13))
                         .foregroundColor(.cakeBrown)

@@ -7,8 +7,6 @@ import FirebaseAuth
 struct CustomerProfileDetailView: View {
     let user: AppUser
     @StateObject private var viewModel: ProfileViewModel
-
-    @State private var navigateToSignIn = false
     @State private var showPaymentHistory = false
     @State private var selectedDetailView: String? = nil
     @State private var selectedLanguage: String = UserDefaults.standard.string(forKey: "appLanguage") ?? "English"
@@ -225,9 +223,7 @@ struct CustomerProfileDetailView: View {
 
                                 Button(action: {
                                     do {
-                                        try Auth.auth().signOut()
-                                        WidgetDataSyncManager.shared.clearWidgetData()
-                                        navigateToSignIn = true
+                                        try AppSessionManager.shared.signOutCompletely()
                                     } catch {
                                         print("Logout failed: \(error.localizedDescription)")
                                     }
@@ -254,9 +250,6 @@ struct CustomerProfileDetailView: View {
             }
             .navigationBarBackButtonHidden(true)
             .navigationBarHidden(true)
-            .navigationDestination(isPresented: $navigateToSignIn) {
-                SignInView()
-            }
             .navigationDestination(isPresented: $showPaymentHistory) {
                 PaymentHistoryView(user: user)
             }

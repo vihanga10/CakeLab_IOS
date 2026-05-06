@@ -29,10 +29,19 @@ final class BakerMatchingRequestsViewModel: ObservableObject {
     func loadMatchingRequests() async {
         isLoading = true
         errorMessage = nil
+
+        let uid = bakerUID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !uid.isEmpty else {
+            matchingRequests = []
+            allPublishedRequests = []
+            bakerSpecialties = []
+            isLoading = false
+            return
+        }
         
         do {
             // Step 1: Fetch baker's specialties from artisans collection
-            let bakerDoc = try await db.collection("artisans").document(bakerUID).getDocument()
+            let bakerDoc = try await db.collection("artisans").document(uid).getDocument()
             guard let data = bakerDoc.data() else {
                 errorMessage = "Baker profile not found. Please complete your profile first."
                 isLoading = false
@@ -47,7 +56,7 @@ final class BakerMatchingRequestsViewModel: ObservableObject {
                 return
             }
             
-            print("🎂 DEBUG: Baker specialties loaded: \(bakerSpecialties)")
+            print("DEBUG: Baker specialties loaded: \(bakerSpecialties)")
             
             // Step 2: Fetch all published requests (status == "open")
             let snapshot = try await db.collection("cakeRequests")
@@ -62,16 +71,16 @@ final class BakerMatchingRequestsViewModel: ObservableObject {
             // Step 3: Filter requests that match baker's specialties
             self.matchingRequests = allRequests.filter { request in
                 if request.isDirectRequest {
-                    return request.targetArtisanId == bakerUID
+                    return request.targetArtisanId == uid
                 }
                 return matchesAnySpecialty(request: request, specialties: bakerSpecialties)
             }
             
-            print("✅ Matching requests filtered: \(self.matchingRequests.count) out of \(allRequests.count)")
+            print("Matching requests filtered: \(self.matchingRequests.count) out of \(allRequests.count)")
             
         } catch {
             errorMessage = "Failed to load matching requests: \(error.localizedDescription)"
-            print("❌ Error loading matching requests: \(error.localizedDescription)")
+            print("Error loading matching requests: \(error.localizedDescription)")
         }
         
         isLoading = false

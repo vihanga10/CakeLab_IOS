@@ -8,7 +8,7 @@ struct BiometricAuthView: View {
     @State private var navigateToSignIn = false
     @State private var navigateToSignUp = false
     @State private var navigateToHome = false
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject var notificationManager: NotificationManager
     
     private let bgImage = "Signin_up"
@@ -22,14 +22,14 @@ struct BiometricAuthView: View {
                     let cardHeight = geo.size.height * 0.70
                     ZStack(alignment: .bottom) {
                         
-                        // ── Background photo ─────────────────────────────────
+                        // Background photo
                         Image(bgImage)
                             .resizable()
                             .scaledToFill()
                             .frame(width: geo.size.width, height: geo.size.height)
                             .clipped()
                         
-                        // ── Gradient fade ────────────────────────────────────
+                        //  Gradient fade 
                         LinearGradient(
                             colors: [.clear, Color.white.opacity(0.2), .white],
                             startPoint: .top, endPoint: .bottom
@@ -37,7 +37,7 @@ struct BiometricAuthView: View {
                         .frame(height: cardHeight + 80)
                         .frame(maxWidth: .infinity)
                         
-                        // ── White card ───────────────────────────────────────
+                        //  White card 
                         VStack(spacing: 0) {
                             cardContent
                                 .frame(maxWidth: .infinity)
@@ -47,21 +47,6 @@ struct BiometricAuthView: View {
                             
                             Color.white.frame(height: geo.safeAreaInsets.bottom)
                         }
-                        
-                        // ── Back chevron ─────────────────────────────────────
-                       VStack(spacing: 0) {
-                        HStack {
-                            Button { dismiss() } label: {
-                                Image(systemName: "chevron.left")
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundColor(.white)
-                            }
-                            Spacer()
-                        }
-                        .padding(.horizontal, 40)
-                        .padding(.top, geo.safeAreaInsets.top + 79)
-                        Spacer()
-                    }
                     }
                     .ignoresSafeArea()
                 }
@@ -75,12 +60,24 @@ struct BiometricAuthView: View {
                 }
                 .onChange(of: navigateToHome) { _, newVal in
                     if newVal {
-                        // 🔔 Reload notifications on successful biometric login with user type
+                        // Reload notifications on successful biometric login with user type
                         if let user = vm.authenticatedUser {
                             notificationManager.reloadNotifications(for: user.role.rawValue)
-                            print("✅ Notifications reloaded for \(user.role.rawValue) after biometric sign in")
+                            print("Notifications reloaded for \(user.role.rawValue) after biometric sign in")
                         }
                     }
+                }
+                .onAppear {
+                    vm.checkFaceIDAvailability()
+                }
+                .onChange(of: scenePhase) { _, newPhase in
+                    if newPhase == .active {
+                        vm.checkFaceIDAvailability()
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .appUserDidSignOut)) { _ in
+                    navigateToHome = false
+                    vm.resetSessionState()
                 }
             }
         }
@@ -92,7 +89,7 @@ struct BiometricAuthView: View {
             
             Spacer().frame(height: 24)
             
-            // ── Heading ───────────────────────────────────────────────
+            //  Heading 
             VStack(alignment: .leading, spacing: 4) {
                 Text("HI, WELCOME BACK")
                     .font(.urbanistBold(22))
@@ -106,7 +103,7 @@ struct BiometricAuthView: View {
             
             Spacer().frame(height: 20)
             
-            // ── Email field ───────────────────────────────────────────
+            //  Email field 
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 2) {
                     Text("Email Address")
@@ -125,7 +122,7 @@ struct BiometricAuthView: View {
             }
             .padding(.horizontal, 28)
             
-            // ── Validation message ────────────────────────────────────
+            //  Validation message 
             if let error = vm.errorMessage {
                 Text(error)
                     .font(.urbanistRegular(12))
@@ -136,7 +133,7 @@ struct BiometricAuthView: View {
             
             Spacer().frame(height: 20)
             
-            // ── Face ID Preview Box ────────────────────────────────────
+            //  Face ID Preview Box 
             VStack(spacing: 16) {
                 VStack(spacing: 0) {
                     // Face ID corner bracket frame
@@ -161,7 +158,7 @@ struct BiometricAuthView: View {
                         .foregroundColor(.cakeGrey)
                 }
                 
-                // ── Authentication Button ─────────────────────────────
+                //  Authentication Button 
                 Button {
                     Task {
                         // Step 1: Verify email and fetch user
@@ -196,13 +193,13 @@ struct BiometricAuthView: View {
                 .disabled(vm.isLoading || vm.email.isEmpty)
                 .padding(.horizontal, 28)
                 
-                // ── OR Divider (close to button) ───────────────────────
+                //  OR Divider (close to button) 
                 ORDivider()
                     .padding(.horizontal, 28)
                     .padding(.top, 16)
             }
             
-            // ── Login with Email & Password (Centered) ────────────────
+            //  Login with Email & Password (Centered) 
             Button {
                 navigateToSignIn = true
             } label: {
@@ -218,7 +215,7 @@ struct BiometricAuthView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
             
-            // ── Create Account Link (Centered) ─────────────────────────
+            //  Create Account Link (Centered) 
             HStack(spacing: 2) {
                 Text("Don't have an account ?")
                     .font(.urbanistRegular(15))
@@ -282,4 +279,3 @@ private struct FaceIDFrame: Shape {
 #Preview {
     NavigationStack { BiometricAuthView() }
 }
-

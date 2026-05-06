@@ -9,7 +9,6 @@ import UIKit
 struct BakerProfileView: View {
     let user: AppUser
     @Binding var parentTabSelection: Int
-    @State private var navigateToSignIn = false
     @State private var profileData = BakerProfileData.empty
     @State private var isLoading = true
     @State private var completedOrders: [CakeOrder] = []
@@ -112,9 +111,6 @@ struct BakerProfileView: View {
                 await loadProfileData()
                 await loadAnalyticsData()
             }
-        }
-        .navigationDestination(isPresented: $navigateToSignIn) {
-            SignInView()
         }
     }
 
@@ -824,9 +820,7 @@ struct BakerProfileView: View {
             Divider().padding(.leading, 52)
             Button {
                 do {
-                    try Auth.auth().signOut()
-                    WidgetDataSyncManager.shared.clearWidgetData()
-                    navigateToSignIn = true
+                    try AppSessionManager.shared.signOutCompletely()
                 } catch {
                     print("Logout failed: \(error.localizedDescription)")
                 }

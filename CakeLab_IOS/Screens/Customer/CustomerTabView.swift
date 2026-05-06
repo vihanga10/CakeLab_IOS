@@ -18,6 +18,12 @@ final class CustomerNavState: ObservableObject {
         tabResetIDs[tag, default: 0] += 1
         selectedTab = tag
     }
+
+    func reset() {
+        selectedTab = 0
+        depth = 0
+        tabResetIDs = [0: 0, 1: 0, 2: 0, 3: 0]
+    }
 }
 
 // MARK: - All-unselected tab bar embedded inside every sub-screen
@@ -171,6 +177,17 @@ struct CustomerTabView: View {
                 notificationsShown = true
                 print("Customer notifications loaded and displayed once on login")
             }
+        }
+        .onAppear {
+            CustomerNavState.shared.reset()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .appUserDidAuthenticate)) { _ in
+            CustomerNavState.shared.reset()
+            notificationsShown = false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .appUserDidSignOut)) { _ in
+            CustomerNavState.shared.reset()
+            notificationsShown = false
         }
     }
 }

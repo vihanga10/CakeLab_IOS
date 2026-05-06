@@ -17,14 +17,14 @@ struct SignInView: View {
             GeometryReader { geo in
                 ZStack(alignment: .bottom) {
 
-                    // ── Background photo ─────────────────────────────────
+                    //  Background photo 
                     Image("Signin_up")
                         .resizable()
                         .scaledToFill()
                         .frame(width: geo.size.width, height: geo.size.height)
                         .clipped()
 
-                    // ── Gradient fade photo → card ───────────────────────
+                    //  Gradient fade photo → card 
                     LinearGradient(
                         colors: [.clear, Color.white.opacity(0.15), .white],
                         startPoint: .top, endPoint: .bottom
@@ -32,7 +32,7 @@ struct SignInView: View {
                     .frame(height: geo.size.height * 0.55)
                     .frame(maxWidth: .infinity)
 
-                    // ── White card (fixed, no scroll) ────────────────────
+                    //  White card (fixed, no scroll) 
                     VStack(spacing: 0) {
                         cardContent
                             .frame(maxWidth: .infinity)
@@ -43,7 +43,7 @@ struct SignInView: View {
                         Color.white.frame(height: geo.safeAreaInsets.bottom)
                     }
 
-                    // ── Back chevron (under status bar) ──────────────────
+                    //  Back chevron (under status bar) 
                     VStack(spacing: 0) {
                         HStack {
                             Button { dismiss() } label: {
@@ -72,13 +72,17 @@ struct SignInView: View {
             .navigationBarHidden(true)
             .onChange(of: vm.navigateToFaceID) { _, newVal in
                 if newVal {
-                    // 🔔 Reload notifications on successful login with user type
+                    // Reload notifications on successful login with user type
                     if let user = vm.signedInUser {
                         notificationManager.reloadNotifications(for: user.role.rawValue)
-                        print("✅ Notifications reloaded for \(user.role.rawValue) after sign in")
+                        print(" Notifications reloaded for \(user.role.rawValue) after sign in")
                     }
                     showContentView = true
                 }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .appUserDidSignOut)) { _ in
+                showContentView = false
+                vm.resetSessionState()
             }
         }
     }
@@ -89,7 +93,7 @@ struct SignInView: View {
 
             Spacer().frame(height: 28)
 
-            // ── Heading ───────────────────────────────────────────────
+            //  Heading 
             Text("HI , WELCOME BACK")
                 .font(.urbanistBold(24))
                 .foregroundColor(.cakeBrown)
@@ -102,7 +106,7 @@ struct SignInView: View {
 
             Spacer().frame(height: 26)
 
-            // ── Email ─────────────────────────────────────────────────
+            //  Email 
             fieldLabel("Email Address")
             AuthTextField(placeholder: "you@example.com",
                           text: $vm.email,
@@ -110,7 +114,7 @@ struct SignInView: View {
 
             Spacer().frame(height: 16)
 
-            // ── Password ──────────────────────────────────────────────
+            //  Password 
             fieldLabel("Password")
             AuthTextField(placeholder: "••••••••••",
                           text: $vm.password,
@@ -121,14 +125,14 @@ struct SignInView: View {
 
             Spacer().frame(height: 16)
 
-            // ── Role selector ─────────────────────────────────────────
+            //  Role selector 
             fieldLabel("Who are you?")
             Spacer().frame(height: 10)
             RoleSelector(selected: $vm.selectedRole)
 
             Spacer().frame(height: 18)
 
-            // ── Remember me + Forgot password ─────────────────────────
+            //  Remember me + Forgot password 
             HStack {
                 Button { vm.rememberMe.toggle() } label: {
                     HStack(spacing: 8) {
@@ -155,7 +159,7 @@ struct SignInView: View {
                 }
             }
 
-            // ── Error ─────────────────────────────────────────────────
+            //  Error 
             if let err = vm.errorMessage {
                 Text(err)
                     .font(.urbanistRegular(11))
@@ -165,7 +169,7 @@ struct SignInView: View {
 
             Spacer().frame(height: 20)
 
-            // ── Sign In button ────────────────────────────────────────
+            //  Sign In button 
             Button { vm.signIn() } label: {
                 ZStack {
                     if vm.isLoading { ProgressView().tint(.white) }
@@ -184,17 +188,17 @@ struct SignInView: View {
 
             Spacer().frame(height: 20)
 
-            // ── OR divider ────────────────────────────────────────────
+            //  OR divider 
             ORDivider()
 
             Spacer().frame(height: 18)
 
-            // ── Social buttons ────────────────────────────────────────
+            //  Social buttons 
             SocialButtons()
 
             Spacer().frame(height: 18)
 
-            // ── Create Account link ───────────────────────────────────
+            //  Create Account link 
             HStack(spacing: 4) {
                 Spacer()
                 Text("Don't have an account ?")

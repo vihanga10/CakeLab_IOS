@@ -14,7 +14,6 @@ final class BiometricAuthViewModel: ObservableObject {
     @Published var authenticatedUser: AppUser?
     
     private let authService: AuthServiceProtocol
-    private let context = LAContext()
     private let credentialStore = CredentialStore()
     
     init(authService: AuthServiceProtocol = AuthService()) {
@@ -23,14 +22,16 @@ final class BiometricAuthViewModel: ObservableObject {
     }
     
     // MARK: - Check Face ID Availability
-    private func checkFaceIDAvailability() {
+    func checkFaceIDAvailability() {
+        let context = LAContext()
+        context.localizedFallbackTitle = ""
         var error: NSError?
         faceIDAvailable = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
         
         if !faceIDAvailable {
             // Don't show error message immediately - users can still use email/password
-            print("⚠️ Face ID not available: \(error?.localizedDescription ?? "Unknown error")")
-            print("💡 User can still authenticate using Email & Password")
+            print("Face ID not available: \(error?.localizedDescription ?? "Unknown error")")
+            print("User can still authenticate using Email & Password")
         }
     }
     
@@ -64,13 +65,14 @@ final class BiometricAuthViewModel: ObservableObject {
             return
         }
         
+        authenticatedUser = nil
         isLoading = true
         errorMessage = nil
         
         do {
             // Fetch user by email from Firestore
             let user = try await authService.fetchUserByEmail(email.trimmingCharacters(in: .whitespaces))
-            print("✅ DEBUG: User verified - Email: \(user.email), Role: \(user.role.rawValue)")
+            print("DEBUG: User verified - Email: \(user.email), Role: \(user.role.rawValue)")
 
             let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             guard credentialStore.hasPassword(for: normalizedEmail) else {
@@ -87,7 +89,7 @@ final class BiometricAuthViewModel: ObservableObject {
             errorMessage = error.localizedDescription
             isUserValid = false
             isLoading = false
-            print("❌ User verification error: \(error.localizedDescription)")
+            print("User verification error: \(error.localizedDescription)")
         }
     }
     
@@ -102,10 +104,16 @@ final class BiometricAuthViewModel: ObservableObject {
             errorMessage = "User information not found"
             return
         }
-        
-        guard faceIDAvailable else {
-            errorMessage = "Face ID is not enrolled on this device. Please use 'Login with Email & Password' instead."
-            print("⚠️ Face ID not enrolled - redirecting user to email/password login")
+
+        let context = LAContext()
+        context.localizedFallbackTitle = ""
+        var availabilityError: NSError?
+        let canUseBiometrics = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &availabilityError)
+        faceIDAvailable = canUseBiometrics
+
+        guard canUseBiometrics else {
+            errorMessage = biometricUnavailableMessage(for: availabilityError)
+            print("Biometric authentication unavailable: \(availabilityError?.localizedDescription ?? "Unknown error")")
             return
         }
         
@@ -113,7 +121,7 @@ final class BiometricAuthViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            print("🔐 DEBUG: Attempting Face ID authentication for \(email)")
+            print("DEBUG: Attempting Face ID authentication for \(email)")
             let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             
             let success = try await context.evaluatePolicy(
@@ -125,21 +133,68 @@ final class BiometricAuthViewModel: ObservableObject {
                 let savedPassword = try credentialStore.password(for: normalizedEmail)
                 let signedInUser = try await authService.signIn(email: normalizedEmail, password: savedPassword)
                 authenticatedUser = signedInUser
+                AppSessionManager.shared.registerAuthenticatedSession(for: signedInUser)
                 WidgetDataSyncManager.shared.refreshFromCurrentSession()
 
-                print("✅ DEBUG: Face ID authentication successful for \(email)")
-                print("✅ DEBUG: User role: \(signedInUser.role.rawValue)")
+                print("DEBUG: Face ID authentication successful for \(email)")
+                print("DEBUG: User role: \(signedInUser.role.rawValue)")
                 // Successfully authenticated - the view will handle navigation via binding
                 isLoading = false
             } else {
+                authenticatedUser = nil
                 errorMessage = "Face ID authentication was cancelled"
                 isLoading = false
-                print("❌ DEBUG: Face ID authentication cancelled")
+                print("DEBUG: Face ID authentication cancelled")
             }
         } catch {
             isLoading = false
-            errorMessage = error.localizedDescription
-            print("❌ DEBUG: Face ID authentication failed - \(error.localizedDescription)")
+            authenticatedUser = nil
+            errorMessage = biometricFailureMessage(for: error)
+            print("DEBUG: Face ID authentication failed - \(error.localizedDescription)")
         }
+    }
+
+    private func biometricUnavailableMessage(for error: NSError?) -> String {
+        guard let error else {
+            return "Face ID is not available right now. Please try again or use Login with Email & Password."
+        }
+
+        switch LAError.Code(rawValue: error.code) {
+        case .biometryNotEnrolled:
+            return "Face ID is not enrolled on this device yet. Enroll Face ID in Settings and try again."
+        case .biometryNotAvailable:
+            return "Face ID is not available on this device. Please use Login with Email & Password."
+        case .passcodeNotSet:
+            return "Set a device passcode first, then enable Face ID and try again."
+        case .biometryLockout:
+            return "Face ID is temporarily locked. Unlock your device and try again."
+        default:
+            return error.localizedDescription
+        }
+    }
+
+    private func biometricFailureMessage(for error: Error) -> String {
+        let nsError = error as NSError
+        guard let code = LAError.Code(rawValue: nsError.code) else {
+            return error.localizedDescription
+        }
+
+        switch code {
+        case .userCancel, .systemCancel, .appCancel:
+            return "Face ID authentication was cancelled"
+        case .biometryLockout:
+            return "Face ID is temporarily locked. Unlock your device and try again."
+        case .biometryNotEnrolled:
+            return "Face ID is not enrolled on this device yet. Enroll Face ID in Settings and try again."
+        default:
+            return error.localizedDescription
+        }
+    }
+
+    func resetSessionState() {
+        authenticatedUser = nil
+        isUserValid = false
+        isLoading = false
+        errorMessage = nil
     }
 }

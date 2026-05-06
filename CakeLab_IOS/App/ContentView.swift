@@ -7,6 +7,26 @@
 
 import SwiftUI
 
+private enum AuthEntryMode {
+    case onboarding
+    case biometric
+}
+
+private struct AuthEntryView: View {
+    let mode: AuthEntryMode
+
+    var body: some View {
+        switch mode {
+        case .onboarding:
+            OnboardingView()
+        case .biometric:
+            NavigationStack {
+                BiometricAuthView()
+            }
+        }
+    }
+}
+
 // MARK: - Wrapper for navigation
 struct ContentViewWrapper: View {
     let user: AppUser
@@ -25,6 +45,7 @@ struct ContentViewWrapper: View {
         .onOpenURL { url in
             widgetRoute = WidgetDeepLinkRoute(url: url)
         }
+        .id("\(user.id)-\(user.role.rawValue)")
         .task {
             WidgetDataSyncManager.shared.refreshFromCurrentSession()
         }
@@ -33,18 +54,31 @@ struct ContentViewWrapper: View {
 
 struct ContentView: View {
     @State private var currentUser: AppUser?
-    @State private var isLoading = true
-    @State private var showOnboarding = true
+    @State private var showSplash = true
+    @State private var authEntryMode: AuthEntryMode = .onboarding
     
     var body: some View {
-        if showOnboarding {
-            OnboardingView()
-        } else if let user = currentUser {
-            // Show role-based home screen
-            ContentViewWrapper(user: user)
-        } else {
-            // Show onboarding if no user
-            OnboardingView()
+        Group {
+            if showSplash {
+                SplashView {
+                    showSplash = false
+                }
+            } else if let user = currentUser {
+                ContentViewWrapper(user: user)
+            } else {
+                AuthEntryView(mode: authEntryMode)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .appUserDidAuthenticate)) { notification in
+            guard let user = notification.object as? AppUser else { return }
+            currentUser = user
+            authEntryMode = .biometric
+            showSplash = false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .appUserDidSignOut)) { _ in
+            currentUser = nil
+            authEntryMode = .biometric
+            showSplash = false
         }
     }
 }

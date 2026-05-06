@@ -51,6 +51,19 @@ struct BakerTabView: View {
                 print("✅ Baker notifications loaded and displayed once on login")
             }
         }
+        .onAppear {
+            selectedTab = 0
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .appUserDidAuthenticate)) { _ in
+            selectedTab = 0
+            notificationsShown = false
+            matchingRequestsLoaded = false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .appUserDidSignOut)) { _ in
+            selectedTab = 0
+            notificationsShown = false
+            matchingRequestsLoaded = false
+        }
     }
     
     // MARK: - Load Matching Requests for Notifications
