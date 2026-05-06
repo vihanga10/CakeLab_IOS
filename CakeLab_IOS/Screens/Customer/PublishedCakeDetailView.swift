@@ -148,22 +148,50 @@ struct PublishedCakeDetailView: View {
                             Text("Expected Time")
                                 .font(.urbanistMedium(12))
                                 .foregroundColor(.cakeGrey)
-                            
+
                             HStack {
                                 Image(systemName: "clock")
                                     .foregroundColor(.cakeBrown)
                                     .font(.system(size: 14, weight: .semibold))
-                                
+
                                 Text(formattedTime(request.expectedTime))
                                     .font(.urbanistRegular(14))
                                     .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                                
+
                                 Spacer()
                             }
                             .padding(.horizontal, 14)
                             .padding(.vertical, 12)
                             .background(Color(red: 0.98, green: 0.96, blue: 0.93))
                             .cornerRadius(10)
+                        }
+
+                        // Baker — shown only when this is a direct request to a specific artisan
+                        if request.isDirectRequest, let bakerName = request.targetArtisanName, !bakerName.isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Baker")
+                                    .font(.urbanistMedium(12))
+                                    .foregroundColor(.cakeGrey)
+
+                                HStack(spacing: 10) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color.cakeBrown.opacity(0.12))
+                                            .frame(width: 32, height: 32)
+                                        Image(systemName: "person.fill")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundColor(.cakeBrown)
+                                    }
+                                    Text(bakerName)
+                                        .font(.urbanistSemiBold(14))
+                                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 12)
+                                .background(Color(red: 0.98, green: 0.96, blue: 0.93))
+                                .cornerRadius(10)
+                            }
                         }
 
                         Spacer().frame(height: 24)

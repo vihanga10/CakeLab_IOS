@@ -260,6 +260,19 @@ private struct PublishedRequestCard: View {
                 .stroke(Color.white.opacity(0.9), lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 4)
+        .overlay(alignment: .bottomTrailing) {
+            if request.isDirectRequest, request.targetArtisanName != nil {
+                ZStack {
+                    Circle()
+                        .fill(Color.cakeBrown)
+                        .frame(width: 22, height: 22)
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                .offset(x: 5, y: 5)
+            }
+        }
         .padding(.top, 10)
     }
 
@@ -279,7 +292,12 @@ private struct PublishedRequestCard: View {
             footerDivider
             metricColumn(icon: "banknote", label: "Budget", value: request.budgetText, width: 112)
             footerDivider
-            metricColumn(icon: "person.2.fill", label: "Bids", value: "\(request.bidCount)", width: 50)
+            if request.isDirectRequest, let name = request.targetArtisanName, !name.isEmpty {
+                metricColumn(icon: "person.fill", label: "Baker",
+                             value: name.components(separatedBy: " ").first ?? name, width: 50)
+            } else {
+                metricColumn(icon: "person.2.fill", label: "Bids", value: "\(request.bidCount)", width: 50)
+            }
             footerDivider
             metricColumn(icon: "clock.fill", label: "Time", value: timeText(request.expectedTime), width: 62)
         }

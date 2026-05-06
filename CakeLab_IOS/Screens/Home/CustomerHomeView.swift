@@ -345,6 +345,11 @@ struct CustomerHomeView: View {
                         .padding(.bottom, 32)
                     }
                 }
+
+                // Artisan confirmation overlay — identical design to ArtisansNearYouView
+                if let artisan = homeSelectedArtisan {
+                    homeArtisanOverlay(for: artisan)
+                }
             }
             .navigationBarHidden(true)
             .onAppear {
@@ -365,90 +370,6 @@ struct CustomerHomeView: View {
                 await orders
                 await artisans
             }
-            .sheet(item: $homeSelectedArtisan) { artisan in
-                NavigationStack {
-                    VStack(spacing: 0) {
-                        Text("Send Cake Request?")
-                            .font(.urbanistBold(18))
-                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                            .padding(.top, 24)
-                            .padding(.bottom, 16)
-
-                        HStack(spacing: 12) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
-                                    .frame(width: 60, height: 60)
-                                Image(systemName: "storefront.fill")
-                                    .font(.system(size: 22))
-                                    .foregroundColor(.cakeBrown.opacity(0.5))
-                            }
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(artisan.name)
-                                    .font(.urbanistBold(14))
-                                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                                HStack(spacing: 4) {
-                                    Image(systemName: "star.fill")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.1))
-                                    Text("\(artisan.ratingText) (\(artisan.reviewCount) reviews)")
-                                        .font(.urbanistRegular(11))
-                                        .foregroundColor(.cakeGrey)
-                                }
-                                if !artisan.location.isEmpty {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "mappin.circle.fill")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.cakeGrey)
-                                        Text(artisan.location)
-                                            .font(.urbanistRegular(10))
-                                            .foregroundColor(.cakeGrey)
-                                            .lineLimit(1)
-                                    }
-                                }
-                            }
-                            Spacer()
-                            Circle()
-                                .fill(artisan.isOnline ? Color(red: 0.15, green: 0.72, blue: 0.25) : Color.gray.opacity(0.45))
-                                .frame(width: 10, height: 10)
-                        }
-                        .padding(12)
-                        .background(Color.white)
-                        .cornerRadius(12)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
-
-                        Divider()
-
-                        HStack(spacing: 12) {
-                            Button {
-                                homeSelectedArtisan = nil
-                            } label: {
-                                Text("Cancel")
-                                    .font(.urbanistSemiBold(14))
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 12)
-                                    .background(Color(red: 0.94, green: 0.94, blue: 0.94))
-                                    .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
-                                    .cornerRadius(10)
-                            }
-                            NavigationLink(destination: CreateCakeRequestView(user: user, selectedArtisan: artisan)) {
-                                Text("Send Request")
-                                    .font(.urbanistSemiBold(14))
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 12)
-                                    .background(Color.cakeBrown)
-                                    .foregroundColor(.white)
-                                    .cornerRadius(10)
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 16)
-                    }
-                    .background(Color.white)
-                }
-                .presentationDetents([.height(280)])
-            }
         }
     }
     
@@ -465,6 +386,139 @@ struct CustomerHomeView: View {
         profileAvatar = UIImage(data: imageData)
     }
     
+    // MARK: - Artisan Confirmation Overlay (matches ArtisansNearYouView exactly)
+    @ViewBuilder
+    private func homeArtisanOverlay(for artisan: ArtisanProfile) -> some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture { homeSelectedArtisan = nil }
+
+            VStack(spacing: 0) {
+                Text("Send Cake Request?")
+                    .font(.urbanistBold(18))
+                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .padding(.top, 24)
+                    .padding(.bottom, 16)
+
+                VStack(spacing: 12) {
+                    HStack(spacing: 12) {
+                        homeArtisanImage(artisan: artisan, size: 60, cornerRadius: 10)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(artisan.name)
+                                .font(.urbanistBold(14))
+                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+
+                            HStack(spacing: 4) {
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.1))
+                                Text("\(String(format: "%.1f", artisan.rating)) (\(artisan.reviewCount) reviews)")
+                                    .font(.urbanistRegular(11))
+                                    .foregroundColor(.cakeGrey)
+                            }
+
+                            HStack(spacing: 5) {
+                                Image(systemName: "mappin.circle.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.cakeGrey)
+                                Text(artisan.location)
+                                    .font(.urbanistRegular(10))
+                                    .foregroundColor(.cakeGrey)
+                                    .lineLimit(1)
+                            }
+                        }
+
+                        Spacer()
+
+                        Circle()
+                            .fill(artisan.isOnline ? Color(red: 0.15, green: 0.72, blue: 0.25) : Color.gray.opacity(0.45))
+                            .frame(width: 10, height: 10)
+                    }
+                    .padding(12)
+                    .background(Color.white)
+                    .cornerRadius(12)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
+
+                Divider()
+
+                HStack(spacing: 12) {
+                    Button { homeSelectedArtisan = nil } label: {
+                        Text("Cancel")
+                            .font(.urbanistSemiBold(14))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color(red: 0.94, green: 0.94, blue: 0.94))
+                            .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
+                            .cornerRadius(10)
+                    }
+                    NavigationLink(destination: CreateCakeRequestView(user: user, selectedArtisan: artisan)) {
+                        Text("Send Request")
+                            .font(.urbanistSemiBold(14))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.cakeBrown)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+            }
+            .background(Color.white)
+            .cornerRadius(16)
+            .padding(.horizontal, 24)
+            .shadow(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 4)
+        }
+    }
+
+    @ViewBuilder
+    private func homeArtisanImage(artisan: ArtisanProfile, size: CGFloat, cornerRadius: CGFloat) -> some View {
+        if let image = homeDecodeBase64Image(artisan.profileImageBase64) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: size, height: size)
+                .clipped()
+                .cornerRadius(cornerRadius)
+        } else if let rawURL = artisan.imageURL, !rawURL.isEmpty, let url = URL(string: rawURL) {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let img): img.resizable().scaledToFill()
+                default: homeImageFallback(size: size)
+                }
+            }
+            .frame(width: size, height: size)
+            .clipped()
+            .cornerRadius(cornerRadius)
+        } else {
+            homeImageFallback(size: size).cornerRadius(cornerRadius)
+        }
+    }
+
+    @ViewBuilder
+    private func homeImageFallback(size: CGFloat) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+                .frame(width: size, height: size)
+            Image(systemName: "storefront.fill")
+                .font(.system(size: max(20, size * 0.38)))
+                .foregroundColor(.cakeBrown.opacity(0.5))
+        }
+    }
+
+    private func homeDecodeBase64Image(_ raw: String) -> UIImage? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let payload = trimmed.firstIndex(of: ",").map { String(trimmed[trimmed.index(after: $0)...]) } ?? trimmed
+        guard let data = Data(base64Encoded: payload) else { return nil }
+        return UIImage(data: data)
+    }
+
     // MARK: - Nearby Artisans (district-filtered, max 3)
     private var nearbyArtisans: [ArtisanProfile] {
         let district = SriLankaDistricts.canonical(user.city ?? "")
