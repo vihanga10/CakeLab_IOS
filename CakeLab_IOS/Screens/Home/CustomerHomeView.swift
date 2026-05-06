@@ -250,40 +250,46 @@ struct CustomerHomeView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 20)
                             } else {
-                                // Real orders from Firestore — different for each user
+                                // Real orders from Firestore — tapping navigates to order status
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: 16) {
                                         ForEach(viewModel.activeOrders) { order in
-                                            VStack(spacing: 10) {
-                                                ZStack {
-                                                    Circle()
-                                                        .stroke(Color(red: 0.15, green: 0.65, blue: 0.22), lineWidth: 2.5)
-                                                        .frame(width: 90, height: 90)
-                                                    Circle()
-                                                        .fill(Color(red: 0.93, green: 0.91, blue: 0.88))
-                                                        .frame(width: 82, height: 82)
-                                                    
-                                                    // Display reference image or fallback to cake icon
-                                                    if !order.referenceImages.isEmpty,
-                                                       let imageData = Data(base64Encoded: order.referenceImages[0]),
-                                                       let uiImage = UIImage(data: imageData) {
-                                                        Image(uiImage: uiImage)
-                                                            .resizable()
-                                                            .scaledToFill()
-                                                            .frame(width: 74, height: 74)
-                                                            .clipShape(Circle())
-                                                    } else {
-                                                        Image(systemName: "birthday.cake.fill")
-                                                            .font(.system(size: 30))
-                                                            .foregroundColor(.cakeBrown.opacity(0.45))
+                                            NavigationLink(destination: CustomerOrderStatusView(
+                                                orderID: order.id,
+                                                fallbackOrder: CustomerOrder(from: order)
+                                            )) {
+                                                VStack(spacing: 10) {
+                                                    ZStack {
+                                                        Circle()
+                                                            .stroke(Color(red: 0.15, green: 0.65, blue: 0.22), lineWidth: 2.5)
+                                                            .frame(width: 90, height: 90)
+                                                        Circle()
+                                                            .fill(Color(red: 0.93, green: 0.91, blue: 0.88))
+                                                            .frame(width: 82, height: 82)
+
+                                                        // Reference image or fallback cake icon
+                                                        if !order.referenceImages.isEmpty,
+                                                           let imageData = Data(base64Encoded: order.referenceImages[0]),
+                                                           let uiImage = UIImage(data: imageData) {
+                                                            Image(uiImage: uiImage)
+                                                                .resizable()
+                                                                .scaledToFill()
+                                                                .frame(width: 74, height: 74)
+                                                                .clipShape(Circle())
+                                                        } else {
+                                                            Image(systemName: "birthday.cake.fill")
+                                                                .font(.system(size: 30))
+                                                                .foregroundColor(.cakeBrown.opacity(0.45))
+                                                        }
                                                     }
+                                                    Text("Order No:\n\(order.id.prefix(6))")
+                                                        .font(.urbanistRegular(11))
+                                                        .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
+                                                        .multilineTextAlignment(.center)
                                                 }
-                                                Text("Order No:\n\(order.id.prefix(6))")
-                                                    .font(.urbanistRegular(11))
-                                                    .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
-                                                    .multilineTextAlignment(.center)
+                                                .frame(width: 100)
                                             }
-                                            .frame(width: 100)
+                                            .buttonStyle(.plain)
                                         }
                                     }
                                     .padding(.horizontal, 20)
