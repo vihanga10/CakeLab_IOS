@@ -37,6 +37,7 @@ struct CakeOrder: Identifiable, Sendable {
     let category: String
     let budgetMin: Double
     let budgetMax: Double
+    let amount: Double
 
     // Resolved from status string
     var statusColor: Color {
@@ -100,7 +101,34 @@ struct CakeOrder: Identifiable, Sendable {
         self.imageURL       = data["imageURL"] as? String
         self.referenceImages = data["referenceImages"] as? [String] ?? []
         self.category       = data["category"] as? String ?? ""
-        self.budgetMin      = data["budgetMin"] as? Double ?? 0
-        self.budgetMax      = data["budgetMax"] as? Double ?? 0
+        self.budgetMin      = Self.parseDouble(data["budgetMin"])
+        self.budgetMax      = Self.parseDouble(data["budgetMax"])
+        self.amount         = Self.resolveAmount(data: data)
+    }
+
+    private static func parseDouble(_ value: Any?) -> Double {
+        if let value = value as? Double { return value }
+        if let value = value as? Int { return Double(value) }
+        if let value = value as? NSNumber { return value.doubleValue }
+        if let value = value as? String {
+            let cleaned = value.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return Double(cleaned) ?? 0
+        }
+        return 0
+    }
+
+    private static func resolveAmount(data: [String: Any]) -> Double {
+        let directKeys = ["amount", "selectedPrice", "finalAmount", "total"]
+        for key in directKeys {
+            let value = parseDouble(data[key])
+            if value > 0 { return value }
+        }
+
+        let budgetMin = parseDouble(data["budgetMin"])
+        let budgetMax = parseDouble(data["budgetMax"])
+        if budgetMin > 0 && budgetMax > 0 {
+            return (budgetMin + budgetMax) / 2
+        }
+        return max(budgetMin, budgetMax)
     }
 }

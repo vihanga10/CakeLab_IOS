@@ -12,9 +12,11 @@ struct BakerProfileView: View {
     @State private var navigateToSignIn = false
     @State private var profileData = BakerProfileData.empty
     @State private var isLoading = true
+    @State private var completedOrders: [CakeOrder] = []
     @State private var monthlyOrders: [MonthlyOrderData] = []
     @State private var earningsData: EarningsData = .empty
     @State private var reviews: [Review] = []
+    @State private var paymentRecords: [BakerPaymentRecord] = []
 
     private var completedOrdersText: String { "\(profileData.completedOrders)" }
     private var reviewsText: String { "\(profileData.reviewCount)" }
@@ -29,6 +31,12 @@ struct BakerProfileView: View {
         let f = DateFormatter()
         f.dateFormat = "MMMM yyyy"
         return f.string(from: profileData.createdAt)
+    }
+    private var performanceSnapshot: BakerPerformanceSnapshot {
+        BakerPerformanceSnapshot.build(orders: completedOrders, reviews: reviews)
+    }
+    private var earningsSnapshot: BakerEarningsSnapshot {
+        BakerEarningsSnapshot.build(orders: completedOrders, payments: paymentRecords)
     }
 
     var body: some View {
@@ -97,14 +105,12 @@ struct BakerProfileView: View {
         .navigationBarHidden(true)
         .task {
             await loadProfileData()
-            await loadMonthlyOrdersData()
-            await loadEarningsData()
-            await loadReviewsData()
+            await loadAnalyticsData()
         }
         .onAppear {
-            // Refresh profile data when returning from Edit Profile
             Task {
                 await loadProfileData()
+                await loadAnalyticsData()
             }
         }
         .navigationDestination(isPresented: $navigateToSignIn) {
@@ -490,174 +496,116 @@ struct BakerProfileView: View {
         return UIImage(data: data)
     }
 
-    private var ratingBreakdown: [RatingData] {
-        let totalReviews = reviews.count
-        guard totalReviews > 0 else { return [] }
-        
-        var breakdown: [Int: Int] = [1: 0, 2: 0, 3: 0, 4: 0, 5: 0]
-        for review in reviews {
-            breakdown[review.rating, default: 0] += 1
-        }
-        
-        return (1...5).reversed().map { stars in
-            let count = breakdown[stars] ?? 0
-            let fraction = CGFloat(count) / CGFloat(totalReviews)
-            return RatingData(stars: stars, count: count, fraction: fraction)
-        }
-    }
-
-    private func loadMonthlyOrdersData() async {
+    private func loadAnalyticsData() async {
         let db = Firestore.firestore()
-        
-        do {
-            let statuses = ["completed", "delivered", "done"]
-            var allOrders: [CakeOrder] = []
-            
-            for key in ["bakerID", "bakerId", "artisanId"] {
-                let query = db.collection("orders")
-                    .whereField(key, isEqualTo: user.id)
-                    .whereField("status", in: statuses)
-                
-                let snapshot = try await query.getDocuments()
-                for doc in snapshot.documents {
-                    if let order = CakeOrder(document: doc), !allOrders.contains(where: { $0.id == order.id }) {
-                        allOrders.append(order)
-                    }
-                }
-            }
-            
-            // Group by month
-            let calendar = Calendar.current
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "MMM"
-            
-            var monthCounts: [String: Int] = [:]
-            for order in allOrders {
-                let month = dateFormatter.string(from: order.deliveryDate)
-                monthCounts[month, default: 0] += 1
-            }
-            
-            monthlyOrders = monthCounts.map { MonthlyOrderData(month: $0.key, count: $0.value) }
-                .sorted { (a, b) -> Bool in
-                    let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-                    return (months.firstIndex(of: a.month) ?? 0) < (months.firstIndex(of: b.month) ?? 0)
-                }
-        } catch {
-            print("Error loading monthly orders: \(error.localizedDescription)")
-            monthlyOrders = []
-        }
-    }
 
-    private func loadEarningsData() async {
-        let db = Firestore.firestore()
-        
         do {
-            let statuses = ["completed", "delivered", "done"]
-            var allOrders: [CakeOrder] = []
-            
-            for key in ["bakerID", "bakerId", "artisanId"] {
-                let query = db.collection("orders")
-                    .whereField(key, isEqualTo: user.id)
-                    .whereField("status", in: statuses)
-                
-                let snapshot = try await query.getDocuments()
-                for doc in snapshot.documents {
-                    if let order = CakeOrder(document: doc), !allOrders.contains(where: { $0.id == order.id }) {
-                        allOrders.append(order)
-                    }
-                }
-            }
-            
-            // Calculate earnings by period
-            let calendar = Calendar.current
-            let now = Date()
-            
-            let thisMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
-            let lastMonthStart = calendar.date(byAdding: .month, value: -1, to: thisMonthStart)!
-            let lastMonthEnd = calendar.date(byAdding: .day, value: -1, to: thisMonthStart)!
-            let thisYearStart = calendar.date(from: calendar.dateComponents([.year], from: now))!
-            
-            var thisMonthEarnings: Double = 0
-            var lastMonthEarnings: Double = 0
-            var thisYearEarnings: Double = 0
-            
-            for order in allOrders {
-                // Parse amount from artisanRating or estimate based on order (for demo, using fixed values)
-                let amount: Double = 3500 // Default amount per order
-                
-                thisYearEarnings += amount
-                
-                if order.deliveryDate >= thisMonthStart {
-                    thisMonthEarnings += amount
-                } else if order.deliveryDate >= lastMonthStart && order.deliveryDate <= lastMonthEnd {
-                    lastMonthEarnings += amount
-                }
-            }
-            
-            let avgPerOrder = allOrders.isEmpty ? 0 : thisYearEarnings / Double(allOrders.count)
-            
+            async let ordersTask = fetchCompletedOrders(db: db)
+            async let paymentsTask = fetchPayments(db: db)
+            async let reviewsTask = db.collection("reviews")
+                .whereField("bakerID", isEqualTo: user.id)
+                .order(by: "createdAt", descending: true)
+
+            let (orders, payments, reviewSnapshot) = try await (ordersTask, paymentsTask, reviewsTask.getDocuments())
+            completedOrders = orders
+            paymentRecords = payments
+            reviews = reviewSnapshot.documents.compactMap { Review(document: $0) }
+            monthlyOrders = performanceSnapshot.monthlyOrders.map { MonthlyOrderData(month: $0.label, count: Int($0.value)) }
+
+            let summary = earningsSnapshot
             earningsData = EarningsData(
-                totalEarningsThisMonth: thisMonthEarnings,
-                totalEarningsLastMonth: lastMonthEarnings,
-                totalEarningsThisYear: thisYearEarnings,
-                avgPerOrder: avgPerOrder
+                totalEarningsThisMonth: summary.totalEarningsThisMonth,
+                totalEarningsLastMonth: summary.totalEarningsLastMonth,
+                totalEarningsThisYear: summary.totalEarningsThisYear,
+                avgPerOrder: summary.avgPerOrder
             )
         } catch {
-            print("Error loading earnings data: \(error.localizedDescription)")
+            print("Error loading analytics data: \(error.localizedDescription)")
+            completedOrders = []
+            paymentRecords = []
+            reviews = []
+            monthlyOrders = []
             earningsData = .empty
         }
     }
 
-    private func loadReviewsData() async {
-        let db = Firestore.firestore()
-        
-        do {
-            let query = db.collection("reviews")
-                .whereField("bakerID", isEqualTo: user.id)
-                .order(by: "createdAt", descending: true)
-            
-            let snapshot = try await query.getDocuments()
-            reviews = snapshot.documents.compactMap { Review(document: $0) }
-        } catch {
-            print("Error loading reviews: \(error.localizedDescription)")
-            reviews = []
+    private func fetchCompletedOrders(db: Firestore) async throws -> [CakeOrder] {
+        let statuses = ["completed", "delivered", "done"]
+        var orders: [CakeOrder] = []
+
+        for key in ["bakerID", "bakerId", "artisanId"] {
+            let snapshot = try await db.collection("orders")
+                .whereField(key, isEqualTo: user.id)
+                .whereField("status", in: statuses)
+                .getDocuments()
+
+            for doc in snapshot.documents {
+                if let order = CakeOrder(document: doc), !orders.contains(where: { $0.id == order.id }) {
+                    orders.append(order)
+                }
+            }
         }
+
+        return orders.sorted { $0.deliveryDate < $1.deliveryDate }
+    }
+
+    private func fetchPayments(db: Firestore) async throws -> [BakerPaymentRecord] {
+        let snapshot = try await db.collection("payments")
+            .whereField("bakerId", isEqualTo: user.id)
+            .getDocuments()
+
+        return snapshot.documents.compactMap { doc in
+            let data = doc.data()
+            return BakerPaymentRecord(
+                id: doc.documentID,
+                orderID: data["orderID"] as? String ?? "",
+                amount: parseDouble(data["amount"]),
+                total: parseDouble(data["total"]),
+                method: data["method"] as? String ?? "",
+                status: data["status"] as? String ?? "success",
+                createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+            )
+        }
+        .sorted { $0.createdAt < $1.createdAt }
+    }
+
+    private func parseDouble(_ value: Any?) -> Double {
+        if let value = value as? Double { return value }
+        if let value = value as? Int { return Double(value) }
+        if let value = value as? NSNumber { return value.doubleValue }
+        if let value = value as? String {
+            let cleaned = value.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return Double(cleaned) ?? 0
+        }
+        return 0
     }
 
     // MARK: - Performance Charts
     private var performanceSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Performance")
-                .font(.urbanistBold(16))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-
-            if monthlyOrders.isEmpty {
-                // Empty state
-                VStack(spacing: 16) {
-                    Image(systemName: "chart.bar")
-                        .font(.system(size: 32))
-                        .foregroundColor(.cakeBrown.opacity(0.3))
-                    VStack(spacing: 6) {
-                        Text("No Performance Data")
-                            .font(.urbanistBold(14))
+        NavigationLink(destination: BakerPerformanceAnalyticsView(snapshot: performanceSnapshot)) {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Performance")
+                            .font(.urbanistBold(16))
                             .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                        Text("Complete orders to see your performance metrics.")
+                        Text("Completed orders, review trends, and category mix")
                             .font(.urbanistRegular(12))
                             .foregroundColor(.cakeGrey)
-                            .multilineTextAlignment(.center)
                     }
-                }
-                .frame(maxWidth: .infinity)
-                .padding(20)
-                .background(Color(red: 0.97, green: 0.96, blue: 0.94))
-                .cornerRadius(12)
-            } else {
-                // Monthly orders chart
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Monthly Orders")
-                        .font(.urbanistSemiBold(13))
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.cakeGrey)
+                }
 
+                if monthlyOrders.isEmpty {
+                    analyticsPlaceholder(
+                        icon: "chart.bar",
+                        title: "No Performance Data",
+                        message: "Complete orders to see your performance charts."
+                    )
+                } else {
                     Chart(monthlyOrders) { item in
                         BarMark(
                             x: .value("Month", item.month),
@@ -666,108 +614,90 @@ struct BakerProfileView: View {
                         .foregroundStyle(Color.cakeBrown.gradient)
                         .cornerRadius(6)
                     }
-                    .frame(height: 140)
-                    .chartXAxis {
-                        AxisMarks(values: .automatic) { _ in
-                            AxisValueLabel()
-                                .font(.urbanistRegular(10))
-                        }
-                    }
+                    .frame(height: 150)
                     .chartYAxis {
-                        AxisMarks(values: .automatic) { _ in
-                            AxisGridLine()
-                            AxisValueLabel()
-                                .font(.urbanistRegular(10))
-                        }
+                        AxisMarks(position: .leading)
                     }
-                }
 
-                // Rating breakdown
-                if !reviews.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Rating Breakdown")
-                            .font(.urbanistSemiBold(13))
-                            .foregroundColor(.cakeGrey)
-
-                        ForEach(ratingBreakdown.reversed(), id: \.stars) { item in
-                            HStack(spacing: 10) {
-                                HStack(spacing: 2) {
-                                    Text("\(item.stars)")
-                                        .font(.urbanistMedium(12))
-                                    Image(systemName: "star.fill")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(Color(red: 0.95, green: 0.75, blue: 0.2))
-                                }
-                                .frame(width: 30)
-                                GeometryReader { geo in
-                                    ZStack(alignment: .leading) {
-                                        RoundedRectangle(cornerRadius: 4)
-                                            .fill(Color.cakeBrown.opacity(0.1))
-                                            .frame(height: 8)
-                                        RoundedRectangle(cornerRadius: 4)
-                                            .fill(Color.cakeBrown)
-                                            .frame(width: geo.size.width * item.fraction, height: 8)
-                                    }
-                                }
-                                .frame(height: 8)
-                                Text("\(item.count)")
-                                    .font(.urbanistRegular(12))
-                                    .foregroundColor(.cakeGrey)
-                                    .frame(width: 24, alignment: .trailing)
-                            }
-                        }
+                    HStack(spacing: 12) {
+                        profileInsightChip(title: "Orders", value: "\(performanceSnapshot.completedOrders)")
+                        profileInsightChip(title: "Rating", value: performanceSnapshot.averageRatingText)
+                        profileInsightChip(title: "Reviews", value: "\(performanceSnapshot.totalReviews)")
                     }
                 }
             }
+            .padding(18)
+            .background(Color.white)
+            .cornerRadius(18)
+            .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
         }
-        .padding(18)
-        .background(Color.white)
-        .cornerRadius(18)
-        .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
+        .buttonStyle(.plain)
     }
 
     // MARK: - Earnings Summary
     private var earningsSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Earnings Summary")
-                .font(.urbanistBold(16))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-
-            if earningsData.totalEarningsThisMonth == 0 && earningsData.totalEarningsLastMonth == 0 {
-                // Empty state
-                VStack(spacing: 16) {
-                    Image(systemName: "banknote")
-                        .font(.system(size: 32))
-                        .foregroundColor(.cakeBrown.opacity(0.3))
-                    VStack(spacing: 6) {
-                        Text("No Earnings Data")
-                            .font(.urbanistBold(14))
+        NavigationLink(destination: BakerEarningsAnalyticsView(snapshot: earningsSnapshot)) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Earnings Summary")
+                            .font(.urbanistBold(16))
                             .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                        Text("Complete orders to start earning and see your earnings summary.")
+                        Text("Revenue by month, category, and payment method")
                             .font(.urbanistRegular(12))
                             .foregroundColor(.cakeGrey)
-                            .multilineTextAlignment(.center)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.cakeGrey)
+                }
+
+                if earningsData.totalEarningsThisMonth == 0 && earningsData.totalEarningsLastMonth == 0 && earningsData.totalEarningsThisYear == 0 {
+                    analyticsPlaceholder(
+                        icon: "banknote",
+                        title: "No Earnings Data",
+                        message: "Successful paid orders will appear in your earnings charts."
+                    )
+                } else {
+                    let monthlyRevenuePreview = earningsSnapshot.monthlyEarnings.filter { $0.value > 0 }
+                    if !monthlyRevenuePreview.isEmpty {
+                        Chart(monthlyRevenuePreview) { item in
+                            LineMark(
+                                x: .value("Month", item.label),
+                                y: .value("Earnings", item.value)
+                            )
+                            .foregroundStyle(Color(red: 0.2, green: 0.6, blue: 0.4))
+                            .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
+
+                            AreaMark(
+                                x: .value("Month", item.label),
+                                y: .value("Earnings", item.value)
+                            )
+                            .foregroundStyle(Color(red: 0.2, green: 0.6, blue: 0.4).opacity(0.18))
+                        }
+                        .frame(height: 150)
+                        .chartYAxis {
+                            AxisMarks(position: .leading)
+                        }
+                    }
+
+                    HStack(spacing: 12) {
+                        earningCard(title: "This Month", value: earningsData.thisMonthFormatted, icon: "calendar", color: Color.cakeBrown)
+                        earningCard(title: "Last Month", value: earningsData.lastMonthFormatted, icon: "clock.arrow.circlepath", color: Color(red: 0.3, green: 0.45, blue: 0.8))
+                    }
+                    HStack(spacing: 12) {
+                        earningCard(title: "This Year", value: earningsData.thisYearFormatted, icon: "chart.line.uptrend.xyaxis", color: Color(red: 0.2, green: 0.6, blue: 0.4))
+                        earningCard(title: "Avg Per Order", value: earningsData.avgPerOrderFormatted, icon: "equal.circle.fill", color: Color(red: 0.7, green: 0.45, blue: 0.1))
                     }
                 }
-                .frame(maxWidth: .infinity)
-                .padding(20)
-                .background(Color(red: 0.97, green: 0.96, blue: 0.94))
-                .cornerRadius(12)
-            } else {
-                HStack(spacing: 12) {
-                    earningCard(title: "This Month", value: earningsData.thisMonthFormatted, icon: "calendar", color: Color.cakeBrown)
-                    earningCard(title: "Last Month", value: earningsData.lastMonthFormatted, icon: "clock.arrow.circlepath", color: Color(red: 0.3, green: 0.45, blue: 0.8))
-                }
-                HStack(spacing: 12) {
-                    earningCard(title: "This Year", value: earningsData.thisYearFormatted, icon: "chart.line.uptrend.xyaxis", color: Color(red: 0.2, green: 0.6, blue: 0.4))
-                    earningCard(title: "Avg Per Order", value: earningsData.avgPerOrderFormatted, icon: "equal.circle.fill", color: Color(red: 0.7, green: 0.45, blue: 0.1))
-                }
             }
+            .padding(18)
+            .background(Color.white)
+            .cornerRadius(18)
+            .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
         }
-        .padding(18)
-        .background(Color.white)
-        .cornerRadius(18)
-        .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
+        .buttonStyle(.plain)
     }
 
     private func earningCard(title: String, value: String, icon: String, color: Color) -> some View {
@@ -805,9 +735,13 @@ struct BakerProfileView: View {
                 menuRow(icon: "person.fill", label: "Edit Profile", color: Color(red: 0.5, green: 0.5, blue: 0.5))
             }
             Divider().padding(.leading, 52)
-            menuRow(icon: "chart.bar.fill", label: "Performance Analysis", color: Color(red: 0.3, green: 0.45, blue: 0.8))
+            NavigationLink(destination: BakerPerformanceAnalyticsView(snapshot: performanceSnapshot)) {
+                menuRow(icon: "chart.bar.fill", label: "Performance Analysis", color: Color(red: 0.3, green: 0.45, blue: 0.8))
+            }
             Divider().padding(.leading, 52)
-            menuRow(icon: "banknote.fill", label: "Earnings Summary", color: Color(red: 0.2, green: 0.6, blue: 0.4))
+            NavigationLink(destination: BakerEarningsAnalyticsView(snapshot: earningsSnapshot)) {
+                menuRow(icon: "banknote.fill", label: "Earnings Summary", color: Color(red: 0.2, green: 0.6, blue: 0.4))
+            }
             Divider().padding(.leading, 52)
             menuRow(icon: "lock.fill", label: "Change Password", color: Color(red: 0.7, green: 0.45, blue: 0.1))
             Divider().padding(.leading, 52)
@@ -841,6 +775,40 @@ struct BakerProfileView: View {
                 .foregroundColor(Color(red: 0.7, green: 0.7, blue: 0.7))
         }
         .padding(14)
+    }
+
+    private func analyticsPlaceholder(icon: String, title: String, message: String) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 28))
+                .foregroundColor(.cakeBrown.opacity(0.5))
+            Text(title)
+                .font(.urbanistBold(14))
+                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+            Text(message)
+                .font(.urbanistRegular(12))
+                .foregroundColor(.cakeGrey)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(22)
+        .background(Color(red: 0.97, green: 0.96, blue: 0.94))
+        .cornerRadius(12)
+    }
+
+    private func profileInsightChip(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.urbanistRegular(10))
+                .foregroundColor(.cakeGrey)
+            Text(value)
+                .font(.urbanistBold(14))
+                .foregroundColor(Color(hex: "5D3714"))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color(red: 0.97, green: 0.96, blue: 0.94))
+        .cornerRadius(12)
     }
 
     // MARK: - Settings
