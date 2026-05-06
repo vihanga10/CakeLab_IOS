@@ -7,6 +7,7 @@ import FirebaseAuth
 @MainActor
 struct BakerHomeView: View {
     let user: AppUser
+    @Binding var selectedTab: Int
     @State private var bakerCity = ""
     @State private var filterCity: String? = nil
     @State private var showLocationSheet = false
@@ -145,7 +146,11 @@ struct BakerHomeView: View {
     // MARK: - Header
     private var bakerHeader: some View {
         HStack(alignment: .center, spacing: 12) {
-            Group {
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    selectedTab = 3
+                }
+            } label: {
                 if let profileAvatar = profileAvatar {
                     Image(uiImage: profileAvatar)
                         .resizable()
@@ -163,6 +168,7 @@ struct BakerHomeView: View {
                     }
                 }
             }
+            .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(greetingText())
@@ -520,17 +526,37 @@ struct BakerHomeView: View {
     }
 
     private func loadProfileAvatar() {
-        guard let base64String = UserDefaults.standard.string(forKey: "profileAvatar_\(user.id)") else {
-            profileAvatar = nil
+        // Try UserDefaults first (written when avatar is updated at runtime)
+        if let base64String = UserDefaults.standard.string(forKey: "profileAvatar_\(user.id)"),
+           let imageData = Data(base64Encoded: base64String),
+           let image = UIImage(data: imageData) {
+            profileAvatar = image
             return
         }
-
-        guard let imageData = Data(base64Encoded: base64String) else {
-            profileAvatar = nil
-            return
+        // UserDefaults empty — load from Firestore profileImageBase64 field
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        let db = Firestore.firestore()
+        Task {
+            do {
+                let doc = try await db.collection("artisans").document(uid).getDocument()
+                if let base64 = doc.data()?["profileImageBase64"] as? String,
+                   !base64.isEmpty {
+                    let payload: String
+                    if let comma = base64.firstIndex(of: ",") {
+                        payload = String(base64[base64.index(after: comma)...])
+                    } else {
+                        payload = base64
+                    }
+                    if let data = Data(base64Encoded: payload), let image = UIImage(data: data) {
+                        profileAvatar = image
+                        // Cache it for next launch
+                        UserDefaults.standard.set(base64, forKey: "profileAvatar_\(user.id)")
+                    }
+                }
+            } catch {
+                print("Failed to load baker profile image: \(error)")
+            }
         }
-
-        profileAvatar = UIImage(data: imageData)
     }
 
     private func loadBakerCity() {
@@ -1065,5 +1091,5 @@ let mockOtherRequests: [CakeRequest] = [
 ]
 
 #Preview {
-    BakerHomeView(user: AppUser.mockBaker)
+    BakerHomeView(user: AppUser.mockBaker, selectedTab: .constant(0))
 }

@@ -23,9 +23,7 @@ struct CrafterHomeView: View {
                                 .font(.urbanistSemiBold(18))
                                 .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
                             
-                            Text("Manage your cakes and orders")
-                                .font(.urbanistRegular(13))
-                                .foregroundColor(.cakeGrey)
+                            
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 20)

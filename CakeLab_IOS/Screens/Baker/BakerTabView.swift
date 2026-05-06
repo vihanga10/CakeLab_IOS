@@ -14,11 +14,11 @@ struct BakerTabView: View {
         VStack(spacing: 0) {
             Group {
                 switch selectedTab {
-                case 0: BakerHomeView(user: user)
+                case 0: BakerHomeView(user: user, selectedTab: $selectedTab)
                 case 1: BakerMatchingRequestsView()
                 case 2: BakerOrdersView(user: user)
                 case 3: BakerProfileView(user: user, parentTabSelection: $selectedTab)
-                default: BakerHomeView(user: user)
+                default: BakerHomeView(user: user, selectedTab: $selectedTab)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
