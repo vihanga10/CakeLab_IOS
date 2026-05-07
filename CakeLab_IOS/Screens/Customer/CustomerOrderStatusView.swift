@@ -13,6 +13,7 @@ final class CustomerOrderStatusViewModel: ObservableObject {
     @Published var requestCategory: String?
     @Published var requestBudgetMin: Double?
     @Published var requestBudgetMax: Double?
+    @Published var bakerProfile = OrderStatusBakerProfile.empty
 
     private let db = Firestore.firestore()
     private var listener: ListenerRegistration?
@@ -49,6 +50,15 @@ final class CustomerOrderStatusViewModel: ObservableObject {
             self.requestBudgetMin = nil
             self.requestBudgetMax = nil
             self.isLoading = false
+            self.bakerProfile = OrderStatusBakerProfile(
+                name: order.artisanName,
+                ratingText: order.artisanRating,
+                reviewCount: 0,
+                address: order.artisanAddress,
+                city: "",
+                profileImageBase64: "",
+                imageURL: ""
+            )
 
             let directCategory = Self.parseCategory(from: data)
             let directBudgetMin = Self.parseDouble(data["budgetMin"])
@@ -69,6 +79,12 @@ final class CustomerOrderStatusViewModel: ObservableObject {
                !requestDocumentID.isEmpty {
                 Task {
                     await self.loadRequestDetails(requestDocumentID: requestDocumentID)
+                }
+            }
+
+            if !order.artisanId.isEmpty {
+                Task {
+                    await self.loadBakerProfile(bakerID: order.artisanId, orderData: data)
                 }
             }
         }
@@ -119,6 +135,48 @@ final class CustomerOrderStatusViewModel: ObservableObject {
         }
     }
 
+    private func loadBakerProfile(bakerID: String, orderData: [String: Any]) async {
+        async let artisanProfile = fetchBakerProfileData(collection: "artisans", bakerID: bakerID)
+        async let userProfile = fetchBakerProfileData(collection: "users", bakerID: bakerID)
+
+        let (artisanData, userData) = await (artisanProfile, userProfile)
+        let primaryData = artisanData ?? [:]
+        let fallbackData = userData ?? [:]
+
+        let rawCity = firstString(primaryData["city"], fallbackData["city"], orderData["artisanCity"], orderData["bakerCity"])
+        let rating = Self.parseDouble(primaryData["rating"])
+        let reviewCount = Self.parseInt(primaryData["reviewCount"])
+        let ratingText = rating > 0
+            ? String(format: "%.1f", rating)
+            : firstString(primaryData["artisanRating"], fallbackData["artisanRating"], orderData["artisanRating"])
+
+        bakerProfile = OrderStatusBakerProfile(
+            name: firstString(primaryData["shopName"], primaryData["name"], fallbackData["name"], orderData["artisanName"]),
+            ratingText: ratingText,
+            reviewCount: reviewCount,
+            address: firstString(primaryData["address"], primaryData["location"], fallbackData["address"], orderData["artisanAddress"]),
+            city: SriLankaDistricts.canonical(rawCity) ?? rawCity,
+            profileImageBase64: firstString(primaryData["profileImageBase64"], fallbackData["profileImageBase64"]),
+            imageURL: firstString(primaryData["imageURL"], primaryData["avatarURL"], fallbackData["imageURL"], fallbackData["avatarURL"])
+        )
+    }
+
+    private func fetchBakerProfileData(collection: String, bakerID: String) async -> [String: Any]? {
+        do {
+            let document = try await db.collection(collection).document(bakerID).getDocument()
+            return document.data()
+        } catch {
+            print("Error loading \(collection) baker profile: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    private func firstString(_ values: Any?...) -> String {
+        values.compactMap { $0 as? String }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first(where: { !$0.isEmpty }) ?? ""
+    }
+
     private static func parseCategory(from data: [String: Any]) -> String {
         if let category = data["category"] as? String,
            !category.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -138,8 +196,39 @@ final class CustomerOrderStatusViewModel: ObservableObject {
         if let value = raw as? Double { return value }
         if let value = raw as? Int { return Double(value) }
         if let value = raw as? NSNumber { return value.doubleValue }
+        if let value = raw as? String {
+            let cleaned = value.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return Double(cleaned) ?? 0
+        }
         return 0
     }
+
+    private static func parseInt(_ raw: Any?) -> Int {
+        if let value = raw as? Int { return value }
+        if let value = raw as? NSNumber { return value.intValue }
+        if let value = raw as? String { return Int(value) ?? 0 }
+        return 0
+    }
+}
+
+struct OrderStatusBakerProfile {
+    let name: String
+    let ratingText: String
+    let reviewCount: Int
+    let address: String
+    let city: String
+    let profileImageBase64: String
+    let imageURL: String
+
+    static let empty = OrderStatusBakerProfile(
+        name: "",
+        ratingText: "",
+        reviewCount: 0,
+        address: "",
+        city: "",
+        profileImageBase64: "",
+        imageURL: ""
+    )
 }
 
 struct CustomerOrderStatusView: View {
@@ -207,6 +296,7 @@ struct CustomerOrderStatusView: View {
                     let category = resolvedOrderCategory(liveOrder)
                     let budgetMin = resolvedBudgetMin(liveOrder)
                     let budgetMax = resolvedBudgetMax(liveOrder)
+                    let bakerProfile = viewModel.bakerProfile
 
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 16) {
@@ -223,19 +313,24 @@ struct CustomerOrderStatusView: View {
 
                             // Status Timeline
                             statusTimelineCard(currentStep: currentStep, deliveryDateText: deliveryDateText)
+                            expectedDeliveryCard(deliveryDateText: deliveryDateText)
 
                             // Baker Info
                             bakerInfoCard(
-                                name: liveOrder?.artisanName ?? fallbackOrder.bakerName,
-                                rating: liveOrder?.artisanRating ?? fallbackOrder.bakerRating,
-                                address: liveOrder?.artisanAddress ?? fallbackOrder.bakerAddress,
+                                name: resolvedBakerName(liveOrder, profile: bakerProfile),
+                                rating: resolvedBakerRating(liveOrder, profile: bakerProfile),
+                                reviewCount: bakerProfile.reviewCount,
+                                address: resolvedBakerAddress(liveOrder, profile: bakerProfile),
+                                city: bakerProfile.city,
+                                profileImageBase64: bakerProfile.profileImageBase64,
+                                imageURL: bakerProfile.imageURL,
                                 artisanId: liveOrder?.artisanId ?? "",
                                 onReviewTapped: { showReviewModal = true }
                             )
                         }
                         .padding(.horizontal, 15)
                         .padding(.top, 14)
-                        .padding(.bottom, 30)
+                        .padding(.bottom, 125)
                     }
                 }
             }
@@ -352,7 +447,7 @@ struct CustomerOrderStatusView: View {
 
             Spacer(minLength: 2)
 
-            HStack(alignment: .center, spacing: 0) {
+            HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 4) {
                         Image(systemName: "calendar")
@@ -369,10 +464,6 @@ struct CustomerOrderStatusView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .padding(.top, 2)
                 .padding(.bottom, 4)
-
-                Rectangle()
-                    .fill(Color(red: 0.9, green: 0.9, blue: 0.9))
-                    .frame(width: 1, height: 58)
 
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 4) {
@@ -392,10 +483,6 @@ struct CustomerOrderStatusView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .padding(.top, 2)
                 .padding(.bottom, 4)
-
-                Rectangle()
-                    .fill(Color(red: 0.9, green: 0.9, blue: 0.9))
-                    .frame(width: 1, height: 58)
 
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 4) {
@@ -443,13 +530,13 @@ struct CustomerOrderStatusView: View {
                         ZStack {
                             Circle()
                                 .fill(circleColor(for: item.step, currentStep: currentStep))
-                                .frame(width: 36, height: 36)
+                                .frame(width: 30, height: 30)
                             Circle()
                                 .fill(Color.white.opacity(item.step == currentStep ? 0.9 : 0.0))
-                                .frame(width: 16, height: 16)
+                                .frame(width: 12, height: 12)
                             if item.step < currentStep {
                                 Image(systemName: "checkmark")
-                                    .font(.system(size: 12, weight: .bold))
+                                    .font(.system(size: 10, weight: .bold))
                                     .foregroundColor(.white)
                             }
                         }
@@ -457,7 +544,7 @@ struct CustomerOrderStatusView: View {
                         if item.step < steps.count {
                             Rectangle()
                                 .fill(Color(red: 0.78, green: 0.78, blue: 0.78))
-                                .frame(width: 1.2, height: 48)
+                                .frame(width: 1.2, height: 42)
                                 .padding(.top, 4)
                         }
                     }
@@ -482,7 +569,7 @@ struct CustomerOrderStatusView: View {
                         }
 
                         HStack(spacing: 10) {
-                            Text("Date : \(stepDateText(step: item.step, statusKey: item.statusKey))")
+                            Text("Date : \(timelineDateText(step: item.step, statusKey: item.statusKey, deliveryDateText: deliveryDateText))")
                                 .font(.urbanistRegular(13))
                                 .foregroundColor(.cakeGrey)
 
@@ -503,36 +590,6 @@ struct CustomerOrderStatusView: View {
                     }
                 }
             }
-
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top, spacing: 0) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Expected Date")
-                            .font(.urbanistSemiBold(12))
-                            .foregroundColor(accent)
-                        Text(deliveryDateText)
-                            .font(.urbanistBold(14))
-                            .foregroundColor(Color(red: 0.08, green: 0.08, blue: 0.08))
-                    }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-
-                    Rectangle()
-                        .fill(Color(red: 0.80, green: 0.80, blue: 0.80))
-                        .frame(width: 1, height: 38)
-                        .padding(.horizontal, 12)
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Expected Time")
-                            .font(.urbanistSemiBold(12))
-                            .foregroundColor(accent)
-                        Text(expectedTimeText().lowercased())
-                            .font(.urbanistBold(14))
-                            .foregroundColor(Color(red: 0.08, green: 0.08, blue: 0.08))
-                    }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                }
-            }
-            .padding(.top, 14)
 
             Button {
                 Task {
@@ -559,46 +616,87 @@ struct CustomerOrderStatusView: View {
         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 3)
     }
 
-    private func bakerInfoCard(name: String, rating: String, address: String, artisanId: String, onReviewTapped: @escaping () -> Void) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+    private func expectedDeliveryCard(deliveryDateText: String) -> some View {
+        HStack(alignment: .top, spacing: 18) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Expected Date")
+                    .font(.urbanistSemiBold(12))
+                    .foregroundColor(accent)
+                Text(deliveryDateText)
+                    .font(.urbanistBold(14))
+                    .foregroundColor(Color(red: 0.08, green: 0.08, blue: 0.08))
+            }
+            .frame(width: 118, alignment: .topLeading)
+
+            Rectangle()
+                .fill(Color(red: 0.80, green: 0.80, blue: 0.80))
+                .frame(width: 1, height: 38)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Expected Time")
+                    .font(.urbanistSemiBold(12))
+                    .foregroundColor(accent)
+                Text(expectedTimeText().lowercased())
+                    .font(.urbanistBold(14))
+                    .foregroundColor(Color(red: 0.08, green: 0.08, blue: 0.08))
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+        .padding(16)
+        .background(surface)
+        .cornerRadius(18)
+        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+    }
+
+    private func bakerInfoCard(
+        name: String,
+        rating: String,
+        reviewCount: Int,
+        address: String,
+        city: String,
+        profileImageBase64: String,
+        imageURL: String,
+        artisanId: String,
+        onReviewTapped: @escaping () -> Void
+    ) -> some View {
+        let locationText = resolvedBakerLocation(address: address, city: city)
+
+        return VStack(alignment: .leading, spacing: 10) {
             Text("Baker Details")
                 .font(.urbanistBold(16))
                 .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
 
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
-                        .frame(width: 48, height: 48)
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 21))
-                        .foregroundColor(.cakeBrown.opacity(0.55))
-                }
+            HStack(alignment: .top, spacing: 12) {
+                bakerProfileImage(base64: profileImageBase64, imageURL: imageURL)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(name)
                         .font(.urbanistBold(14))
                         .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .lineLimit(2)
 
                     HStack(spacing: 4) {
                         Image(systemName: "star.fill")
                             .font(.system(size: 10))
                             .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.1))
-                        Text(rating)
-                            .font(.urbanistRegular(12))
-                            .foregroundColor(.cakeGrey)
-                    }
-
-                    HStack(spacing: 4) {
-                        Image(systemName: "mappin.circle.fill")
-                            .font(.system(size: 11))
-                            .foregroundColor(.cakeGrey)
-                        Text(address)
+                        Text(reviewSummaryText(rating: rating, reviewCount: reviewCount))
                             .font(.urbanistRegular(12))
                             .foregroundColor(.cakeGrey)
                             .lineLimit(1)
                     }
+
+                    HStack(alignment: .top, spacing: 4) {
+                        Image(systemName: "mappin.circle.fill")
+                            .font(.system(size: 11))
+                            .foregroundColor(.cakeGrey)
+                            .padding(.top, 2)
+                        Text(locationText)
+                            .font(.urbanistRegular(12))
+                            .foregroundColor(.cakeGrey)
+                            .lineLimit(2)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             Button {
@@ -612,12 +710,48 @@ struct CustomerOrderStatusView: View {
                     .background(accent)
                     .cornerRadius(24)
             }
-            .padding(.top, 14)
+            .padding(.top, 12)
         }
         .padding(16)
         .background(surface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+    }
+
+    @ViewBuilder
+    private func bakerProfileImage(base64: String, imageURL: String) -> some View {
+        Group {
+            if let image = decodeBase64Image(base64) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else if let url = URL(string: imageURL), !imageURL.isEmpty {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    default:
+                        bakerProfilePlaceholder
+                    }
+                }
+            } else {
+                bakerProfilePlaceholder
+            }
+        }
+        .frame(width: 52, height: 52)
+        .clipShape(Circle())
+    }
+
+    private var bakerProfilePlaceholder: some View {
+        Circle()
+            .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+            .overlay(
+                Image(systemName: "person.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(.cakeBrown.opacity(0.65))
+            )
     }
 
     @ViewBuilder
@@ -663,6 +797,21 @@ struct CustomerOrderStatusView: View {
                     .font(.system(size: 22))
                     .foregroundColor(.cakeBrown.opacity(0.35))
             )
+    }
+
+    private func decodeBase64Image(_ rawBase64: String) -> UIImage? {
+        let trimmed = rawBase64.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let payload: String
+        if let commaIndex = trimmed.firstIndex(of: ",") {
+            payload = String(trimmed[trimmed.index(after: commaIndex)...])
+        } else {
+            payload = trimmed
+        }
+
+        guard let data = Data(base64Encoded: payload) else { return nil }
+        return UIImage(data: data)
     }
     /*
     private func truncatedCakeName(_ name: String) -> String {
@@ -711,6 +860,40 @@ struct CustomerOrderStatusView: View {
         if liveValue > 0 { return liveValue }
         if let requestValue = viewModel.requestBudgetMax, requestValue > 0 { return requestValue }
         return fallbackOrder.budgetMax
+    }
+
+    private func resolvedBakerName(_ liveOrder: CakeOrder?, profile: OrderStatusBakerProfile) -> String {
+        let candidates = [profile.name, liveOrder?.artisanName, fallbackOrder.bakerName]
+        return firstNonEmpty(candidates) ?? "Baker"
+    }
+
+    private func resolvedBakerRating(_ liveOrder: CakeOrder?, profile: OrderStatusBakerProfile) -> String {
+        firstNonEmpty([profile.ratingText, liveOrder?.artisanRating, fallbackOrder.bakerRating]) ?? ""
+    }
+
+    private func resolvedBakerAddress(_ liveOrder: CakeOrder?, profile: OrderStatusBakerProfile) -> String {
+        firstNonEmpty([profile.address, liveOrder?.artisanAddress, fallbackOrder.bakerAddress]) ?? ""
+    }
+
+    private func resolvedBakerLocation(address: String, city: String) -> String {
+        let display = SriLankaDistricts.displayLocation(address: address, city: city)
+        return display.isEmpty ? "Address not provided" : display
+    }
+
+    private func reviewSummaryText(rating: String, reviewCount: Int) -> String {
+        let trimmedRating = rating.trimmingCharacters(in: .whitespacesAndNewlines)
+        let reviewText = reviewCount == 1 ? "1 review" : "\(reviewCount) reviews"
+
+        if trimmedRating.isEmpty || trimmedRating == "New baker" {
+            return reviewCount > 0 ? reviewText : "No reviews yet"
+        }
+
+        return reviewCount > 0 ? "\(trimmedRating) (\(reviewText))" : trimmedRating
+    }
+
+    private func firstNonEmpty(_ values: [String?]) -> String? {
+        values.compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first(where: { !$0.isEmpty })
     }
 
     private func formattedHeaderDate(_ rawDate: String) -> String {
@@ -816,6 +999,13 @@ struct CustomerOrderStatusView: View {
         }
         guard let date = viewModel.timestamp(for: statusKey) else { return "Pending" }
         return Self.dateFmt.string(from: date)
+    }
+
+    private func timelineDateText(step: Int, statusKey: String, deliveryDateText: String) -> String {
+        if step == steps.count {
+            return deliveryDateText
+        }
+        return stepDateText(step: step, statusKey: statusKey)
     }
 
     private func stepTimeText(step: Int, statusKey: String) -> String {

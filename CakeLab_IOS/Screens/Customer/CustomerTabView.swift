@@ -160,7 +160,9 @@ struct CustomerTabView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            CustomerTabBar(selectedTab: selectedTabBinding)
+            if !navState.isOnSubScreen {
+                CustomerTabBar(selectedTab: selectedTabBinding)
+            }
         }
         .ignoresSafeArea(.keyboard)
         .onChange(of: widgetRoute) { _, newRoute in

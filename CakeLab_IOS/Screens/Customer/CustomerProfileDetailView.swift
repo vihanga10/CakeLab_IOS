@@ -20,6 +20,7 @@ struct CustomerProfileDetailView: View {
     @State private var selectedTermsTab: Int = 0
     @State private var showDeleteAlert = false
     @State private var localAvatar: UIImage? = nil
+    @State private var inlineDetailTabDepthApplied = false
 
     init(user: AppUser) {
         self.user = user
@@ -109,8 +110,8 @@ struct CustomerProfileDetailView: View {
                             }
                             .padding(.horizontal, 20)
                         }
-                        .padding(.bottom, 20)
                         .padding(.top, 12)
+                        .padding(.bottom, 94)
                     } else {
                         ScrollView(showsIndicators: false) {
                             VStack(spacing: 26) {
@@ -247,6 +248,16 @@ struct CustomerProfileDetailView: View {
                         }
                     }
                 }
+
+                if selectedDetailView != nil {
+                    VStack {
+                        Spacer()
+                        CustomerSubScreenTabBar { tag in
+                            selectedDetailView = nil
+                            CustomerNavState.shared.navigateTo(tag)
+                        }
+                    }
+                }
             }
             .navigationBarBackButtonHidden(true)
             .navigationBarHidden(true)
@@ -269,6 +280,12 @@ struct CustomerProfileDetailView: View {
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("profileAvatarUpdated"))) { _ in
                 localAvatar = viewModel.loadAvatarFromUserDefaults()
             }
+            .onChange(of: selectedDetailView) { _, newValue in
+                updateInlineDetailTabDepth(for: newValue)
+            }
+            .onDisappear {
+                clearInlineDetailTabDepthIfNeeded()
+            }
         }
     }
     
@@ -289,6 +306,21 @@ struct CustomerProfileDetailView: View {
         UserDefaults.standard.set(marketingEmails, forKey: "marketingEmails")
         UserDefaults.standard.set(dataSharing, forKey: "dataSharing")
         UserDefaults.standard.set(biometricAuth, forKey: "biometricAuth")
+    }
+
+    private func updateInlineDetailTabDepth(for detailView: String?) {
+        if detailView != nil, !inlineDetailTabDepthApplied {
+            CustomerNavState.shared.depth += 1
+            inlineDetailTabDepthApplied = true
+        } else if detailView == nil {
+            clearInlineDetailTabDepthIfNeeded()
+        }
+    }
+
+    private func clearInlineDetailTabDepthIfNeeded() {
+        guard inlineDetailTabDepthApplied else { return }
+        CustomerNavState.shared.depth = max(0, CustomerNavState.shared.depth - 1)
+        inlineDetailTabDepthApplied = false
     }
 
     @ViewBuilder
@@ -512,7 +544,6 @@ struct LanguageDetailContent: View {
             
             Spacer()
         }
-        .asCustomerSubScreen()
     }
 }
 
@@ -696,7 +727,6 @@ struct PrivacyDetailContent: View {
             Spacer().frame(height: 24)
         }
         .padding(.top, 20)
-        .asCustomerSubScreen()
     }
 }
 
@@ -800,7 +830,6 @@ struct HelpDetailContent: View {
             Spacer().frame(height: 24)
         }
         .padding(.top, 20)
-        .asCustomerSubScreen()
     }
 }
 
@@ -858,7 +887,6 @@ struct TermsDetailContent: View {
                 .padding(.top, 20)
             }
         }
-        .asCustomerSubScreen()
     }
 }
 

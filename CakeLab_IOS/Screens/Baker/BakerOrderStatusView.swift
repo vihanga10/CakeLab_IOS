@@ -211,6 +211,7 @@ struct BakerOrderStatusView: View {
                         VStack(spacing: 16) {
                             orderDetailsCard(order: order)
                             progressEditorCard(order: order)
+                            expectedDeliveryCard(order: order)
                             customerInfoCard
                         }
                         .padding(.horizontal, 15)
@@ -320,7 +321,7 @@ struct BakerOrderStatusView: View {
             Spacer(minLength: 2)
 
             // ── Footer: Date | Budget | Category ───────────────────────
-            HStack(alignment: .center, spacing: 0) {
+            HStack(alignment: .center, spacing: 12) {
 
                 // Date
                 VStack(alignment: .leading, spacing: 6) {
@@ -335,8 +336,6 @@ struct BakerOrderStatusView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .padding(.top, 2).padding(.bottom, 4)
-
-                Rectangle().fill(Color(red: 0.9, green: 0.9, blue: 0.9)).frame(width: 1, height: 58)
 
                 // Budget
                 VStack(alignment: .leading, spacing: 6) {
@@ -355,8 +354,6 @@ struct BakerOrderStatusView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .padding(.top, 2).padding(.bottom, 4)
-
-                Rectangle().fill(Color(red: 0.9, green: 0.9, blue: 0.9)).frame(width: 1, height: 58)
 
                 // Category
                 VStack(alignment: .leading, spacing: 6) {
@@ -401,20 +398,20 @@ struct BakerOrderStatusView: View {
                         ZStack {
                             Circle()
                                 .fill(circleColor(for: item.step))
-                                .frame(width: 36, height: 36)
+                                .frame(width: 30, height: 30)
                             Circle()
                                 .fill(Color.white.opacity(item.step == viewModel.selectedStep ? 0.9 : 0.0))
-                                .frame(width: 16, height: 16)
+                                .frame(width: 12, height: 12)
                             if item.step < viewModel.selectedStep {
                                 Image(systemName: "checkmark")
-                                    .font(.system(size: 12, weight: .bold))
+                                    .font(.system(size: 10, weight: .bold))
                                     .foregroundColor(.white)
                             }
                         }
                         if item.step < viewModel.steps.count {
                             Rectangle()
                                 .fill(Color(red: 0.78, green: 0.78, blue: 0.78))
-                                .frame(width: 1.2, height: 48)
+                                .frame(width: 1.2, height: 42)
                                 .padding(.top, 4)
                         }
                     }
@@ -437,7 +434,7 @@ struct BakerOrderStatusView: View {
                         }
 
                         HStack(spacing: 10) {
-                            Text("Date : \(stepDateText(step: item.step, statusKey: item.statusKey))")
+                            Text("Date : \(timelineDateText(step: item.step, statusKey: item.statusKey, deliveryDateText: Self.dateFmt.string(from: order.deliveryDate)))")
                                 .font(.urbanistRegular(13))
                                 .foregroundColor(.cakeGrey)
                             Rectangle()
@@ -458,33 +455,6 @@ struct BakerOrderStatusView: View {
                     withAnimation(.easeInOut(duration: 0.2)) { viewModel.selectedStep = item.step }
                 }
             }
-
-            // ── Expected Date / Time (matches CustomerOrderStatusView) ──
-            HStack(alignment: .top, spacing: 0) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Expected Date")
-                        .font(.urbanistSemiBold(12)).foregroundColor(accent)
-                    Text(Self.dateFmt.string(from: order.deliveryDate))
-                        .font(.urbanistBold(14))
-                        .foregroundColor(Color(red: 0.08, green: 0.08, blue: 0.08))
-                }
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-
-                Rectangle()
-                    .fill(Color(red: 0.80, green: 0.80, blue: 0.80))
-                    .frame(width: 1, height: 38)
-                    .padding(.horizontal, 12)
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Expected Time")
-                        .font(.urbanistSemiBold(12)).foregroundColor(accent)
-                    Text(expectedTimeText(for: order).lowercased())
-                        .font(.urbanistBold(14))
-                        .foregroundColor(Color(red: 0.08, green: 0.08, blue: 0.08))
-                }
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-            }
-            .padding(.top, 14)
 
             // ── Add to Calendar ─────────────────────────────────────────
             Button {
@@ -531,6 +501,38 @@ struct BakerOrderStatusView: View {
         .background(surface)
         .cornerRadius(22)
         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 3)
+    }
+
+    private func expectedDeliveryCard(order: CakeOrder) -> some View {
+        HStack(alignment: .top, spacing: 18) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Expected Date")
+                    .font(.urbanistSemiBold(12))
+                    .foregroundColor(accent)
+                Text(Self.dateFmt.string(from: order.deliveryDate))
+                    .font(.urbanistBold(14))
+                    .foregroundColor(Color(red: 0.08, green: 0.08, blue: 0.08))
+            }
+            .frame(width: 118, alignment: .topLeading)
+
+            Rectangle()
+                .fill(Color(red: 0.80, green: 0.80, blue: 0.80))
+                .frame(width: 1, height: 38)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Expected Time")
+                    .font(.urbanistSemiBold(12))
+                    .foregroundColor(accent)
+                Text(expectedTimeText(for: order).lowercased())
+                    .font(.urbanistBold(14))
+                    .foregroundColor(Color(red: 0.08, green: 0.08, blue: 0.08))
+            }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+        .padding(16)
+        .background(surface)
+        .cornerRadius(18)
+        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
     }
 
     // MARK: - Customer Info Card
@@ -589,6 +591,13 @@ struct BakerOrderStatusView: View {
         }
         guard let d = viewModel.timestamp(for: statusKey) else { return "Pending" }
         return Self.dateFmt.string(from: d)
+    }
+
+    private func timelineDateText(step: Int, statusKey: String, deliveryDateText: String) -> String {
+        if step == viewModel.steps.count {
+            return deliveryDateText
+        }
+        return stepDateText(step: step, statusKey: statusKey)
     }
 
     private func stepTimeText(step: Int, statusKey: String) -> String {
