@@ -616,11 +616,21 @@ struct BidsReceivedView: View {
                                 .tint(.cakeBrown)
                                 .padding(.top, 20)
                         } else if viewModel.bids.isEmpty {
-                            ContentUnavailableView(
-                                "No Bids Yet",
-                                systemImage: "person.2.slash",
-                                description: Text("Bakers have not placed bids for this request yet.")
-                            )
+                            VStack(spacing: 10) {
+                                Image(systemName: "person.2.slash")
+                                    .font(.system(size: 28, weight: .regular))
+                                    .foregroundColor(.cakeBrown.opacity(0.35))
+
+                                Text("No Bids Yet")
+                                    .font(.urbanistSemiBold(15))
+                                    .foregroundColor(.cakeBrown)
+
+                                Text("Bakers have not placed bids for this request yet.")
+                                    .font(.urbanistRegular(12))
+                                    .foregroundColor(.cakeGrey)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .padding(.horizontal, 24)
                             .padding(.top, 20)
                         } else {
                             ForEach(viewModel.bids) { bid in
