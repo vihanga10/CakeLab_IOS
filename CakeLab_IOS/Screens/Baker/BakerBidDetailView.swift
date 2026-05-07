@@ -736,6 +736,8 @@ struct BakerBidDetailView: View {
             let bakerName = (bakerData["name"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             let bakerProfileImageBase64 = artisanData["profileImageBase64"] as? String ?? bakerData["profileImageBase64"] as? String ?? ""
             let bakerImageURL = artisanData["imageURL"] as? String ?? bakerData["imageURL"] as? String ?? bakerData["avatarURL"] as? String ?? ""
+            let bakerAddress = artisanData["address"] as? String ?? artisanData["location"] as? String ?? bakerData["address"] as? String ?? ""
+            let bakerCity = SriLankaDistricts.canonical(artisanData["city"] as? String) ?? SriLankaDistricts.canonical(bakerData["city"] as? String) ?? artisanData["city"] as? String ?? bakerData["city"] as? String ?? ""
             
             let bidPayload: [String: Any] = [
                 "requestDocumentID": request.requestDocumentID,
@@ -744,6 +746,8 @@ struct BakerBidDetailView: View {
                 "bakerName": bakerName.isEmpty ? (Auth.auth().currentUser?.email ?? "Baker") : bakerName,
                 "bakerProfileImageBase64": bakerProfileImageBase64,
                 "bakerImageURL": bakerImageURL,
+                "bakerAddress": bakerAddress,
+                "bakerCity": bakerCity,
                 "requestTitle": request.title,
                 "requestSnapshot": [
                     "id": request.requestDocumentID,
@@ -785,7 +789,7 @@ struct BakerBidDetailView: View {
                 }
             }
             
-            // 🔔 Trigger notifications
+            //  Trigger notifications
             let bakerNameForNotif = bakerName.isEmpty ? (Auth.auth().currentUser?.email ?? "Baker") : bakerName
             
             // Notify CUSTOMER: New bid received
@@ -798,7 +802,7 @@ struct BakerBidDetailView: View {
                 customerID: request.customerID,
                 showPopup: false
             )
-            print("✅ Customer notification saved: New bid from \(bakerNameForNotif) for \(request.title)")
+            print(" Customer notification saved: New bid from \(bakerNameForNotif) for \(request.title)")
 
             self.notificationManager.notifyBakerBidSubmitted(
                 requestTitle: request.title,

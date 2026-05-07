@@ -10,25 +10,35 @@ struct CustomerOrder: Identifiable {
     let statusColor: Color
     let deliveryDate: String
     let currentStep: Int   // 1–5
+    let bakerID: String
     let bakerName: String
     let bakerRating: String
+    let bakerReviewCount: Int
     let bakerAddress: String
+    let bakerCity: String
+    let bakerProfileImageBase64: String
+    let bakerImageURL: String
     let imageName: String
     let referenceImages: [String]
     let category: String
     let budgetMin: Double
     let budgetMax: Double
 
-    init(id: String, cakeName: String, status: String, statusColor: Color, deliveryDate: String, currentStep: Int, bakerName: String, bakerRating: String, bakerAddress: String, imageName: String = "", referenceImages: [String] = [], category: String = "", budgetMin: Double = 0, budgetMax: Double = 0) {
+    init(id: String, cakeName: String, status: String, statusColor: Color, deliveryDate: String, currentStep: Int, bakerID: String = "", bakerName: String, bakerRating: String, bakerReviewCount: Int = 0, bakerAddress: String, bakerCity: String = "", bakerProfileImageBase64: String = "", bakerImageURL: String = "", imageName: String = "", referenceImages: [String] = [], category: String = "", budgetMin: Double = 0, budgetMax: Double = 0) {
         self.id = id
         self.cakeName = cakeName
         self.status = status
         self.statusColor = statusColor
         self.deliveryDate = deliveryDate
         self.currentStep = currentStep
+        self.bakerID = bakerID
         self.bakerName = bakerName
         self.bakerRating = bakerRating
+        self.bakerReviewCount = bakerReviewCount
         self.bakerAddress = bakerAddress
+        self.bakerCity = bakerCity
+        self.bakerProfileImageBase64 = bakerProfileImageBase64
+        self.bakerImageURL = bakerImageURL
         self.imageName = imageName
         self.referenceImages = referenceImages
         self.category = category
@@ -43,15 +53,54 @@ struct CustomerOrder: Identifiable {
         self.statusColor = order.statusColor
         self.deliveryDate = order.formattedDeliveryDate
         self.currentStep = max(1, min(5, order.currentStep))
+        self.bakerID = order.artisanId
         self.bakerName = order.artisanName
         self.bakerRating = order.artisanRating
+        self.bakerReviewCount = 0
         self.bakerAddress = order.artisanAddress
+        self.bakerCity = ""
+        self.bakerProfileImageBase64 = ""
+        self.bakerImageURL = ""
         self.imageName = ""
         self.referenceImages = order.referenceImages
         self.category = order.category
         self.budgetMin = order.budgetMin
         self.budgetMax = order.budgetMax
     }
+
+    fileprivate func enriched(with profile: BakerOrderProfile) -> CustomerOrder {
+        CustomerOrder(
+            id: id,
+            cakeName: cakeName,
+            status: status,
+            statusColor: statusColor,
+            deliveryDate: deliveryDate,
+            currentStep: currentStep,
+            bakerID: bakerID,
+            bakerName: profile.name.isEmpty ? bakerName : profile.name,
+            bakerRating: profile.ratingText.isEmpty ? bakerRating : profile.ratingText,
+            bakerReviewCount: profile.reviewCount,
+            bakerAddress: profile.address.isEmpty ? bakerAddress : profile.address,
+            bakerCity: profile.city,
+            bakerProfileImageBase64: profile.profileImageBase64,
+            bakerImageURL: profile.imageURL,
+            imageName: imageName,
+            referenceImages: referenceImages,
+            category: category,
+            budgetMin: budgetMin,
+            budgetMax: budgetMax
+        )
+    }
+}
+
+fileprivate struct BakerOrderProfile {
+    let name: String
+    let ratingText: String
+    let reviewCount: Int
+    let address: String
+    let city: String
+    let profileImageBase64: String
+    let imageURL: String
 }
 
 @MainActor
@@ -81,20 +130,106 @@ final class CustomerOrdersViewModel: ObservableObject {
 
             let (activeDocs, completedDocs) = try await (activeSnapshot, completedSnapshot)
 
-            activeOrders = activeDocs.documents
+            let parsedActiveOrders = activeDocs.documents
                 .compactMap(CakeOrder.init(document:))
                 .sorted { $0.deliveryDate < $1.deliveryDate }
                 .map(CustomerOrder.init(from:))
 
-            completedOrders = completedDocs.documents
+            let parsedCompletedOrders = completedDocs.documents
                 .compactMap(CakeOrder.init(document:))
                 .sorted { $0.deliveryDate > $1.deliveryDate }
                 .map(CustomerOrder.init(from:))
+
+            activeOrders = await enrichOrdersWithBakerProfiles(parsedActiveOrders)
+            completedOrders = await enrichOrdersWithBakerProfiles(parsedCompletedOrders)
         } catch {
             print("Error loading customer orders: \(error.localizedDescription)")
         }
 
         isLoading = false
+    }
+
+    private func enrichOrdersWithBakerProfiles(_ orders: [CustomerOrder]) async -> [CustomerOrder] {
+        var cache: [String: BakerOrderProfile] = [:]
+        var enrichedOrders: [CustomerOrder] = []
+        enrichedOrders.reserveCapacity(orders.count)
+
+        for order in orders {
+            let bakerID = order.bakerID.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !bakerID.isEmpty else {
+                enrichedOrders.append(order)
+                continue
+            }
+
+            let profile: BakerOrderProfile
+            if let cached = cache[bakerID] {
+                profile = cached
+            } else {
+                profile = await fetchBakerProfile(bakerID: bakerID)
+                cache[bakerID] = profile
+            }
+
+            enrichedOrders.append(order.enriched(with: profile))
+        }
+
+        return enrichedOrders
+    }
+
+    private func fetchBakerProfile(bakerID: String) async -> BakerOrderProfile {
+        async let artisanProfile = fetchBakerProfileData(collection: "artisans", bakerID: bakerID)
+        async let userProfile = fetchBakerProfileData(collection: "users", bakerID: bakerID)
+
+        let (artisanData, userData) = await (artisanProfile, userProfile)
+        let primaryData = artisanData ?? [:]
+        let fallbackData = userData ?? [:]
+
+        let name = firstString(primaryData["shopName"], primaryData["name"], fallbackData["name"])
+        let address = firstString(primaryData["address"], primaryData["location"], fallbackData["address"])
+        let city = SriLankaDistricts.canonical(firstString(primaryData["city"], fallbackData["city"])) ?? firstString(primaryData["city"], fallbackData["city"])
+        let rating = parseDouble(primaryData["rating"])
+        let reviewCount = parseInt(primaryData["reviewCount"])
+        let ratingText = rating > 0
+            ? String(format: "%.1f", rating)
+            : firstString(primaryData["artisanRating"], fallbackData["artisanRating"])
+
+        return BakerOrderProfile(
+            name: name,
+            ratingText: ratingText,
+            reviewCount: reviewCount,
+            address: address,
+            city: city,
+            profileImageBase64: firstString(primaryData["profileImageBase64"], fallbackData["profileImageBase64"]),
+            imageURL: firstString(primaryData["imageURL"], primaryData["avatarURL"], fallbackData["imageURL"], fallbackData["avatarURL"])
+        )
+    }
+
+    private func fetchBakerProfileData(collection: String, bakerID: String) async -> [String: Any]? {
+        do {
+            let document = try await db.collection(collection).document(bakerID).getDocument()
+            return document.data()
+        } catch {
+            return nil
+        }
+    }
+
+    private func firstString(_ values: Any?...) -> String {
+        values.compactMap { $0 as? String }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first(where: { !$0.isEmpty }) ?? ""
+    }
+
+    private func parseInt(_ value: Any?) -> Int {
+        if let value = value as? Int { return value }
+        if let value = value as? NSNumber { return value.intValue }
+        if let value = value as? String { return Int(value) ?? 0 }
+        return 0
+    }
+
+    private func parseDouble(_ value: Any?) -> Double {
+        if let value = value as? Double { return value }
+        if let value = value as? NSNumber { return value.doubleValue }
+        if let value = value as? String { return Double(value) ?? 0 }
+        return 0
     }
 }
 
@@ -114,7 +249,7 @@ struct CustomerOrdersView: View {
 
                 VStack(spacing: 0) {
 
-                    // ── Tab Selector ──────────────────────────────────────
+                    //  Tab Selector
                     HStack(spacing: 0) {
                         tabButton(title: "Active Orders", tag: 0)
                         tabButton(title: "Completed Orders", tag: 1)
@@ -126,7 +261,7 @@ struct CustomerOrdersView: View {
                     .padding(.top, 12)
                     .padding(.bottom, 16)
 
-                    // ── Content ────────────────────────────────────────────
+                    //  Content
                     if selectedTab == 0 {
                         if viewModel.isLoading {
                             ProgressView("Loading orders...")
@@ -221,7 +356,7 @@ struct OrderCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
 
-            // ── Order Row ──────────────────────────────────────────────
+            //  Order Row
             HStack(alignment: .top, spacing: 12) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 12)
@@ -280,7 +415,7 @@ struct OrderCard: View {
             .padding(.top, 14)
             .padding(.bottom, 10)
 
-            // ── Progress Tracker ───────────────────────────────────────
+            //  Progress Tracker
             OrderProgressTracker(currentStep: order.currentStep, labels: stepLabels)
                 .padding(.horizontal, 14)
                 .padding(.top, 4)
@@ -289,16 +424,9 @@ struct OrderCard: View {
             Divider()
                 .padding(.horizontal, 18)
 
-            // ── Baker Info ─────────────────────────────────────────────
+            //  Baker Info
             HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
-                        .frame(width: 48, height: 48)
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 22))
-                        .foregroundColor(.cakeBrown.opacity(0.5))
-                }
+                bakerProfileImage
                 VStack(alignment: .leading, spacing: 3) {
                     Text(order.bakerName)
                         .font(.urbanistBold(14))
@@ -307,7 +435,7 @@ struct OrderCard: View {
                         Image(systemName: "star.fill")
                             .font(.system(size: 11))
                             .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.1))
-                        Text(order.bakerRating)
+                        Text(bakerRatingText)
                             .font(.urbanistRegular(12))
                             .foregroundColor(.cakeGrey)
                     }
@@ -315,7 +443,7 @@ struct OrderCard: View {
                         Image(systemName: "mappin.circle.fill")
                             .font(.system(size: 11))
                             .foregroundColor(.cakeGrey)
-                        Text(order.bakerAddress)
+                        Text(bakerLocationText)
                             .font(.urbanistRegular(11))
                             .foregroundColor(.cakeGrey)
                             .lineLimit(1)
@@ -339,6 +467,72 @@ struct OrderCard: View {
             .padding(.vertical, 4)
             .background(order.statusColor.opacity(0.12))
             .cornerRadius(8)
+    }
+
+    private var bakerProfileImage: some View {
+        Group {
+            if let image = decodeBase64Image(order.bakerProfileImageBase64) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else if let url = URL(string: order.bakerImageURL), !order.bakerImageURL.isEmpty {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    default:
+                        bakerProfileFallback
+                    }
+                }
+            } else {
+                bakerProfileFallback
+            }
+        }
+        .frame(width: 48, height: 48)
+        .clipShape(Circle())
+    }
+
+    private var bakerProfileFallback: some View {
+        Circle()
+            .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+            .overlay(
+                Image(systemName: "person.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(.cakeBrown.opacity(0.5))
+            )
+    }
+
+    private var bakerRatingText: String {
+        let rating = order.bakerRating.trimmingCharacters(in: .whitespacesAndNewlines)
+        let reviewText = "\(order.bakerReviewCount) review\(order.bakerReviewCount == 1 ? "" : "s")"
+
+        if rating.isEmpty || rating == "New baker" {
+            return order.bakerReviewCount > 0 ? reviewText : "No reviews yet"
+        }
+
+        return order.bakerReviewCount > 0 ? "\(rating) (\(reviewText))" : rating
+    }
+
+    private var bakerLocationText: String {
+        let display = SriLankaDistricts.displayLocation(address: order.bakerAddress, city: order.bakerCity)
+        return display.isEmpty ? "Address not provided" : display
+    }
+
+    private func decodeBase64Image(_ rawBase64: String) -> UIImage? {
+        let trimmed = rawBase64.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let payload: String
+        if let commaIndex = trimmed.firstIndex(of: ",") {
+            payload = String(trimmed[trimmed.index(after: commaIndex)...])
+        } else {
+            payload = trimmed
+        }
+
+        guard let data = Data(base64Encoded: payload) else { return nil }
+        return UIImage(data: data)
     }
 }
 

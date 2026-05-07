@@ -59,6 +59,8 @@ struct CustomerBidOffer: Identifiable {
     let bakerName: String
     let bakerProfileImageBase64: String
     let bakerImageURL: String
+    let bakerAddress: String
+    let bakerCity: String
     let amount: Double
     let message: String
     let canDeliverOnTime: Bool
@@ -240,6 +242,8 @@ final class BidsReceivedViewModel: ObservableObject {
             bakerName: data["bakerName"] as? String ?? "Baker",
             bakerProfileImageBase64: data["bakerProfileImageBase64"] as? String ?? "",
             bakerImageURL: data["bakerImageURL"] as? String ?? "",
+            bakerAddress: data["bakerAddress"] as? String ?? "",
+            bakerCity: data["bakerCity"] as? String ?? "",
             amount: parseDouble(data["amount"]),
             message: data["message"] as? String ?? "",
             canDeliverOnTime: canDeliverOnTime,
@@ -264,6 +268,8 @@ final class BidsReceivedViewModel: ObservableObject {
             bakerName: bid.bakerName,
             bakerProfileImageBase64: profileData.base64,
             bakerImageURL: profileData.url,
+            bakerAddress: profileData.address,
+            bakerCity: profileData.city,
             amount: bid.amount,
             message: bid.message,
             canDeliverOnTime: bid.canDeliverOnTime,
@@ -273,16 +279,18 @@ final class BidsReceivedViewModel: ObservableObject {
         )
     }
 
-    private func fetchBakerProfileImageData(bakerID: String) async -> (base64: String, url: String) {
+    private func fetchBakerProfileImageData(bakerID: String) async -> (base64: String, url: String, address: String, city: String) {
         let trimmedID = bakerID.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedID.isEmpty else { return ("", "") }
+        guard !trimmedID.isEmpty else { return ("", "", "", "") }
 
         if let artisanDoc = try? await db.collection("artisans").document(trimmedID).getDocument(),
            let data = artisanDoc.data() {
             let base64 = data["profileImageBase64"] as? String ?? ""
             let url = data["imageURL"] as? String ?? data["avatarURL"] as? String ?? ""
-            if !base64.isEmpty || !url.isEmpty {
-                return (base64, url)
+            let address = data["address"] as? String ?? data["location"] as? String ?? ""
+            let city = SriLankaDistricts.canonical(data["city"] as? String) ?? data["city"] as? String ?? ""
+            if !base64.isEmpty || !url.isEmpty || !address.isEmpty || !city.isEmpty {
+                return (base64, url, address, city)
             }
         }
 
@@ -290,11 +298,13 @@ final class BidsReceivedViewModel: ObservableObject {
            let data = userDoc.data() {
             return (
                 data["profileImageBase64"] as? String ?? "",
-                data["imageURL"] as? String ?? data["avatarURL"] as? String ?? ""
+                data["imageURL"] as? String ?? data["avatarURL"] as? String ?? "",
+                data["address"] as? String ?? "",
+                SriLankaDistricts.canonical(data["city"] as? String) ?? data["city"] as? String ?? ""
             )
         }
 
-        return ("", "")
+        return ("", "", "", "")
     }
 
     private static func parseDate(_ raw: Any?) -> Date? {
@@ -1657,6 +1667,11 @@ struct BidFullDetailsSheet: View {
                             value: bid.bakerName
                         )
                         detailCard(
+                            icon: "mappin.circle.fill",
+                            title: "Baker Location",
+                            value: bakerLocationText
+                        )
+                        detailCard(
                             icon: "banknote.fill",
                             title: "Bid Amount",
                             value: "LKR \(Int(bid.amount).formatted())"
@@ -1706,14 +1721,7 @@ struct BidFullDetailsSheet: View {
     private var heroCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                Circle()
-                    .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
-                    .frame(width: 48, height: 48)
-                    .overlay(
-                        Image(systemName: "person.fill")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
-                    )
+                bakerProfileImage
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(bid.bakerName)
@@ -1722,6 +1730,14 @@ struct BidFullDetailsSheet: View {
                     Text("Bid placed on \(Self.dateFormatter.string(from: bid.submittedAt)) at \(Self.timeFormatter.string(from: bid.submittedAt).lowercased())")
                         .font(.urbanistRegular(12))
                         .foregroundColor(.cakeGrey)
+                    HStack(spacing: 4) {
+                        Image(systemName: "mappin.circle.fill")
+                            .font(.system(size: 11))
+                        Text(bakerLocationText)
+                            .lineLimit(1)
+                    }
+                    .font(.urbanistRegular(11))
+                    .foregroundColor(.cakeGrey)
                 }
                 Spacer()
             }
@@ -1737,6 +1753,61 @@ struct BidFullDetailsSheet: View {
         .background(Color.white)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 3)
+    }
+
+    private var bakerProfileImage: some View {
+        Group {
+            if let image = decodeBase64Image(bid.bakerProfileImageBase64) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else if let url = URL(string: bid.bakerImageURL), !bid.bakerImageURL.isEmpty {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    default:
+                        bakerProfileFallback
+                    }
+                }
+            } else {
+                bakerProfileFallback
+            }
+        }
+        .frame(width: 48, height: 48)
+        .clipShape(Circle())
+    }
+
+    private var bakerProfileFallback: some View {
+        Circle()
+            .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+            .overlay(
+                Image(systemName: "person.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
+            )
+    }
+
+    private var bakerLocationText: String {
+        let display = SriLankaDistricts.displayLocation(address: bid.bakerAddress, city: bid.bakerCity)
+        return display.isEmpty ? "Address not provided" : display
+    }
+
+    private func decodeBase64Image(_ rawBase64: String) -> UIImage? {
+        let trimmed = rawBase64.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let payload: String
+        if let commaIndex = trimmed.firstIndex(of: ",") {
+            payload = String(trimmed[trimmed.index(after: commaIndex)...])
+        } else {
+            payload = trimmed
+        }
+
+        guard let data = Data(base64Encoded: payload) else { return nil }
+        return UIImage(data: data)
     }
     
     private func summaryItemCard(label: String, value: String) -> some View {
