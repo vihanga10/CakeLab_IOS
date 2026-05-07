@@ -22,9 +22,12 @@ struct PaymentPayload {
 struct CustomerBidRequest: Identifiable {
     let id: String
     let customerID: String
+    let customerName: String
     let title: String
     let category: String
+    let categories: [String]
     let location: String
+    let customerAddress: String
     let budgetMin: Double
     let budgetMax: Double
     let expectedDate: Date
@@ -32,6 +35,19 @@ struct CustomerBidRequest: Identifiable {
     let bidCount: Int
     let createdAt: Date
     let description: String
+    let styles: [String]
+    let dietary: [String]
+    let tier: Int
+    let cakeSize: String
+    let sugarLevel: Double
+    let flavours: [String]
+    let fillingFlavour: String
+    let specialInstructions: String
+    let allowNearby: Bool
+    let status: String
+    let isDirectRequest: Bool
+    let targetArtisanID: String?
+    let targetArtisanName: String?
     let referenceImages: [String]
 }
 
@@ -108,9 +124,12 @@ final class CustomerBidsViewModel: ObservableObject {
         return CustomerBidRequest(
             id: document.documentID,
             customerID: (data["customerID"] as? String) ?? (data["customerId"] as? String) ?? "",
+            customerName: data["customerName"] as? String ?? "Customer",
             title: data["title"] as? String ?? "Cake Request",
             category: data["category"] as? String ?? "Custom Cake",
+            categories: data["categories"] as? [String] ?? [],
             location: data["customerCity"] as? String ?? data["customerAddress"] as? String ?? "Customer Location",
+            customerAddress: data["customerAddress"] as? String ?? "",
             budgetMin: parseDouble(data["budgetMin"]),
             budgetMax: parseDouble(data["budgetMax"]),
             expectedDate: expectedDate,
@@ -118,6 +137,19 @@ final class CustomerBidsViewModel: ObservableObject {
             bidCount: parseInt(data["bidCount"]),
             createdAt: createdAt,
             description: data["description"] as? String ?? "",
+            styles: data["styles"] as? [String] ?? [],
+            dietary: data["dietary"] as? [String] ?? [],
+            tier: parseInt(data["tier"]),
+            cakeSize: data["cakeSize"] as? String ?? "",
+            sugarLevel: parseDouble(data["sugarLevel"]),
+            flavours: data["flavours"] as? [String] ?? [],
+            fillingFlavour: data["fillingFlavour"] as? String ?? "",
+            specialInstructions: data["specialInstructions"] as? String ?? "",
+            allowNearby: data["allowNearby"] as? Bool ?? false,
+            status: data["status"] as? String ?? "open",
+            isDirectRequest: data["isDirectRequest"] as? Bool ?? false,
+            targetArtisanID: data["targetArtisanId"] as? String,
+            targetArtisanName: data["targetArtisanName"] as? String,
             referenceImages: data["referenceImages"] as? [String] ?? []
         )
     }
@@ -284,39 +316,37 @@ struct CustomerBidRequestCard: View {
     let timeText: String
 
     var body: some View {
-        NavigationLink {
-            BidsReceivedView(request: request, user: user)
-        } label: {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .top, spacing: 16) {
-                    thumbnailView
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 16) {
+                thumbnailView
 
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(request.title)
-                            .font(.urbanistSemiBold(14))
-                            .foregroundColor(.black)
-                            .lineLimit(1)
-                            .padding(.top, 16)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(request.title)
+                        .font(.urbanistSemiBold(14))
+                        .foregroundColor(.black)
+                        .lineLimit(1)
+                        .padding(.top, 16)
 
-                        categoryPill
-                            .padding(.top, 9)
-                         
-
-                        HStack(spacing: 12) {
-                            compactMetric(icon: "calendar", label: "Date", value: dateText); footerDivider
-                            compactMetric(icon: "banknote", label: "Budget", value: budgetText)
-                        }
-                        
+                    categoryPill
                         .padding(.top, 9)
 
-                        Spacer(minLength: 0)
+                    HStack(spacing: 12) {
+                        compactMetric(icon: "calendar", label: "Date", value: dateText); footerDivider
+                        compactMetric(icon: "banknote", label: "Budget", value: budgetText)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(.top, 9)
+
+                    Spacer(minLength: 0)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
 
-                Spacer(minLength: 0)
+            Spacer(minLength: 0)
 
-                HStack(spacing: 10) {
+            HStack(spacing: 10) {
+                NavigationLink {
+                    BidsReceivedView(request: request, user: user)
+                } label: {
                     Text("View Bids Received (\(request.bidCount))")
                         .font(.urbanistSemiBold(12))
                         .foregroundColor(.white)
@@ -324,9 +354,14 @@ struct CustomerBidRequestCard: View {
                         .padding(.vertical, 10)
                         .background(Color.cakeBrown)
                         .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
 
-                    Spacer(minLength: 0)
+                Spacer(minLength: 0)
 
+                NavigationLink {
+                    PublishedCakeDetailView(request: request.toCakeRequestRecord())
+                } label: {
                     Text("View Full Details")
                         .font(.urbanistSemiBold(12))
                         .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
@@ -339,21 +374,21 @@ struct CustomerBidRequestCard: View {
                                 .stroke(Color(red: 0.80, green: 0.80, blue: 0.80), lineWidth: 1.2)
                         )
                 }
-                .padding(.top, 14)
-                .padding(.bottom, 14)
+                .buttonStyle(.plain)
             }
-            .padding(.horizontal, 12)
-            .frame(maxWidth: 358, alignment: .leading)
-            .frame(height: 150)
-            .background(Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(Color.black.opacity(0.05), lineWidth: 1)
-            )
-            .shadow(color: Color.black.opacity(0.10), radius: 16, x: 0, y: 8)
+            .padding(.top, 14)
+            .padding(.bottom, 14)
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, 12)
+        .frame(maxWidth: 358, alignment: .leading)
+        .frame(height: 150)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color.black.opacity(0.05), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.10), radius: 16, x: 0, y: 8)
     }
 
     private var thumbnailView: some View {
@@ -383,12 +418,12 @@ struct CustomerBidRequestCard: View {
     }
 
     private var categoryPill: some View {
-        Text(request.category)
+        Text(displayCategory)
             .font(.urbanistMedium(11))
-            .foregroundColor(categoryTextColor(for: request.category))
+            .foregroundColor(categoryTextColor(for: displayCategory))
             .padding(.horizontal, 13)
             .frame(height: 22)
-            .background(categoryBackgroundColor(for: request.category))
+            .background(categoryBackgroundColor(for: displayCategory))
             .clipShape(Capsule())
     }
 
@@ -401,6 +436,14 @@ struct CustomerBidRequestCard: View {
 
     private var budgetText: String {
         "Rs \(Int(request.budgetMin).formatted()) - \(Int(request.budgetMax).formatted())"
+    }
+
+    private var displayCategory: String {
+        let trimmedCategory = request.category.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedCategory.isEmpty {
+            return trimmedCategory
+        }
+        return request.categories.first ?? "Custom Cake"
     }
 
     private func compactMetric(icon: String, label: String, value: String) -> some View {
@@ -492,6 +535,43 @@ struct CustomerBidRequestCard: View {
         default:
             return Color(red: 0.4, green: 0.4, blue: 0.4)
         }
+    }
+}
+
+private extension CustomerBidRequest {
+    func toCakeRequestRecord() -> CakeRequestRecord {
+        CakeRequestRecord(
+            id: id,
+            title: title,
+            description: description,
+            customerID: customerID,
+            customerName: customerName,
+            customerCity: location,
+            customerAddress: customerAddress,
+            category: category,
+            categories: categories,
+            styles: styles,
+            dietary: dietary,
+            tier: tier,
+            cakeSize: cakeSize,
+            sugarLevel: sugarLevel,
+            flavours: flavours,
+            fillingFlavour: fillingFlavour,
+            specialInstructions: specialInstructions,
+            budgetMin: budgetMin,
+            budgetMax: budgetMax,
+            expectedDate: expectedDate,
+            expectedTime: expectedTime,
+            allowNearby: allowNearby,
+            createdAt: createdAt,
+            savedAt: nil,
+            status: status,
+            bidCount: bidCount,
+            referenceImages: referenceImages,
+            isDirectRequest: isDirectRequest,
+            targetArtisanId: targetArtisanID,
+            targetArtisanName: targetArtisanName
+        )
     }
 }
 
@@ -716,7 +796,7 @@ struct BidsReceivedView: View {
 
             try await batch.commit()
 
-            // 🔔 Trigger notifications
+            // Trigger notifications
             // Notify CUSTOMER: Order Confirmed
             self.notificationManager.notifyOrderConfirmed(
                 bakerName: bid.bakerName,
@@ -724,7 +804,7 @@ struct BidsReceivedView: View {
                 orderID: orderID,
                 customerID: request.customerID
             )
-            print("✅ Customer notified: Order confirmed with \(bid.bakerName)")
+            print(" Customer notified: Order confirmed with \(bid.bakerName)")
             
             // Notify BAKER: Order Confirmed  
             self.notificationManager.notifyBakerOrderConfirmed(
@@ -735,7 +815,7 @@ struct BidsReceivedView: View {
                 customerID: request.customerID,
                 bakerID: bid.bakerID
             )
-            print("✅ Baker notified: Order confirmed for \(request.title)")
+            print(" Baker notified: Order confirmed for \(request.title)")
 
             activeSheet = nil
             NotificationCenter.default.post(name: .orderDidChange, object: nil)
