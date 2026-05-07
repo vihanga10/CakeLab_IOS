@@ -6,6 +6,8 @@ import FirebaseStorage
 
 // MARK: - Create Cake Request View
 struct CreateCakeRequestView: View {
+    private let bottomActionClearance: CGFloat = 96
+
     let user: AppUser
     let selectedArtisan: ArtisanProfile?
     let initialDraft: CakeRequestRecord?
@@ -111,7 +113,7 @@ struct CreateCakeRequestView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
                         
-                        // ── Cake Details Section ──────────────────────────────
+                        //  Cake Details Section 
                         sectionHeader("Cake Details")
                         
                         VStack(spacing: 14) {
@@ -200,7 +202,7 @@ struct CreateCakeRequestView: View {
                         .padding(.horizontal, 16)
                         .padding(.bottom, 16)
                         
-                        // ── Reference Images ──────────────────────────────────
+                        //  Reference Images 
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Add Reference Image")
                                 .font(.urbanistSemiBold(14))
@@ -288,7 +290,7 @@ struct CreateCakeRequestView: View {
                         .padding(.horizontal, 16)
                         .padding(.bottom, 20)
                         
-                        // ── Cake Specifications Section ───────────────────────
+                        //  Cake Specifications Section 
                         sectionHeader("Cake Specifications")
                         
                         VStack(spacing: 18) {
@@ -509,7 +511,7 @@ struct CreateCakeRequestView: View {
                         .padding(.horizontal, 16)
                         .padding(.bottom, 16)
                         
-                        // ── Action Buttons ───────────────────────────────────
+                        //  Action Buttons 
                         VStack(spacing: 12) {
                             Button {
                                 if !actionInProgress {
@@ -576,7 +578,7 @@ struct CreateCakeRequestView: View {
                         .cornerRadius(12)
                         .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
                         .padding(.horizontal, 16)
-                        .padding(.bottom, 16)
+                        .padding(.bottom, bottomActionClearance)
                     }
                     .padding(.top, 8)
                 }
@@ -690,6 +692,9 @@ struct CreateCakeRequestView: View {
             timestampField: "savedAt",
             successText: "Draft saved successfully!"
         )
+        
+        let draftTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        notificationManager.notifyDraftSaved(requestTitle: draftTitle, userID: userID)
     }
     
     private var canPublishRequest: Bool {
@@ -735,7 +740,7 @@ struct CreateCakeRequestView: View {
                     
                     if sizeInMB > 0.5 {
                         DispatchQueue.main.async {
-                            self.imageSizeWarning = "⚠️ Image is large (\(String(format: "%.2f", sizeInMB)) MB). Consider using a smaller image."
+                            self.imageSizeWarning = " Image is large (\(String(format: "%.2f", sizeInMB)) MB). Consider using a smaller image."
                         }
                     }
                     
@@ -744,11 +749,11 @@ struct CreateCakeRequestView: View {
                     DispatchQueue.main.async {
                         if !self.referenceImagesBase64.contains(base64String) {
                             self.referenceImagesBase64.append(base64String)
-                            print("✅ Image added (Base64): \(base64String.prefix(50))...")
+                            print(" Image added (Base64): \(base64String.prefix(50))...")
                         }
                     }
                 } catch {
-                    print("❌ Error processing photo: \(error)")
+                    print(" Error processing photo: \(error)")
                 }
             }
         }
@@ -768,7 +773,7 @@ struct CreateCakeRequestView: View {
                 
                 if sizeInMB > 0.5 {
                     DispatchQueue.main.async {
-                        self.imageSizeWarning = "⚠️ Camera image is large (\(String(format: "%.2f", sizeInMB)) MB). Consider using a smaller image."
+                        self.imageSizeWarning = " Camera image is large (\(String(format: "%.2f", sizeInMB)) MB). Consider using a smaller image."
                     }
                 }
                 
@@ -777,11 +782,11 @@ struct CreateCakeRequestView: View {
                 DispatchQueue.main.async {
                     if !self.referenceImagesBase64.contains(base64String) {
                         self.referenceImagesBase64.append(base64String)
-                        print("✅ Camera image added (Base64): \(base64String.prefix(50))...")
+                        print(" Camera image added (Base64): \(base64String.prefix(50))...")
                     }
                 }
             } catch {
-                print("❌ Error processing camera image: \(error)")
+                print(" Error processing camera image: \(error)")
             }
         }
     }
@@ -818,9 +823,9 @@ struct CreateCakeRequestView: View {
             // Trigger notification IMMEDIATELY after save (before dismiss)
             if triggerNotification {
                 let title = requestTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Untitled Request" : requestTitle
-                print("🚀 [CreateCakeRequestView] Publishing request: '\(title)' for user: \(customerID)")
+                print(" [CreateCakeRequestView] Publishing request: '\(title)' for user: \(customerID)")
                 notificationManager.notifyRequestPosted(requestTitle: title, userID: customerID)
-                print("✅ [CreateCakeRequestView] Notification triggered successfully")
+                print(" [CreateCakeRequestView] Notification triggered successfully")
             }
 
             NotificationCenter.default.post(name: NSNotification.Name("customerRequestDidChange"), object: nil)

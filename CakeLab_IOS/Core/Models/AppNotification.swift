@@ -4,6 +4,7 @@ import Foundation
 enum NotificationType: String, Codable {
     // Customer: Order/Request Lifecycle
     case requestPostedSuccess = "requestPostedSuccess"
+    case draftSavedSuccess = "draftSavedSuccess"
     case newBidReceived = "newBidReceived"
     case bidAccepted = "bidAccepted"
     case orderConfirmed = "orderConfirmed"
@@ -39,6 +40,8 @@ enum NotificationType: String, Codable {
         switch self {
         case .requestPostedSuccess:
             return "Request Posted Successfully"
+        case .draftSavedSuccess:
+            return "Draft Saved Successfully"
         case .newBidReceived:
             return "New Bid Received"
         case .bidAccepted:
@@ -80,7 +83,7 @@ enum NotificationType: String, Codable {
     
     var category: String {
         switch self {
-        case .requestPostedSuccess, .newBidReceived, .bidAccepted, .orderConfirmed:
+        case .requestPostedSuccess, .draftSavedSuccess, .newBidReceived, .bidAccepted, .orderConfirmed:
             return "Order Lifecycle"
         case .deliveryReminder, .bakerOnTheWay, .deliveryCompleted, .orderCancelled:
             return "Delivery & Completion"
@@ -101,6 +104,8 @@ enum NotificationType: String, Codable {
         switch self {
         case .requestPostedSuccess:
             return "checkmark.circle.fill"
+        case .draftSavedSuccess:
+            return "square.and.arrow.down.fill"
         case .newBidReceived:
             return "person.badge.plus"
         case .bidAccepted:

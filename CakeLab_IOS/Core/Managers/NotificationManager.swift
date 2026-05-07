@@ -31,7 +31,7 @@ class NotificationManager: ObservableObject {
     // MARK: - Reload Notifications (for login)
     func reloadNotifications(for userType: String) {
         notificationService.loadNotifications()
-        print("🔄 [NotificationManager] Notifications reloaded on login for \(userType)")
+        print(" [NotificationManager] Notifications reloaded on login for \(userType)")
         
         // Filter notifications by userType and unread status
         let relevantNotifications = notificationService.notifications
@@ -50,7 +50,7 @@ class NotificationManager: ObservableObject {
     
     // MARK: - Show Popup Only (without saving again)
     private func showPopupOnly(_ notification: AppNotification, duration: TimeInterval = 5.0) {
-        print("🔔 [NotificationManager] Showing loaded notification: \(notification.title)")
+        print(" [NotificationManager] Showing loaded notification: \(notification.title)")
         
         // Show popup (already saved in storage)
         withAnimation(.easeInOut(duration: 0.3)) {
@@ -72,16 +72,16 @@ class NotificationManager: ObservableObject {
     
     // MARK: - Show Notification Popup
     func showNotification(_ notification: AppNotification, duration: TimeInterval = 5.0) {
-        print("🔔 [NotificationManager] Showing notification: \(notification.title)")
+        print(" [NotificationManager] Showing notification: \(notification.title)")
         
         // Save to persistent storage
         notificationService.saveNotification(notification)
-        print("💾 [NotificationService] Notification saved. Total notifications: \(notificationService.notifications.count)")
+        print(" [NotificationService] Notification saved. Total notifications: \(notificationService.notifications.count)")
         
         // Show popup
         withAnimation(.easeInOut(duration: 0.3)) {
             self.currentPopup = InAppNotificationPopup(notification: notification)
-            print("📱 [UI] Popup displayed for: \(notification.title)")
+            print(" [UI] Popup displayed for: \(notification.title)")
         }
         
         // Auto-dismiss after duration
@@ -101,7 +101,7 @@ class NotificationManager: ObservableObject {
     
     // MARK: - Customer: Request Posted Successfully
     func notifyRequestPosted(requestTitle: String, bidCount: Int = 0, userID: String) {
-        print("✅ [notifyRequestPosted] Called with title: '\(requestTitle)', userID: \(userID)")
+        print(" [notifyRequestPosted] Called with title: '\(requestTitle)', userID: \(userID)")
         let notification = AppNotification(
             type: .requestPostedSuccess,
             title: NotificationType.requestPostedSuccess.title,
@@ -111,7 +111,26 @@ class NotificationManager: ObservableObject {
             relatedBakerID: nil,
             relatedCustomerID: userID
         )
-        showNotification(notification)
+        showPopupOnly(notification)
+    }
+    
+    // MARK: - Customer: Draft Saved Successfully
+    func notifyDraftSaved(requestTitle: String = "", userID: String) {
+        let trimmedTitle = requestTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let message = trimmedTitle.isEmpty
+            ? "Your cake request draft has been saved successfully."
+            : "Your draft '\(trimmedTitle)' has been saved successfully."
+        
+        let notification = AppNotification(
+            type: .draftSavedSuccess,
+            title: NotificationType.draftSavedSuccess.title,
+            message: message,
+            userType: "customer",
+            relatedOrderID: nil,
+            relatedBakerID: nil,
+            relatedCustomerID: userID
+        )
+        showPopupOnly(notification)
     }
     
     // MARK: - Customer: New Bid Received
