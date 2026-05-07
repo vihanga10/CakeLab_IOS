@@ -12,7 +12,7 @@ struct BakerTabView: View {
     @State private var matchingRequestsLoaded = false
     
     var body: some View {
-        VStack(spacing: 0) {
+        ZStack(alignment: .bottom) {
             Group {
                 switch selectedTab {
                 case 0: BakerHomeView(user: user, selectedTab: $selectedTab)
@@ -23,7 +23,7 @@ struct BakerTabView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            
+
             BakerTabBar(selectedTab: $selectedTab)
         }
         .ignoresSafeArea(.keyboard)
@@ -46,7 +46,7 @@ struct BakerTabView: View {
             if !notificationsShown {
                 notificationManager.reloadNotifications(for: "baker", userID: user.id)
                 notificationsShown = true
-                print("✅ Baker notifications loaded and displayed once on login")
+                print(" Baker notifications loaded and displayed once on login")
             }
 
             // Load matching requests and trigger notifications on login
@@ -119,7 +119,7 @@ struct BakerTabView: View {
                 matchingRequestsLoaded = true
             }
         } catch {
-            print("❌ Error loading matching requests: \(error.localizedDescription)")
+            print(" Error loading matching requests: \(error.localizedDescription)")
             matchingRequestsLoaded = true
         }
     }
@@ -127,65 +127,103 @@ struct BakerTabView: View {
     // MARK: - Baker Custom Tab Bar
     struct BakerTabBar: View {
         @Binding var selectedTab: Int
-        
+
         private struct TabItem {
             let icon: String
-            let selectedIcon: String
             let label: String
             let tag: Int
         }
-        
+
         private let tabs: [TabItem] = [
-            TabItem(icon: "house",              selectedIcon: "house.fill",              label: "Home",     tag: 0),
-            TabItem(icon: "birthday.cake",      selectedIcon: "birthday.cake.fill",      label: "Requests", tag: 1),
-            TabItem(icon: "list.clipboard",     selectedIcon: "list.clipboard.fill",     label: "Orders",   tag: 2),
-            TabItem(icon: "person.crop.circle", selectedIcon: "person.crop.circle.fill", label: "Profile",  tag: 3)
+            TabItem(icon: "house.fill",          label: "Home",    tag: 0),
+            TabItem(icon: "birthday.cake.fill",  label: "Bids",    tag: 1),
+            TabItem(icon: "list.clipboard.fill", label: "Orders",  tag: 2),
+            TabItem(icon: "person.fill",         label: "Profile", tag: 3)
         ]
-        
+
+        private func changePage(to tag: Int) {
+            selectedTab = tag
+        }
+
         var body: some View {
             HStack(spacing: 0) {
-                ForEach(tabs, id: \.tag) { tab in
+                ForEach(Array(tabs.enumerated()), id: \.element.tag) { index, tab in
                     Button {
                         withAnimation(.easeInOut(duration: 0.15)) {
-                            selectedTab = tab.tag
+                            changePage(to: tab.tag)
                         }
                     } label: {
-                        VStack(spacing: 4) {
-                            ZStack {
-                                Circle()
-                                    .fill(selectedTab == tab.tag
-                                          ? Color.cakeBrown.opacity(0.12)
-                                          : Color(red: 0.91, green: 0.91, blue: 0.91))
-                                    .frame(width: 48, height: 48)
-                                
-                                Image(systemName: selectedTab == tab.tag ? tab.selectedIcon : tab.icon)
-                                    .font(.system(size: 19, weight: .medium))
-                                    .foregroundColor(
-                                        selectedTab == tab.tag
-                                        ? Color.cakeBrown
-                                        : Color(red: 0.4, green: 0.4, blue: 0.4)
+                        ZStack {
+                            if selectedTab == tab.tag {
+                                HStack(spacing: 8) {
+                                    Image(systemName: tab.icon)
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundColor(.white)
+                                    Text(tab.label)
+                                        .font(.urbanistSemiBold(15))
+                                        .foregroundColor(.white)
+                                        .lineLimit(1)
+                                        .fixedSize(horizontal: true, vertical: false)
+                                }
+                                .frame(height: 44)
+                                .padding(.horizontal, 20)
+                                .background(Color(red: 93/255, green: 55/255, blue: 20/255))
+                                .clipShape(Capsule())
+                            } else {
+                                Image(systemName: tab.icon)
+                                    .font(.system(size: 21, weight: .semibold))
+                                    .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
+                                    .frame(width: 50, height: 50)
+                                    .background(
+                                        Circle()
+                                            .fill(Color(red: 0.9, green: 0.9, blue: 0.9).opacity(0.45))
                                     )
                             }
-                            Text(tab.label)
-                                .font(.urbanistMedium(10))
-                                .foregroundColor(
-                                    selectedTab == tab.tag ? Color.cakeBrown : Color(red: 0.55, green: 0.55, blue: 0.55)
-                                )
                         }
                     }
-                    .frame(maxWidth: .infinity)
+                    .buttonStyle(.plain)
+
+                    if index < tabs.count - 1 {
+                        Spacer(minLength: 12)
+                    }
                 }
             }
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .padding(.bottom, 4)
-            .background(Color.white)
-            .overlay(
-                Rectangle()
-                    .fill(Color(red: 0.88, green: 0.88, blue: 0.88))
-                    .frame(height: 1),
-                alignment: .top
+            .frame(height: 68)
+            .background(
+                ZStack {
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color(red: 0.94, green: 0.94, blue: 0.94).opacity(0.75),
+                            Color(red: 0.92, green: 0.92, blue: 0.92).opacity(0.85)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    Color(red: 0.93, green: 0.93, blue: 0.93).opacity(0.5)
+                    Color(red: 0.96, green: 0.96, blue: 0.96).opacity(0.2)
+                }
             )
+            .cornerRadius(26)
+            .overlay(
+                RoundedRectangle(cornerRadius: 26)
+                    .stroke(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color(red: 0.85, green: 0.85, blue: 0.85).opacity(0.6),
+                                Color(red: 0.88, green: 0.88, blue: 0.88).opacity(0.3),
+                                Color(red: 0.9, green: 0.9, blue: 0.9).opacity(0.4)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1.5
+                    )
+            )
+            .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
+            .padding(.horizontal, 18)
+            .padding(.bottom, 1)
         }
     }
 }
