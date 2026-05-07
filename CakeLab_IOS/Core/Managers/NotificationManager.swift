@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import FirebaseFirestore
 
 // MARK: - In-App Notification Popup
 struct InAppNotificationPopup: Identifiable, Equatable {
@@ -18,9 +19,10 @@ struct InAppNotificationPopup: Identifiable, Equatable {
 }
 
 // MARK: - Notification Manager
-class NotificationManager: ObservableObject {
-    @Published var currentPopup: InAppNotificationPopup?
-    @Published var notificationService: NotificationService
+@MainActor
+class NotificationManager: Combine.ObservableObject {
+    @Combine.Published var currentPopup: InAppNotificationPopup?
+    @Combine.Published var notificationService: NotificationService
     
     private var popupTimer: Timer?
     
@@ -29,21 +31,21 @@ class NotificationManager: ObservableObject {
     }
     
     // MARK: - Reload Notifications (for login)
-    func reloadNotifications(for userType: String) {
+    func reloadNotifications(for userType: String, userID: String? = nil) {
         notificationService.loadNotifications()
         print(" [NotificationManager] Notifications reloaded on login for \(userType)")
         
         // Filter notifications by userType and unread status
-        let relevantNotifications = notificationService.notifications
-            .filter { !$0.isRead && $0.userType == userType }
+        let relevantNotifications = notificationService.getNotifications(for: userType, userID: userID)
+            .filter { !$0.isRead }
             .prefix(3) // Show max 3 popups
         
         for (index, notification) in relevantNotifications.enumerated() {
             // Space out popups by 0.5 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.5) { [weak self] in
-                self?.showPopupOnly(notification)
-                // Mark as read after showing
-                self?.markNotificationAsRead(notification)
+                Task { @MainActor in
+                    self?.showPopupOnly(notification)
+                }
             }
         }
     }
@@ -61,7 +63,9 @@ class NotificationManager: ObservableObject {
         // Auto-dismiss after duration
         popupTimer?.invalidate()
         popupTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
-            self?.dismissPopup()
+            Task { @MainActor in
+                self?.dismissPopup()
+            }
         }
     }
     
@@ -87,7 +91,9 @@ class NotificationManager: ObservableObject {
         // Auto-dismiss after duration
         popupTimer?.invalidate()
         popupTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
-            self?.dismissPopup()
+            Task { @MainActor in
+                self?.dismissPopup()
+            }
         }
     }
     
@@ -134,7 +140,7 @@ class NotificationManager: ObservableObject {
     }
     
     // MARK: - Customer: New Bid Received
-    func notifyNewBidReceived(bakerName: String, bidAmount: Double, requestTitle: String, bakerID: String, orderID: String, customerID: String) {
+    func notifyNewBidReceived(bakerName: String, bidAmount: Double, requestTitle: String, bakerID: String, orderID: String, customerID: String, showPopup: Bool = true) {
         let notification = AppNotification(
             type: .newBidReceived,
             title: NotificationType.newBidReceived.title,
@@ -144,7 +150,74 @@ class NotificationManager: ObservableObject {
             relatedBakerID: bakerID,
             relatedCustomerID: customerID
         )
-        showNotification(notification)
+        if showPopup {
+            showNotification(notification)
+        } else {
+            notificationService.saveNotification(notification)
+        }
+    }
+
+    // MARK: - Customer: Sync New Bid Notifications From Firestore
+    func syncNewBidReceivedNotifications(customerID: String) async {
+        let trimmedCustomerID = customerID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedCustomerID.isEmpty else { return }
+
+        do {
+            let db = Firestore.firestore()
+            let snapshot = try await db.collection("bids")
+                .whereField("customerID", isEqualTo: trimmedCustomerID)
+                .getDocuments()
+
+            var requestTitleCache: [String: String] = [:]
+
+            for document in snapshot.documents {
+                let data = document.data()
+                let requestID = (data["requestDocumentID"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                let bakerID = (data["bakerID"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !requestID.isEmpty, !bakerID.isEmpty else { continue }
+
+                if notificationService.existingNotification(
+                    type: .newBidReceived,
+                    userType: "customer",
+                    relatedOrderID: requestID,
+                    relatedBakerID: bakerID,
+                    relatedCustomerID: trimmedCustomerID
+                ) != nil {
+                    continue
+                }
+
+                let requestTitle: String
+                if let cached = requestTitleCache[requestID] {
+                    requestTitle = cached
+                } else if let savedTitle = data["requestTitle"] as? String, !savedTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    requestTitle = savedTitle
+                    requestTitleCache[requestID] = savedTitle
+                } else {
+                    let requestDoc = try await db.collection("cakeRequests").document(requestID).getDocument()
+                    let resolvedTitle = requestDoc.data()?["title"] as? String ?? "your cake request"
+                    requestTitleCache[requestID] = resolvedTitle
+                    requestTitle = resolvedTitle
+                }
+
+                let bakerName = data["bakerName"] as? String ?? "A baker"
+                let amount = Self.doubleValue(data["amount"])
+                let submittedAt = (data["submittedAt"] as? Timestamp)?.dateValue() ?? Date()
+
+                let notification = AppNotification(
+                    type: .newBidReceived,
+                    title: NotificationType.newBidReceived.title,
+                    message: "\(bakerName) placed a bid of LKR \(Int(amount).formatted()) on '\(requestTitle)'",
+                    userType: "customer",
+                    timestamp: submittedAt,
+                    relatedOrderID: requestID,
+                    relatedBakerID: bakerID,
+                    relatedCustomerID: trimmedCustomerID
+                )
+                notificationService.saveNotification(notification)
+            }
+        } catch {
+            print(" [NotificationManager] Failed to sync new bid notifications: \(error.localizedDescription)")
+        }
     }
     
     // MARK: - Customer: Bid Accepted
@@ -292,6 +365,20 @@ class NotificationManager: ObservableObject {
         )
         showNotification(notification)
     }
+
+    // MARK: - Baker: Bid Submitted Popup Only
+    func notifyBakerBidSubmitted(requestTitle: String, bidAmount: Double, customerID: String, bakerID: String, orderID: String) {
+        let notification = AppNotification(
+            type: .bakerBidSubmitted,
+            title: NotificationType.bakerBidSubmitted.title,
+            message: "Your bid of LKR \(Int(bidAmount).formatted()) for '\(requestTitle)' has been submitted.",
+            userType: "baker",
+            relatedOrderID: orderID,
+            relatedBakerID: bakerID,
+            relatedCustomerID: customerID
+        )
+        showPopupOnly(notification)
+    }
     
     // MARK: - Baker: Bid Accepted
     func notifyBakerBidAccepted(customerName: String, requestTitle: String, bidAmount: Double, customerID: String, bakerID: String, orderID: String) {
@@ -394,5 +481,16 @@ class NotificationManager: ObservableObject {
             relatedCustomerID: nil
         )
         showNotification(notification)
+    }
+
+    private static func doubleValue(_ value: Any?) -> Double {
+        if let value = value as? Double { return value }
+        if let value = value as? Int { return Double(value) }
+        if let value = value as? NSNumber { return value.doubleValue }
+        if let value = value as? String {
+            let cleaned = value.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return Double(cleaned) ?? 0
+        }
+        return 0
     }
 }

@@ -5,9 +5,10 @@ struct NotificationBellButton: View {
     @EnvironmentObject var notificationManager: NotificationManager
     @ObservedObject var notificationService: NotificationService
     let userType: String // "customer" or "baker"
+    var userID: String? = nil
     
     var body: some View {
-        NavigationLink(destination: NotificationCenterView(notificationManager: notificationManager, userType: userType)) {
+        NavigationLink(destination: NotificationCenterView(notificationManager: notificationManager, userType: userType, userID: userID)) {
             ZStack(alignment: .topTrailing) {
                 // Bell Icon with circle background
                 ZStack {
@@ -22,7 +23,7 @@ struct NotificationBellButton: View {
                 .frame(width: 40, height: 40)
                 
                 // Badge showing unread count for current user type
-                let userNotifications = notificationService.getNotifications(for: userType)
+                let userNotifications = notificationService.getNotifications(for: userType, userID: userID)
                 let unreadCount = userNotifications.filter { !$0.isRead }.count
                 
                 if unreadCount > 0 {

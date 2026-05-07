@@ -24,6 +24,7 @@ enum NotificationType: String, Codable {
     case newMatchingRequest = "newMatchingRequest"
     
     // Baker: Bid Management
+    case bakerBidSubmitted = "bakerBidSubmitted"
     case bakerBidAccepted = "bakerBidAccepted"
     
     // Baker: Order Management
@@ -64,6 +65,8 @@ enum NotificationType: String, Codable {
             return "Payment Receipt"
         case .newMatchingRequest:
             return "New Matching Request"
+        case .bakerBidSubmitted:
+            return "Bid Accepted"
         case .bakerBidAccepted:
             return "Your Bid Accepted"
         case .bakerOrderConfirmed:
@@ -91,7 +94,7 @@ enum NotificationType: String, Codable {
             return "Engagement"
         case .newMatchingRequest:
             return "Request Opportunities"
-        case .bakerBidAccepted:
+        case .bakerBidSubmitted, .bakerBidAccepted:
             return "Bid Management"
         case .bakerOrderConfirmed, .deliveryInstructionsUpdated, .customerMessageReceived, .deliveryConfirmationNeeded:
             return "Order Management"
@@ -128,6 +131,8 @@ enum NotificationType: String, Codable {
             return "creditcard.fill"
         case .newMatchingRequest:
             return "sparkles"
+        case .bakerBidSubmitted:
+            return "paperplane.fill"
         case .bakerBidAccepted:
             return "hand.thumbsup.fill"
         case .bakerOrderConfirmed:

@@ -14,6 +14,16 @@ class NotificationService: ObservableObject {
     
     // MARK: - Save Notification
     func saveNotification(_ notification: AppNotification) {
+        if notifications.contains(where: { existing in
+            existing.type == notification.type &&
+            existing.userType == notification.userType &&
+            existing.relatedOrderID == notification.relatedOrderID &&
+            existing.relatedBakerID == notification.relatedBakerID &&
+            existing.relatedCustomerID == notification.relatedCustomerID
+        }) {
+            return
+        }
+
         notifications.insert(notification, at: 0) // Add to top
         persistNotifications()
     }
@@ -81,6 +91,24 @@ class NotificationService: ObservableObject {
         notifications.removeAll()
         persistNotifications()
     }
+
+    func deleteAllNotifications(for userType: String, userID: String? = nil) {
+        notifications.removeAll { notification in
+            guard notification.userType == userType else { return false }
+            guard let userID, !userID.isEmpty else { return true }
+
+            if userType == "customer" {
+                return notification.relatedCustomerID == userID
+            }
+
+            if userType == "baker" {
+                return notification.relatedBakerID == userID
+            }
+
+            return true
+        }
+        persistNotifications()
+    }
     
     // MARK: - Get Unread Count
     var unreadCount: Int {
@@ -88,7 +116,20 @@ class NotificationService: ObservableObject {
     }
     
     // MARK: - Get Notifications for User Type
-    func getNotifications(for userType: String) -> [AppNotification] {
-        notifications.filter { $0.userType == userType }
+    func getNotifications(for userType: String, userID: String? = nil) -> [AppNotification] {
+        notifications.filter { notification in
+            guard notification.userType == userType else { return false }
+            guard let userID, !userID.isEmpty else { return true }
+
+            if userType == "customer" {
+                return notification.relatedCustomerID == userID
+            }
+
+            if userType == "baker" {
+                return notification.relatedBakerID == userID
+            }
+
+            return true
+        }
     }
 }

@@ -74,7 +74,7 @@ struct SignInView: View {
                 if newVal {
                     // Reload notifications on successful login with user type
                     if let user = vm.signedInUser {
-                        notificationManager.reloadNotifications(for: user.role.rawValue)
+                        notificationManager.reloadNotifications(for: user.role.rawValue, userID: user.id)
                         print(" Notifications reloaded for \(user.role.rawValue) after sign in")
                     }
                     showContentView = true

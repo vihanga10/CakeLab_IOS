@@ -738,12 +738,34 @@ struct BakerBidDetailView: View {
                 "customerID": request.customerID,
                 "bakerID": bakerID,
                 "bakerName": bakerName.isEmpty ? (Auth.auth().currentUser?.email ?? "Baker") : bakerName,
+                "requestTitle": request.title,
+                "requestSnapshot": [
+                    "id": request.requestDocumentID,
+                    "title": request.title,
+                    "description": request.description,
+                    "customerName": request.customerName,
+                    "customerCity": request.location,
+                    "category": request.category.name,
+                    "budgetText": request.budgetRange,
+                    "expectedDateText": request.deliveryDate,
+                    "expectedTimeText": request.deliveryTime,
+                    "tier": request.servings,
+                    "cakeSize": request.cakeSize,
+                    "sugarLevel": request.sugarLevel,
+                    "flavours": request.flavours,
+                    "styles": request.styles,
+                    "dietary": request.dietary,
+                    "fillingFlavour": request.fillingFlavour,
+                    "specialInstructions": request.specialInstructions,
+                    "referenceImages": request.referenceImages
+                ],
                 "amount": amount,
                 "message": bidMessage,
                 "deliveryNote": deliveryNote,
                 "canDeliverOnTime": canDeliverOnTime,
                 "alternativeDate": canDeliverOnTime ? NSNull() : Timestamp(date: alternativeDate),
-                "submittedAt": Timestamp(date: Date())
+                "submittedAt": Timestamp(date: Date()),
+                "status": "submitted"
             ]
             
             try await bidRef.setData(bidPayload, merge: true)
@@ -767,9 +789,18 @@ struct BakerBidDetailView: View {
                 requestTitle: request.title,
                 bakerID: bakerID,
                 orderID: request.requestDocumentID,
-                customerID: request.customerID
+                customerID: request.customerID,
+                showPopup: false
             )
-            print("✅ Customer notified: New bid from \(bakerNameForNotif) for \(request.title)")
+            print("✅ Customer notification saved: New bid from \(bakerNameForNotif) for \(request.title)")
+
+            self.notificationManager.notifyBakerBidSubmitted(
+                requestTitle: request.title,
+                bidAmount: amount,
+                customerID: request.customerID,
+                bakerID: bakerID,
+                orderID: request.requestDocumentID
+            )
             
             bidSubmitted = true
             showConfirmation = false

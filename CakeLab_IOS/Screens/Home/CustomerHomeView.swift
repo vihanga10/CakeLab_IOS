@@ -82,7 +82,7 @@ struct CustomerHomeView: View {
                                     .lineLimit(1)
                             }
                             Spacer()
-                            NotificationBellButton(notificationService: notificationManager.notificationService, userType: "customer")
+                            NotificationBellButton(notificationService: notificationManager.notificationService, userType: "customer", userID: user.id)
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 16)

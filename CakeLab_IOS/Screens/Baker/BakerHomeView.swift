@@ -182,7 +182,7 @@ struct BakerHomeView: View {
 
             Spacer()
 
-            NotificationBellButton(notificationService: notificationManager.notificationService, userType: "baker")
+            NotificationBellButton(notificationService: notificationManager.notificationService, userType: "baker", userID: user.id)
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)

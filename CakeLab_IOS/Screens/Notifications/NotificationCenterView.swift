@@ -7,9 +7,10 @@ struct NotificationCenterView: View {
     @State private var showDeleteConfirm = false
     
     let userType: String // "customer" or "baker"
+    var userID: String? = nil
     
     private var filteredNotifications: [AppNotification] {
-        notificationManager.notificationService.getNotifications(for: userType)
+        notificationManager.notificationService.getNotifications(for: userType, userID: userID)
     }
 
     @ViewBuilder
@@ -129,7 +130,7 @@ struct NotificationCenterView: View {
         .alert("Clear All Notifications", isPresented: $showDeleteConfirm) {
             Button("Cancel", role: .cancel) {}
             Button("Clear All", role: .destructive) {
-                notificationManager.notificationService.deleteAllNotifications()
+                notificationManager.notificationService.deleteAllNotifications(for: userType, userID: userID)
             }
         } message: {
             Text("Are you sure you want to delete all notifications? This action cannot be undone.")

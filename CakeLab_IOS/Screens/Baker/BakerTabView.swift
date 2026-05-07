@@ -2,6 +2,7 @@ import SwiftUI
 import FirebaseFirestore
 
 // MARK: - Baker Tab View
+@MainActor
 struct BakerTabView: View {
     let user: AppUser
     @Binding var widgetRoute: WidgetDeepLinkRoute?
@@ -43,7 +44,7 @@ struct BakerTabView: View {
         .task {
             // Show baker saved notifications (bid accepted, order confirmed, etc.) only once on login
             if !notificationsShown {
-                notificationManager.reloadNotifications(for: "baker")
+                notificationManager.reloadNotifications(for: "baker", userID: user.id)
                 notificationsShown = true
                 print("✅ Baker notifications loaded and displayed once on login")
             }
@@ -73,6 +74,15 @@ struct BakerTabView: View {
         let db = Firestore.firestore()
         
         do {
+            let bidsSnapshot = try await db.collection("bids")
+                .whereField("bakerID", isEqualTo: user.id)
+                .getDocuments()
+            let placedBidRequestIDs = Set(
+                bidsSnapshot.documents.compactMap { document in
+                    document.data()["requestDocumentID"] as? String
+                }
+            )
+
             // Fetch open requests from Firestore
             let snapshot = try await db.collection("cakeRequests")
                 .whereField("status", isEqualTo: "open")
@@ -82,6 +92,7 @@ struct BakerTabView: View {
             var requests: [CakeRequestRecord] = []
             for document in snapshot.documents {
                 if let request = CakeRequestRecord(document: document) {
+                    guard !placedBidRequestIDs.contains(request.id) else { continue }
                     // Filter for matching categories if baker has specialties
                     requests.append(request)
                 }

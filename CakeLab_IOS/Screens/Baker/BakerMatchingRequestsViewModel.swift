@@ -10,6 +10,7 @@ final class BakerMatchingRequestsViewModel: ObservableObject {
     @Published var matchingRequests: [CakeRequestRecord] = []
     @Published var allPublishedRequests: [CakeRequestRecord] = []
     @Published var bakerSpecialties: [String] = []
+    @Published var placedBidRequestIDs: Set<String> = []
     @Published var isLoading = false
     @Published var errorMessage: String?
 
@@ -35,6 +36,7 @@ final class BakerMatchingRequestsViewModel: ObservableObject {
             matchingRequests = []
             allPublishedRequests = []
             bakerSpecialties = []
+            placedBidRequestIDs = []
             isLoading = false
             return
         }
@@ -66,10 +68,22 @@ final class BakerMatchingRequestsViewModel: ObservableObject {
             let allRequests = snapshot.documents
                 .compactMap(CakeRequestRecord.init(document:))
                 .sorted { $0.createdAt > $1.createdAt }
-            self.allPublishedRequests = allRequests
+
+            let bidsSnapshot = try await db.collection("bids")
+                .whereField("bakerID", isEqualTo: uid)
+                .getDocuments()
+            let submittedRequestIDs = Set(
+                bidsSnapshot.documents.compactMap { document in
+                    document.data()["requestDocumentID"] as? String
+                }
+            )
+            self.placedBidRequestIDs = submittedRequestIDs
+
+            let availableRequests = allRequests.filter { !submittedRequestIDs.contains($0.id) }
+            self.allPublishedRequests = availableRequests
             
             // Step 3: Filter requests that match baker's specialties
-            self.matchingRequests = allRequests.filter { request in
+            self.matchingRequests = availableRequests.filter { request in
                 if request.isDirectRequest {
                     return request.targetArtisanId == uid
                 }

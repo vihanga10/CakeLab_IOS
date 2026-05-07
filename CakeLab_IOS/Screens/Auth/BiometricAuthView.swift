@@ -62,7 +62,7 @@ struct BiometricAuthView: View {
                     if newVal {
                         // Reload notifications on successful biometric login with user type
                         if let user = vm.authenticatedUser {
-                            notificationManager.reloadNotifications(for: user.role.rawValue)
+                            notificationManager.reloadNotifications(for: user.role.rawValue, userID: user.id)
                             print("Notifications reloaded for \(user.role.rawValue) after biometric sign in")
                         }
                     }

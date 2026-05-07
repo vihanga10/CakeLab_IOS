@@ -127,6 +127,7 @@ extension View {
 }
 
 // MARK: - Customer Tab View
+@MainActor
 struct CustomerTabView: View {
     let user: AppUser
     @Binding var widgetRoute: WidgetDeepLinkRoute?
@@ -173,7 +174,8 @@ struct CustomerTabView: View {
         }
         .task {
             if !notificationsShown {
-                notificationManager.reloadNotifications(for: "customer")
+                await notificationManager.syncNewBidReceivedNotifications(customerID: user.id)
+                notificationManager.reloadNotifications(for: "customer", userID: user.id)
                 notificationsShown = true
                 print("Customer notifications loaded and displayed once on login")
             }

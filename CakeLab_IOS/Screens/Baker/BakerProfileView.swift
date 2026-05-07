@@ -810,7 +810,10 @@ struct BakerProfileView: View {
     // MARK: - Settings
     private var settingsSection: some View {
         VStack(spacing: 0) {
-            settingsRow(icon: "bell.fill", label: "Notifications", color: Color(red: 0.3, green: 0.45, blue: 0.8))
+            NavigationLink(destination: BakerBidHistoryView(user: user)) {
+                settingsRow(icon: "tray.full.fill", label: "Bid History", color: Color(red: 0.3, green: 0.45, blue: 0.8))
+            }
+            .buttonStyle(.plain)
             Divider().padding(.leading, 52)
             settingsRow(icon: "lock.fill", label: "Privacy & Security", color: Color.cakeBrown)
             Divider().padding(.leading, 52)
