@@ -1027,6 +1027,13 @@ struct CakeRequest: Identifiable {
     let customerName: String
     let postedTime: String
     let referenceImages: [String]
+    let deliveryTime: String
+    let cakeSize: String
+    let sugarLevel: Double
+    let styles: [String]
+    let dietary: [String]
+    let fillingFlavour: String
+    let specialInstructions: String
     var isMatching: Bool = true
     
     init(
@@ -1045,6 +1052,13 @@ struct CakeRequest: Identifiable {
         customerName: String,
         postedTime: String,
         referenceImages: [String] = [],
+        deliveryTime: String = "Not specified",
+        cakeSize: String = "Not specified",
+        sugarLevel: Double = 0.5,
+        styles: [String] = [],
+        dietary: [String] = [],
+        fillingFlavour: String = "",
+        specialInstructions: String = "",
         isMatching: Bool = true
     ) {
         self.id = id
@@ -1062,6 +1076,13 @@ struct CakeRequest: Identifiable {
         self.customerName = customerName
         self.postedTime = postedTime
         self.referenceImages = referenceImages
+        self.deliveryTime = deliveryTime
+        self.cakeSize = cakeSize
+        self.sugarLevel = sugarLevel
+        self.styles = styles
+        self.dietary = dietary
+        self.fillingFlavour = fillingFlavour
+        self.specialInstructions = specialInstructions
         self.isMatching = isMatching
     }
 }

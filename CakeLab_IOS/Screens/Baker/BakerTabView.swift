@@ -41,15 +41,15 @@ struct BakerTabView: View {
             widgetRoute = nil
         }
         .task {
-            // Load matching requests and trigger notifications on login
-            await loadMatchingRequestsAndNotify()
-            
             // Show baker saved notifications (bid accepted, order confirmed, etc.) only once on login
             if !notificationsShown {
                 notificationManager.reloadNotifications(for: "baker")
                 notificationsShown = true
                 print("✅ Baker notifications loaded and displayed once on login")
             }
+
+            // Load matching requests and trigger notifications on login
+            await loadMatchingRequestsAndNotify()
         }
         .onAppear {
             selectedTab = 0

@@ -17,6 +17,23 @@ class NotificationService: ObservableObject {
         notifications.insert(notification, at: 0) // Add to top
         persistNotifications()
     }
+
+    // MARK: - Find Existing Matching Notification
+    func existingNotification(
+        type: NotificationType,
+        userType: String,
+        relatedOrderID: String?,
+        relatedBakerID: String?,
+        relatedCustomerID: String?
+    ) -> AppNotification? {
+        notifications.first {
+            $0.type == type &&
+            $0.userType == userType &&
+            $0.relatedOrderID == relatedOrderID &&
+            $0.relatedBakerID == relatedBakerID &&
+            $0.relatedCustomerID == relatedCustomerID
+        }
+    }
     
     // MARK: - Load Notifications
     func loadNotifications() {

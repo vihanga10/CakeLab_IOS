@@ -12,6 +12,7 @@ struct BakerBidDetailView: View {
     let request: CakeRequest
 
     @EnvironmentObject var notificationManager: NotificationManager
+    @State private var showAllSpecifications = false
     @State private var bidAmount = ""
     @State private var deliveryNote = ""
     @State private var canDeliverOnTime = true
@@ -44,35 +45,34 @@ struct BakerBidDetailView: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.97, green: 0.96, blue: 0.94).ignoresSafeArea()
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
+            Color.white.ignoresSafeArea()
 
-                    // MARK: Request Details Card
-                    requestDetailsCard
-                        .padding(.horizontal, 20)
-                        .padding(.top, 16)
-                        .padding(.bottom, 20)
+            VStack(spacing: 0) {
+                headerBar
 
-                    // MARK: Customer Specs
-                    specsSection
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 20)
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 0) {
 
-                    // MARK: Bid Form
-                    bidFormSection
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 100)
+                        // MARK: Request Details Card
+                        requestDetailsCard
+                            .padding(.horizontal, 20)
+                            .padding(.top, 16)
+                            .padding(.bottom, 20)
+
+                        // MARK: Customer Specs
+                        specsSection
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 20)
+
+                        // MARK: Bid Form
+                        bidFormSection
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 32)
+                    }
                 }
             }
-
-            // MARK: Sticky Submit Button
-            VStack {
-                Spacer()
-                submitArea
-            }
         }
-        .navigationTitle("Cake Request Details")
+        .navigationBarBackButtonHidden(true)
         .navigationBarTitleDisplayMode(.inline)
         .overlay(
             Group {
@@ -94,41 +94,34 @@ struct BakerBidDetailView: View {
 
     // MARK: - Request Details Card
     private var requestDetailsCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(request.title)
-                        .font(.urbanistBold(20))
+                        .font(.urbanistBold(18))
                         .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                    HStack(spacing: 6) {
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.cakeBrown)
-                        Text("by \(request.customerName)")
-                            .font(.urbanistRegular(13))
-                            .foregroundColor(.cakeGrey)
-                        Text("•")
-                            .foregroundColor(.cakeGrey)
-                        Text(request.postedTime)
-                            .font(.urbanistRegular(12))
-                            .foregroundColor(.cakeGrey)
-                    }
+                        .lineLimit(nil)
                 }
-                Spacer()
-                // Budget badge
-                VStack(spacing: 2) {
-                    Text("Budget")
-                        .font(.urbanistRegular(10))
-                        .foregroundColor(.cakeGrey)
-                    Text(request.budgetRange)
-                        .font(.urbanistBold(13))
+                Spacer(minLength: 0)
+            }
+
+            HStack(alignment: .center, spacing: 12) {
+                HStack(spacing: 6) {
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.cakeBrown)
-                        .multilineTextAlignment(.center)
+                    Text(request.customerName)
+                        .font(.urbanistSemiBold(13))
+                        .foregroundColor(.cakeGrey)
+                        .lineLimit(1)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color.cakeBrown.opacity(0.1))
-                .cornerRadius(12)
+
+                Spacer(minLength: 8)
+
+                Text(request.postedTime)
+                    .font(.urbanistRegular(12))
+                    .foregroundColor(.cakeGrey)
+                    .lineLimit(1)
             }
 
             Divider()
@@ -138,11 +131,19 @@ struct BakerBidDetailView: View {
                 .foregroundColor(Color(red: 0.25, green: 0.25, blue: 0.25))
                 .lineSpacing(4)
 
-            // Tagged chips
-            HStack(spacing: 8) {
-                requestChip(icon: "location", text: request.location)
-                requestChip(icon: "calendar", text: request.deliveryDate)
-                requestChip(icon: "person.2", text: "\(request.bidCount) bids")
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    categoryMetaBlock
+                    metaDivider
+                    compactMetaItem(label: "Customer Location", value: request.location)
+                    metaDivider
+                    compactMetaItem(label: "Bids", value: "\(request.bidCount) bid\(request.bidCount == 1 ? "" : "s")")
+                }
+                HStack(spacing: 12) {
+                    categoryMetaBlock
+                    metaDivider
+                    compactMetaItem(label: "Customer Location", value: request.location)
+                }
             }
         }
         .padding(18)
@@ -151,32 +152,132 @@ struct BakerBidDetailView: View {
         .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
     }
 
-    private func requestChip(icon: String, text: String) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 10))
-            Text(text)
-                .font(.urbanistMedium(11))
+    private var categoryMetaBlock: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Category")
+                .font(.urbanistRegular(11))
+                .foregroundColor(.cakeGrey)
+                .lineLimit(1)
+
+            Text(request.category.name)
+                .font(.urbanistMedium(12))
+                .foregroundColor(categoryTextColor(for: request.category.name))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(categoryBackgroundColor(for: request.category.name))
+                .clipShape(Capsule())
         }
-        .foregroundColor(.cakeBrown)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
-        .background(Color.cakeBrown.opacity(0.08))
-        .cornerRadius(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var metaDivider: some View {
+        Rectangle()
+            .fill(Color.black.opacity(0.12))
+            .frame(width: 1, height: 34)
+    }
+
+    private func compactMetaItem(label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.urbanistRegular(11))
+                .foregroundColor(.cakeGrey)
+            Text(value)
+                .font(.urbanistSemiBold(12))
+                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func infoLine(icon: String, label: String, value: String) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.cakeBrown)
+                .frame(width: 18)
+
+            Text(label)
+                .font(.urbanistRegular(12))
+                .foregroundColor(.cakeGrey)
+
+            Text(value)
+                .font(.urbanistSemiBold(12))
+                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .multilineTextAlignment(.leading)
+
+            Spacer()
+        }
     }
 
     // MARK: - Customer Specs
     private var specsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Cake Specifications")
-                .font(.urbanistBold(16))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+            HStack {
+                Text("Cake Specifications")
+                    .font(.urbanistBold(16))
+                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+
+                Spacer()
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showAllSpecifications.toggle()
+                    }
+                } label: {
+                    Text(showAllSpecifications ? "See less" : "See all")
+                        .font(.urbanistSemiBold(12))
+                        .foregroundColor(.cakeBrown)
+                }
+                .buttonStyle(.plain)
+            }
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                specItem(icon: "person.3.fill", label: "Servings", value: "\(request.servings) people")
-                specItem(icon: "birthday.cake.fill", label: "Category", value: request.category.name)
-                specItem(icon: "drop.fill", label: "Flavours", value: request.flavours.joined(separator: ", "))
-                specItem(icon: "clock", label: "Delivery", value: request.deliveryDate)
+                specItem(icon: "banknote.fill", label: "Budget", value: request.budgetRange)
+                specItem(icon: "calendar", label: "Delivery Date", value: request.deliveryDate)
+                specItem(icon: "clock.fill", label: "Delivery Time", value: request.deliveryTime)
+                specItem(icon: "birthday.cake.fill", label: "Cake Size", value: request.cakeSize)
+            }
+
+            if showAllSpecifications {
+                VStack(spacing: 12) {
+                    expandedSpecRow(label: "Category", value: request.category.name)
+                    expandedSpecRow(label: "Tiers", value: request.servings > 0 ? "\(request.servings)" : "Not specified")
+                    expandedSpecRow(label: "Budget", value: request.budgetRange)
+                    expandedSpecRow(label: "Delivery Date", value: request.deliveryDate)
+                    expandedSpecRow(label: "Delivery Time", value: request.deliveryTime)
+                    expandedSpecRow(label: "Cake Size", value: request.cakeSize)
+                    expandedSpecRow(label: "Sugar Level", value: sugarLevelText)
+                    expandedSpecRow(label: "Flavours", value: joinedOrFallback(request.flavours))
+                    expandedSpecRow(label: "Styles", value: joinedOrFallback(request.styles))
+                    expandedSpecRow(label: "Dietary", value: joinedOrFallback(request.dietary))
+                    expandedSpecRow(label: "Filling Flavour", value: fallbackText(request.fillingFlavour))
+                    expandedSpecRow(label: "Special Instructions", value: fallbackText(request.specialInstructions), multiline: true)
+
+                    if !request.referenceImages.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Customer Uploaded Images")
+                                .font(.urbanistSemiBold(12))
+                                .foregroundColor(.cakeGrey)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 10) {
+                                    ForEach(request.referenceImages.indices, id: \.self) { index in
+                                        if let imageData = Data(base64Encoded: request.referenceImages[index]),
+                                           let uiImage = UIImage(data: imageData) {
+                                            Image(uiImage: uiImage)
+                                                .resizable()
+                                                .scaledToFill()
+                                                .frame(width: 78, height: 78)
+                                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(.top, 4)
             }
         }
         .padding(18)
@@ -208,7 +309,7 @@ struct BakerBidDetailView: View {
             Spacer()
         }
         .padding(10)
-        .background(Color(red: 0.97, green: 0.96, blue: 0.94))
+        .background(Color(red: 236/255, green: 230/255, blue: 225/255))
         .cornerRadius(12)
     }
 
@@ -327,6 +428,8 @@ struct BakerBidDetailView: View {
                     .foregroundColor(.cakeGrey)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
+
+            submitArea
         }
         .padding(18)
         .background(Color.white)
@@ -354,40 +457,167 @@ struct BakerBidDetailView: View {
 
     // MARK: - Submit Area
     private var submitArea: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 14) {
             Divider()
-            HStack(spacing: 14) {
-                // Summary
+
+            HStack(alignment: .center, spacing: 14) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Your bid")
+                    Text("Your Bid Amount")
                         .font(.urbanistRegular(12))
                         .foregroundColor(.cakeGrey)
                     Text(bidAmount.isEmpty ? "Enter amount" : "LKR \(bidAmount)")
                         .font(.urbanistBold(18))
                         .foregroundColor(parsedBidAmount == nil ? .cakeGrey : .cakeBrown)
                 }
+
                 Spacer()
-                Button {
-                    if canPlaceBid {
-                        showConfirmation = true
-                    } else {
-                        submissionError = "Enter a valid bid amount before continuing."
-                    }
-                } label: {
-                    Text("Place Bid")
-                        .font(.urbanistBold(15))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 32)
-                        .padding(.vertical, 16)
-                        .background(canPlaceBid ? Color.cakeBrown : Color.cakeGrey.opacity(0.4))
-                        .cornerRadius(16)
-                }
-                .disabled(!canPlaceBid)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-            .padding(.bottom, 4)
-            .background(Color.white)
+
+            Button {
+                if canPlaceBid {
+                    showConfirmation = true
+                } else {
+                    submissionError = "Enter a valid bid amount before continuing."
+                }
+            } label: {
+                Text("Place Bid")
+                    .font(.urbanistBold(15))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(canPlaceBid ? Color.cakeBrown : Color.cakeGrey.opacity(0.4))
+                    .cornerRadius(16)
+            }
+            .disabled(!canPlaceBid)
+        }
+    }
+
+    private var headerBar: some View {
+        HStack {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.cakeBrown)
+            }
+
+            Spacer()
+
+            VStack(spacing: 2) {
+                Text("Cake Details")
+                    .font(.urbanistBold(18))
+                    .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
+            }
+
+            Spacer()
+
+            Color.clear.frame(width: 24)
+        }
+        .padding(.horizontal, 20)
+        .frame(height: 56)
+        .background(Color.white)
+    }
+
+    private func expandedSpecRow(label: String, value: String, multiline: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.urbanistRegular(11))
+                .foregroundColor(.cakeGrey)
+
+            Text(value)
+                .font(.urbanistSemiBold(13))
+                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .fixedSize(horizontal: false, vertical: multiline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color(red: 236/255, green: 230/255, blue: 225/255))
+        .cornerRadius(12)
+    }
+
+    private func joinedOrFallback(_ values: [String]) -> String {
+        let cleaned = values.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        return cleaned.isEmpty ? "Not specified" : cleaned.joined(separator: ", ")
+    }
+
+    private func fallbackText(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Not specified" : trimmed
+    }
+
+    private var sugarLevelText: String {
+        "\(Int((request.sugarLevel * 100).rounded()))%"
+    }
+
+    private func categoryBackgroundColor(for category: String) -> Color {
+        let categoryLower = category.lowercased()
+        switch categoryLower {
+        case let cat where cat.contains("wedding"):
+            return Color(red: 1.0, green: 0.95, blue: 0.97)
+        case let cat where cat.contains("birthday"):
+            return Color(red: 0.99, green: 0.95, blue: 0.90)
+        case let cat where cat.contains("anniversary"):
+            return Color(red: 0.95, green: 0.99, blue: 0.95)
+        case let cat where cat.contains("baby"):
+            return Color(red: 0.98, green: 0.96, blue: 1.0)
+        case let cat where cat.contains("cupcake"):
+            return Color(red: 1.0, green: 0.98, blue: 0.94)
+        case let cat where cat.contains("buttercream"):
+            return Color(red: 0.99, green: 1.0, blue: 0.95)
+        case let cat where cat.contains("corporate"):
+            return Color(red: 0.95, green: 0.98, blue: 1.0)
+        case let cat where cat.contains("engagement"):
+            return Color(red: 1.0, green: 0.96, blue: 0.92)
+        case let cat where cat.contains("graduation"):
+            return Color(red: 0.94, green: 0.97, blue: 1.0)
+        case let cat where cat.contains("baptism"):
+            return Color(red: 0.96, green: 0.99, blue: 1.0)
+        case let cat where cat.contains("retirement"):
+            return Color(red: 1.0, green: 0.96, blue: 0.94)
+        case let cat where cat.contains("farewell"):
+            return Color(red: 0.98, green: 0.97, blue: 1.0)
+        case let cat where cat.contains("vegan"):
+            return Color(red: 0.96, green: 1.0, blue: 0.96)
+        case let cat where cat.contains("sculpted"):
+            return Color(red: 0.98, green: 0.95, blue: 0.99)
+        default:
+            return Color(red: 0.96, green: 0.96, blue: 0.96)
+        }
+    }
+
+    private func categoryTextColor(for category: String) -> Color {
+        let categoryLower = category.lowercased()
+        switch categoryLower {
+        case let cat where cat.contains("wedding"):
+            return Color(red: 0.8, green: 0.3, blue: 0.6)
+        case let cat where cat.contains("birthday"):
+            return Color(red: 0.85, green: 0.5, blue: 0.25)
+        case let cat where cat.contains("anniversary"):
+            return Color(red: 0.2, green: 0.6, blue: 0.4)
+        case let cat where cat.contains("baby"):
+            return Color(red: 0.6, green: 0.3, blue: 0.8)
+        case let cat where cat.contains("cupcake"):
+            return Color(red: 0.8, green: 0.5, blue: 0.2)
+        case let cat where cat.contains("buttercream"):
+            return Color(red: 0.7, green: 0.6, blue: 0.1)
+        case let cat where cat.contains("corporate"):
+            return Color(red: 0.2, green: 0.5, blue: 0.8)
+        case let cat where cat.contains("engagement"):
+            return Color(red: 0.85, green: 0.35, blue: 0.3)
+        case let cat where cat.contains("graduation"):
+            return Color(red: 0.3, green: 0.5, blue: 0.7)
+        case let cat where cat.contains("baptism"):
+            return Color(red: 0.2, green: 0.6, blue: 0.7)
+        case let cat where cat.contains("retirement"):
+            return Color(red: 0.8, green: 0.4, blue: 0.3)
+        case let cat where cat.contains("farewell"):
+            return Color(red: 0.5, green: 0.3, blue: 0.7)
+        case let cat where cat.contains("vegan"):
+            return Color(red: 0.2, green: 0.7, blue: 0.2)
+        case let cat where cat.contains("sculpted"):
+            return Color(red: 0.7, green: 0.2, blue: 0.7)
+        default:
+            return Color(red: 0.4, green: 0.4, blue: 0.4)
         }
     }
 

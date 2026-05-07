@@ -268,6 +268,19 @@ class NotificationManager: ObservableObject {
     
     // MARK: - Baker: New Matching Request
     func notifyNewMatchingRequest(requestTitle: String, category: String, budget: Double, customerID: String, bakerID: String, orderID: String) {
+        if let existing = notificationService.existingNotification(
+            type: .newMatchingRequest,
+            userType: "baker",
+            relatedOrderID: orderID,
+            relatedBakerID: bakerID,
+            relatedCustomerID: customerID
+        ) {
+            if !existing.isRead {
+                showPopupOnly(existing)
+            }
+            return
+        }
+
         let notification = AppNotification(
             type: .newMatchingRequest,
             title: NotificationType.newMatchingRequest.title,

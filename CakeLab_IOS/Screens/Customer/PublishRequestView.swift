@@ -629,6 +629,13 @@ struct CakeRequestRecord: Identifiable {
             customerName: customerName,
             postedTime: postedTimeText(from: createdAt),
             referenceImages: referenceImages,
+            deliveryTime: formattedTime(expectedTime),
+            cakeSize: cakeSize.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Not specified" : cakeSize,
+            sugarLevel: sugarLevel,
+            styles: styles,
+            dietary: dietary,
+            fillingFlavour: fillingFlavour,
+            specialInstructions: specialInstructions,
             isMatching: true
         )
     }
@@ -712,6 +719,12 @@ func categoryIcon(for category: String) -> String {
 func formattedDate(_ date: Date) -> String {
     let formatter = DateFormatter()
     formatter.dateStyle = .medium
+    return formatter.string(from: date)
+}
+
+func formattedTime(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.timeStyle = .short
     return formatter.string(from: date)
 }
 
