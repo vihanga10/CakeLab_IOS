@@ -1,30 +1,155 @@
 import SwiftUI
+import Combine
 import FirebaseFirestore
+
+// MARK: - Baker nav state
+final class BakerNavState: ObservableObject {
+    static let shared = BakerNavState()
+    @Published var selectedTab: Int = 0
+    @Published var depth: Int = 0
+    var isOnSubScreen: Bool { depth > 0 }
+    private init() {}
+
+    func navigateTo(_ tag: Int) {
+        selectedTab = tag
+    }
+
+    func reset() {
+        selectedTab = 0
+        depth = 0
+    }
+}
+
+// MARK: - All-unselected baker tab bar for pushed sub-screens
+struct BakerSubScreenTabBar: View {
+    let onSelectTab: (Int) -> Void
+
+    private let tabs: [(icon: String, tag: Int)] = [
+        ("house.fill",          0),
+        ("birthday.cake.fill",  1),
+        ("list.clipboard.fill", 2),
+        ("person.fill",         3)
+    ]
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(tabs.enumerated()), id: \.element.tag) { index, tab in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        onSelectTab(tab.tag)
+                    }
+                } label: {
+                    Image(systemName: tab.icon)
+                        .font(.system(size: 21, weight: .semibold))
+                        .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
+                        .frame(width: 50, height: 50)
+                        .background(
+                            Circle()
+                                .fill(Color(red: 0.9, green: 0.9, blue: 0.9).opacity(0.45))
+                        )
+                }
+                .buttonStyle(.plain)
+
+                if index < tabs.count - 1 {
+                    Spacer(minLength: 12)
+                }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(height: 68)
+        .background(
+            ZStack {
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(red: 0.94, green: 0.94, blue: 0.94).opacity(0.75),
+                        Color(red: 0.92, green: 0.92, blue: 0.92).opacity(0.85)
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                Color(red: 0.93, green: 0.93, blue: 0.93).opacity(0.5)
+                Color(red: 0.96, green: 0.96, blue: 0.96).opacity(0.2)
+            }
+        )
+        .cornerRadius(26)
+        .overlay(
+            RoundedRectangle(cornerRadius: 26)
+                .stroke(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color(red: 0.85, green: 0.85, blue: 0.85).opacity(0.6),
+                            Color(red: 0.88, green: 0.88, blue: 0.88).opacity(0.3),
+                            Color(red: 0.9, green: 0.9, blue: 0.9).opacity(0.4)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1.5
+                )
+        )
+        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
+        .padding(.horizontal, 18)
+        .padding(.bottom, 1)
+    }
+}
+
+struct BakerSubScreenModifier: ViewModifier {
+    @Environment(\.dismiss) private var dismiss
+
+    func body(content: Content) -> some View {
+        ZStack(alignment: .bottom) {
+            content
+                .onAppear { BakerNavState.shared.depth += 1 }
+                .onDisappear { BakerNavState.shared.depth = max(0, BakerNavState.shared.depth - 1) }
+
+            BakerSubScreenTabBar { tag in
+                BakerNavState.shared.navigateTo(tag)
+                dismiss()
+            }
+        }
+    }
+}
+
+extension View {
+    func asBakerSubScreen() -> some View {
+        modifier(BakerSubScreenModifier())
+    }
+}
 
 // MARK: - Baker Tab View
 @MainActor
 struct BakerTabView: View {
     let user: AppUser
     @Binding var widgetRoute: WidgetDeepLinkRoute?
-    @State private var selectedTab: Int = 0
     @State private var notificationsShown = false
+    @ObservedObject private var navState = BakerNavState.shared
     @EnvironmentObject var notificationManager: NotificationManager
     @State private var matchingRequestsLoaded = false
+
+    private var selectedTabBinding: Binding<Int> {
+        Binding(
+            get: { BakerNavState.shared.selectedTab },
+            set: { BakerNavState.shared.selectedTab = $0 }
+        )
+    }
     
     var body: some View {
         ZStack(alignment: .bottom) {
             Group {
-                switch selectedTab {
-                case 0: BakerHomeView(user: user, selectedTab: $selectedTab)
+                switch navState.selectedTab {
+                case 0: BakerHomeView(user: user, selectedTab: selectedTabBinding)
                 case 1: BakerMatchingRequestsView()
                 case 2: BakerOrdersView(user: user)
-                case 3: BakerProfileView(user: user, parentTabSelection: $selectedTab)
-                default: BakerHomeView(user: user, selectedTab: $selectedTab)
+                case 3: BakerProfileView(user: user, parentTabSelection: selectedTabBinding)
+                default: BakerHomeView(user: user, selectedTab: selectedTabBinding)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            BakerTabBar(selectedTab: $selectedTab)
+            if !navState.isOnSubScreen {
+                BakerTabBar(selectedTab: selectedTabBinding)
+            }
         }
         .ignoresSafeArea(.keyboard)
         .onChange(of: widgetRoute) { _, newRoute in
@@ -32,9 +157,9 @@ struct BakerTabView: View {
             
             switch newRoute {
             case .bakerStatus:
-                selectedTab = 2
+                BakerNavState.shared.selectedTab = 2
             case .bakerMatching:
-                selectedTab = 1
+                BakerNavState.shared.selectedTab = 1
             default:
                 break
             }
@@ -53,15 +178,15 @@ struct BakerTabView: View {
             await loadMatchingRequestsAndNotify()
         }
         .onAppear {
-            selectedTab = 0
+            BakerNavState.shared.reset()
         }
         .onReceive(NotificationCenter.default.publisher(for: .appUserDidAuthenticate)) { _ in
-            selectedTab = 0
+            BakerNavState.shared.reset()
             notificationsShown = false
             matchingRequestsLoaded = false
         }
         .onReceive(NotificationCenter.default.publisher(for: .appUserDidSignOut)) { _ in
-            selectedTab = 0
+            BakerNavState.shared.reset()
             notificationsShown = false
             matchingRequestsLoaded = false
         }

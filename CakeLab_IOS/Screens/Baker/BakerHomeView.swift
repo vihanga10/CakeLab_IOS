@@ -11,9 +11,7 @@ struct BakerHomeView: View {
     @State private var bakerCity = ""
     @State private var filterCity: String? = nil
     @State private var showLocationSheet = false
-    @State private var showAllMatching = false
     @State private var showAllOpen = false
-    @State private var showAllActive = false
     @State private var selectedRequest: CakeRequest?
     @State private var showBidDetail = false
     @State private var profileAvatar: UIImage? = nil
@@ -63,7 +61,9 @@ struct BakerHomeView: View {
                         // MARK: Matching Requests Preview
                         VStack(alignment: .leading, spacing: 14) {
                             sectionHeader("Matching Requests", count: newRequests) {
-                                showAllMatching = true
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    selectedTab = 1
+                                }
                             }
                             .padding(.horizontal, 20)
 
@@ -75,7 +75,9 @@ struct BakerHomeView: View {
                         // MARK: Active Orders Preview
                         VStack(alignment: .leading, spacing: 14) {
                             sectionHeader("Active Orders", count: activeOrdersList.count) {
-                                showAllActive = true
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    selectedTab = 2
+                                }
                             }
                             .padding(.horizontal, 20)
 
@@ -109,14 +111,8 @@ struct BakerHomeView: View {
                 }
                 .hidden()
             }
-            .navigationDestination(isPresented: $showAllMatching) {
-                BakerMatchingRequestsView()
-            }
             .navigationDestination(isPresented: $showAllOpen) {
                 BakerOtherRequestsView(viewModel: matchingRequestsVM)
-            }
-            .navigationDestination(isPresented: $showAllActive) {
-                BakerOrdersView(user: user)
             }
             .sheet(isPresented: $showLocationSheet) {
                 LocationPickerSheet(filterCity: $filterCity)
