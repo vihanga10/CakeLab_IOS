@@ -395,7 +395,7 @@ class NotificationManager: Combine.ObservableObject {
     }
     
     // MARK: - Baker: Order Confirmed
-    func notifyBakerOrderConfirmed(customerName: String, requestTitle: String, deliveryDate: Date, orderID: String, customerID: String, bakerID: String) {
+    func notifyBakerOrderConfirmed(customerName: String, requestTitle: String, deliveryDate: Date, orderID: String, customerID: String, bakerID: String, showPopup: Bool = true) {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         let dateString = formatter.string(from: deliveryDate)
@@ -409,7 +409,11 @@ class NotificationManager: Combine.ObservableObject {
             relatedBakerID: bakerID,
             relatedCustomerID: customerID
         )
-        showNotification(notification)
+        if showPopup {
+            showNotification(notification)
+        } else {
+            notificationService.saveNotification(notification)
+        }
     }
     
     // MARK: - Baker: Delivery Instructions Updated
@@ -455,7 +459,7 @@ class NotificationManager: Combine.ObservableObject {
     }
     
     // MARK: - Baker: Payment Received
-    func notifyBakerPaymentReceived(customerName: String, amount: Double, orderID: String, customerID: String, bakerID: String) {
+    func notifyBakerPaymentReceived(customerName: String, amount: Double, orderID: String, customerID: String, bakerID: String, showPopup: Bool = true) {
         let notification = AppNotification(
             type: .bakerPaymentReceived,
             title: NotificationType.bakerPaymentReceived.title,
@@ -465,7 +469,11 @@ class NotificationManager: Combine.ObservableObject {
             relatedBakerID: bakerID,
             relatedCustomerID: customerID
         )
-        showNotification(notification)
+        if showPopup {
+            showNotification(notification)
+        } else {
+            notificationService.saveNotification(notification)
+        }
     }
     
     // MARK: - Baker: New Review Received

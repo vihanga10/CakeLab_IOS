@@ -729,15 +729,21 @@ struct BakerBidDetailView: View {
         do {
             let bakerProfile = try await db.collection("users").document(bakerID).getDocument()
             let bakerData = bakerProfile.data() ?? [:]
+            let artisanProfile = try? await db.collection("artisans").document(bakerID).getDocument()
+            let artisanData = artisanProfile?.data() ?? [:]
             let bidSnapshot = try await bidRef.getDocument()
             let alreadyExists = bidSnapshot.exists
             let bakerName = (bakerData["name"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let bakerProfileImageBase64 = artisanData["profileImageBase64"] as? String ?? bakerData["profileImageBase64"] as? String ?? ""
+            let bakerImageURL = artisanData["imageURL"] as? String ?? bakerData["imageURL"] as? String ?? bakerData["avatarURL"] as? String ?? ""
             
             let bidPayload: [String: Any] = [
                 "requestDocumentID": request.requestDocumentID,
                 "customerID": request.customerID,
                 "bakerID": bakerID,
                 "bakerName": bakerName.isEmpty ? (Auth.auth().currentUser?.email ?? "Baker") : bakerName,
+                "bakerProfileImageBase64": bakerProfileImageBase64,
+                "bakerImageURL": bakerImageURL,
                 "requestTitle": request.title,
                 "requestSnapshot": [
                     "id": request.requestDocumentID,

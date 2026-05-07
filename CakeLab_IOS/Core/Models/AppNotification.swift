@@ -62,7 +62,7 @@ enum NotificationType: String, Codable {
         case .bakerMessage:
             return "Message from Baker"
         case .paymentReceipt:
-            return "Payment Receipt"
+            return "Payment Successful"
         case .newMatchingRequest:
             return "New Matching Request"
         case .bakerBidSubmitted:

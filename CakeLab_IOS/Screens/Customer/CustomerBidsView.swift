@@ -17,6 +17,8 @@ struct PaymentPayload {
     let method: PaymentMethod
     let cardholderName: String
     let cardLast4: String
+    let deliveryAddress: String
+    let deliveryCity: String
 }
 
 struct CustomerBidRequest: Identifiable {
@@ -55,11 +57,14 @@ struct CustomerBidOffer: Identifiable {
     let id: String
     let bakerID: String
     let bakerName: String
+    let bakerProfileImageBase64: String
+    let bakerImageURL: String
     let amount: Double
     let message: String
     let canDeliverOnTime: Bool
     let deliveryDate: Date?
     let submittedAt: Date
+    let status: String
 }
 
 enum BidsReceivedSheet: Identifiable {
@@ -105,7 +110,11 @@ final class CustomerBidsViewModel: ObservableObject {
                 mergedDocs[document.documentID] = document
             }
 
-            let parsed = mergedDocs.values.compactMap(Self.parseRequest)
+            let parsed = mergedDocs.values
+                .compactMap(Self.parseRequest)
+                .filter { request in
+                    !Self.isClosedRequestStatus(request.status)
+                }
             requests = parsed.sorted { $0.createdAt > $1.createdAt }
         } catch {
             errorMessage = "Failed to load requests with bids. \(error.localizedDescription)"
@@ -154,6 +163,14 @@ final class CustomerBidsViewModel: ObservableObject {
         )
     }
 
+    private static func isClosedRequestStatus(_ status: String) -> Bool {
+        let normalized = status.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        return normalized == "confirmed" ||
+            normalized == "paid" ||
+            normalized == "completed" ||
+            normalized == "in_progress"
+    }
+
     private static func parseDate(_ raw: Any?) -> Date? {
         if let ts = raw as? Timestamp { return ts.dateValue() }
         if let seconds = raw as? TimeInterval { return Date(timeIntervalSince1970: seconds) }
@@ -196,7 +213,13 @@ final class BidsReceivedViewModel: ObservableObject {
             let parsed = snapshot.documents
                 .filter { $0.data()["requestDocumentID"] as? String == requestID }
                 .compactMap(Self.parseBid)
-            bids = parsed.sorted { $0.submittedAt > $1.submittedAt }
+
+            var enrichedBids: [CustomerBidOffer] = []
+            for bid in parsed where !Self.isClosedBidStatus(bid.status) {
+                enrichedBids.append(await enrichBidWithBakerProfile(bid))
+            }
+
+            bids = enrichedBids.sorted { $0.submittedAt > $1.submittedAt }
         } catch {
             errorMessage = "Failed to load bids. \(error.localizedDescription)"
         }
@@ -215,12 +238,63 @@ final class BidsReceivedViewModel: ObservableObject {
             id: document.documentID,
             bakerID: data["bakerID"] as? String ?? "",
             bakerName: data["bakerName"] as? String ?? "Baker",
+            bakerProfileImageBase64: data["bakerProfileImageBase64"] as? String ?? "",
+            bakerImageURL: data["bakerImageURL"] as? String ?? "",
             amount: parseDouble(data["amount"]),
             message: data["message"] as? String ?? "",
             canDeliverOnTime: canDeliverOnTime,
             deliveryDate: canDeliverOnTime ? nil : alternativeDate,
-            submittedAt: submittedAt
+            submittedAt: submittedAt,
+            status: data["status"] as? String ?? "submitted"
         )
+    }
+
+    private static func isClosedBidStatus(_ status: String) -> Bool {
+        let normalized = status.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        return normalized == "accepted" || normalized == "paid" || normalized == "confirmed"
+    }
+
+    private func enrichBidWithBakerProfile(_ bid: CustomerBidOffer) async -> CustomerBidOffer {
+        guard bid.bakerProfileImageBase64.isEmpty && bid.bakerImageURL.isEmpty else { return bid }
+
+        let profileData = await fetchBakerProfileImageData(bakerID: bid.bakerID)
+        return CustomerBidOffer(
+            id: bid.id,
+            bakerID: bid.bakerID,
+            bakerName: bid.bakerName,
+            bakerProfileImageBase64: profileData.base64,
+            bakerImageURL: profileData.url,
+            amount: bid.amount,
+            message: bid.message,
+            canDeliverOnTime: bid.canDeliverOnTime,
+            deliveryDate: bid.deliveryDate,
+            submittedAt: bid.submittedAt,
+            status: bid.status
+        )
+    }
+
+    private func fetchBakerProfileImageData(bakerID: String) async -> (base64: String, url: String) {
+        let trimmedID = bakerID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedID.isEmpty else { return ("", "") }
+
+        if let artisanDoc = try? await db.collection("artisans").document(trimmedID).getDocument(),
+           let data = artisanDoc.data() {
+            let base64 = data["profileImageBase64"] as? String ?? ""
+            let url = data["imageURL"] as? String ?? data["avatarURL"] as? String ?? ""
+            if !base64.isEmpty || !url.isEmpty {
+                return (base64, url)
+            }
+        }
+
+        if let userDoc = try? await db.collection("users").document(trimmedID).getDocument(),
+           let data = userDoc.data() {
+            return (
+                data["profileImageBase64"] as? String ?? "",
+                data["imageURL"] as? String ?? data["avatarURL"] as? String ?? ""
+            )
+        }
+
+        return ("", "")
     }
 
     private static func parseDate(_ raw: Any?) -> Date? {
@@ -233,6 +307,7 @@ final class BidsReceivedViewModel: ObservableObject {
     private static func parseDouble(_ raw: Any?) -> Double {
         if let value = raw as? Double { return value }
         if let value = raw as? Int { return Double(value) }
+        if let value = raw as? NSNumber { return value.doubleValue }
         if let value = raw as? String { return Double(value) ?? 0 }
         return 0
     }
@@ -301,6 +376,11 @@ struct CustomerBidsView: View {
                 await viewModel.loadRequests(customerID: user.id)
             }
             .onReceive(NotificationCenter.default.publisher(for: .bidDidChange)) { _ in
+                Task {
+                    await viewModel.loadRequests(customerID: user.id)
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .orderDidChange)) { _ in
                 Task {
                     await viewModel.loadRequests(customerID: user.id)
                 }
@@ -583,7 +663,6 @@ struct BidsReceivedView: View {
     @StateObject private var viewModel = BidsReceivedViewModel()
     @State private var activeSheet: BidsReceivedSheet?
     @State private var isSubmittingPayment = false
-    @State private var successMessage: String?
     @State private var errorMessage: String?
 
     private static let dateFormatter: DateFormatter = {
@@ -682,16 +761,6 @@ struct BidsReceivedView: View {
                 BidFullDetailsSheet(request: request, bid: bid)
             }
         }
-        .alert("Payment Successful", isPresented: Binding(
-            get: { successMessage != nil },
-            set: { if !$0 { successMessage = nil } }
-        )) {
-            Button("OK") {
-                successMessage = nil
-            }
-        } message: {
-            Text(successMessage ?? "")
-        }
         .alert("Payment Failed", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -757,6 +826,10 @@ struct BidsReceivedView: View {
             "deliveryDate": Timestamp(date: finalDeliveryDate),
             "deliveryTime": Timestamp(date: request.expectedTime),
             "deliveryDateTime": Timestamp(date: deliveryDateTime),
+            "deliveryAddress": payment.deliveryAddress,
+            "deliveryCity": payment.deliveryCity,
+            "customerAddress": payment.deliveryAddress,
+            "customerCity": payment.deliveryCity,
             "artisanName": bid.bakerName,
             "artisanRating": "New baker",
             "artisanAddress": "Address not provided",
@@ -783,6 +856,8 @@ struct BidsReceivedView: View {
             "method": payment.method.rawValue,
             "cardholderName": payment.cardholderName,
             "cardLast4": payment.cardLast4,
+            "deliveryAddress": payment.deliveryAddress,
+            "deliveryCity": payment.deliveryCity,
             "status": "success",
             "createdAt": Timestamp(date: Date())
         ]
@@ -815,6 +890,14 @@ struct BidsReceivedView: View {
                 customerID: request.customerID
             )
             print(" Customer notified: Order confirmed with \(bid.bakerName)")
+
+            self.notificationManager.notifyPaymentReceipt(
+                amount: totalPaid,
+                bakerName: bid.bakerName,
+                orderID: orderID,
+                customerID: request.customerID
+            )
+            print(" Customer notified: Payment receipt saved for \(request.title)")
             
             // Notify BAKER: Order Confirmed  
             self.notificationManager.notifyBakerOrderConfirmed(
@@ -823,11 +906,24 @@ struct BidsReceivedView: View {
                 deliveryDate: finalDeliveryDate,
                 orderID: orderID,
                 customerID: request.customerID,
-                bakerID: bid.bakerID
+                bakerID: bid.bakerID,
+                showPopup: false
             )
             print(" Baker notified: Order confirmed for \(request.title)")
 
+            self.notificationManager.notifyBakerPaymentReceived(
+                customerName: self.user.name.isEmpty ? self.user.email : self.user.name,
+                amount: bid.amount,
+                orderID: orderID,
+                customerID: request.customerID,
+                bakerID: bid.bakerID,
+                showPopup: false
+            )
+            print(" Baker notified: Payment received for \(request.title)")
+
             activeSheet = nil
+            viewModel.bids.removeAll { $0.id == bid.id }
+            NotificationCenter.default.post(name: .bidDidChange, object: nil)
             NotificationCenter.default.post(name: .orderDidChange, object: nil)
             WidgetDataSyncManager.shared.refreshFromCurrentSession()
 
@@ -905,14 +1001,7 @@ struct BakerBidOfferCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                Circle()
-                    .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
-                    .frame(width: 52, height: 52)
-                    .overlay(
-                        Image(systemName: "person.fill")
-                            .font(.system(size: 22))
-                            .foregroundColor(.cakeBrown.opacity(0.75))
-                    )
+                bakerProfileImage
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(bid.bakerName)
@@ -980,6 +1069,56 @@ struct BakerBidOfferCard: View {
         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 3)
     }
 
+    private var bakerProfileImage: some View {
+        Group {
+            if let image = decodeBase64Image(bid.bakerProfileImageBase64) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else if let url = URL(string: bid.bakerImageURL), !bid.bakerImageURL.isEmpty {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    default:
+                        bakerProfileFallback
+                    }
+                }
+            } else {
+                bakerProfileFallback
+            }
+        }
+        .frame(width: 52, height: 52)
+        .clipShape(Circle())
+    }
+
+    private var bakerProfileFallback: some View {
+        Circle()
+            .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+            .overlay(
+                Image(systemName: "person.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(.cakeBrown.opacity(0.75))
+            )
+    }
+
+    private func decodeBase64Image(_ rawBase64: String) -> UIImage? {
+        let trimmed = rawBase64.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let payload: String
+        if let commaIndex = trimmed.firstIndex(of: ",") {
+            payload = String(trimmed[trimmed.index(after: commaIndex)...])
+        } else {
+            payload = trimmed
+        }
+
+        guard let data = Data(base64Encoded: payload) else { return nil }
+        return UIImage(data: data)
+    }
+
     private func detailsRow(label: String, value: String, valueColor: Color = Color(red: 93/255, green: 55/255, blue: 20/255)) -> some View {
         HStack(alignment: .top) {
             Text(label)
@@ -1025,12 +1164,14 @@ struct PaymentCheckoutView: View {
     private var totalAmount: Double { bid.amount + serviceFee }
     
     private var displayAddress: String {
-        let userAddress = user.address ?? ""
-        let userCity = user.city ?? ""
-        if !userAddress.isEmpty && !userCity.isEmpty {
-            return "\(userAddress), \(userCity)"
-        } else if !userAddress.isEmpty {
-            return userAddress
+        let address = deliveryAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+        let city = deliveryCity.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !address.isEmpty && !city.isEmpty {
+            return "\(address), \(city)"
+        } else if !address.isEmpty {
+            return address
+        } else if !city.isEmpty {
+            return city
         }
         return "-"
     }
@@ -1058,7 +1199,9 @@ struct PaymentCheckoutView: View {
                                 PaymentPayload(
                                     method: selectedMethod,
                                     cardholderName: cardholderName.isEmpty ? "Cardholder" : cardholderName,
-                                    cardLast4: String(cardNumber.suffix(4))
+                                    cardLast4: String(cardNumber.suffix(4)),
+                                    deliveryAddress: deliveryAddress.trimmingCharacters(in: .whitespacesAndNewlines),
+                                    deliveryCity: deliveryCity.trimmingCharacters(in: .whitespacesAndNewlines)
                                 )
                             )
                         } label: {
@@ -1086,6 +1229,7 @@ struct PaymentCheckoutView: View {
         }
         .sheet(isPresented: $showDeliveryLocationSheet) {
             EditDeliveryLocationSheet(
+                userID: user.id,
                 address: $deliveryAddress,
                 city: $deliveryCity,
                 isPresented: $showDeliveryLocationSheet
@@ -1279,68 +1423,197 @@ struct PaymentCheckoutView: View {
 }
 
 struct EditDeliveryLocationSheet: View {
+    let userID: String
     @Binding var address: String
     @Binding var city: String
     @Binding var isPresented: Bool
     @State private var tempAddress = ""
     @State private var tempCity = ""
+    @State private var showDistrictPicker = false
+    @State private var isSaving = false
+    @State private var errorMessage: String?
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Address")
-                        .font(.urbanistSemiBold(12))
-                        .foregroundColor(.cakeGrey)
-                    TextField("Enter your address", text: $tempAddress)
-                        .font(.urbanistRegular(14))
-                        .padding(12)
-                        .background(Color(red: 0.97, green: 0.97, blue: 0.98))
-                        .cornerRadius(10)
-                }
+            ZStack {
+                Color.white.ignoresSafeArea()
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("City")
-                        .font(.urbanistSemiBold(12))
-                        .foregroundColor(.cakeGrey)
-                    TextField("Enter your city", text: $tempCity)
-                        .font(.urbanistRegular(14))
-                        .padding(12)
-                        .background(Color(red: 0.97, green: 0.97, blue: 0.98))
-                        .cornerRadius(10)
-                }
+                VStack(spacing: 0) {
+                    headerBar
 
-                Spacer()
+                    VStack(spacing: 18) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Address")
+                                .font(.urbanistSemiBold(12))
+                                .foregroundColor(.cakeGrey)
+                            TextField("Enter your address", text: $tempAddress)
+                                .font(.urbanistRegular(14))
+                                .padding(12)
+                                .background(Color(red: 0.97, green: 0.97, blue: 0.98))
+                                .cornerRadius(10)
+                        }
 
-                Button(action: {
-                    address = tempAddress
-                    city = tempCity
-                    isPresented = false
-                }) {
-                    Text("Save Location")
-                        .font(.urbanistBold(16))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 15)
-                        .background(Color.cakeBrown)
-                        .cornerRadius(14)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("City")
+                                .font(.urbanistSemiBold(12))
+                                .foregroundColor(.cakeGrey)
+                            Button {
+                                showDistrictPicker = true
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Text(tempCity.isEmpty ? "Select city" : tempCity)
+                                        .font(.urbanistRegular(14))
+                                        .foregroundColor(tempCity.isEmpty ? Color(hex: "7D7D7D") : Color(red: 0.1, green: 0.1, blue: 0.1))
+                                    Spacer()
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.cakeBrown)
+                                }
+                                .padding(12)
+                                .background(Color(red: 0.97, green: 0.97, blue: 0.98))
+                                .cornerRadius(10)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        if let errorMessage {
+                            Text(errorMessage)
+                                .font(.urbanistRegular(12))
+                                .foregroundColor(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
+                                .background(Color.red.opacity(0.08))
+                                .cornerRadius(10)
+                        }
+
+                        Spacer()
+
+                        Button {
+                            Task { await saveLocation() }
+                        } label: {
+                            Group {
+                                if isSaving {
+                                    HStack(spacing: 8) {
+                                        ProgressView()
+                                            .tint(.white)
+                                        Text("Saving...")
+                                    }
+                                } else {
+                                    Text("Save Location")
+                                }
+                            }
+                            .font(.urbanistBold(16))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 15)
+                            .background(Color.cakeBrown)
+                            .cornerRadius(14)
+                        }
+                        .disabled(!canSave || isSaving)
+                        .opacity(canSave && !isSaving ? 1 : 0.5)
+                    }
+                    .padding(16)
                 }
-                .disabled(tempAddress.isEmpty || tempCity.isEmpty)
-                .opacity(tempAddress.isEmpty || tempCity.isEmpty ? 0.5 : 1)
             }
-            .padding(16)
-            .navigationTitle("Edit Delivery Location")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { isPresented = false }
-                        .foregroundColor(.cakeBrown)
-                }
+            .toolbar(.hidden, for: .navigationBar)
+            .sheet(isPresented: $showDistrictPicker) {
+                DistrictPickerSheet(
+                    districts: SriLankaDistricts.all,
+                    selectedDistrict: tempCity.isEmpty ? nil : tempCity,
+                    onSelect: { district in
+                        tempCity = district
+                        showDistrictPicker = false
+                    }
+                )
+                .presentationDetents([.medium, .large])
             }
         }
         .onAppear {
             tempAddress = address
-            tempCity = city
+            tempCity = SriLankaDistricts.canonical(city) ?? city
+        }
+    }
+
+    private var canSave: Bool {
+        !tempAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !tempCity.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var headerBar: some View {
+        HStack {
+            Button { isPresented = false } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.cakeBrown)
+            }
+            Spacer()
+            VStack(spacing: 2) {
+                Text("Edit Delivery Location")
+                    .font(.urbanistBold(18))
+                    .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
+            }
+            Spacer()
+            Color.clear.frame(width: 24)
+        }
+        .padding(.horizontal, 20)
+        .frame(height: 56)
+        .background(Color.white)
+    }
+
+    private func saveLocation() async {
+        let savedAddress = tempAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+        let savedCity = SriLankaDistricts.canonical(tempCity) ?? tempCity.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !savedAddress.isEmpty, !savedCity.isEmpty else { return }
+
+        isSaving = true
+        errorMessage = nil
+        defer { isSaving = false }
+
+        do {
+            try await Firestore.firestore().collection("users").document(userID).setData([
+                "address": savedAddress,
+                "city": savedCity
+            ], merge: true)
+
+            address = savedAddress
+            city = savedCity
+            NotificationCenter.default.post(name: NSNotification.Name("customerProfileDidChange"), object: nil)
+            isPresented = false
+        } catch {
+            errorMessage = "Could not save delivery location. \(error.localizedDescription)"
+        }
+    }
+}
+
+private struct DistrictPickerSheet: View {
+    let districts: [String]
+    let selectedDistrict: String?
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(districts, id: \.self) { district in
+                    Button {
+                        onSelect(district)
+                    } label: {
+                        HStack {
+                            Text(district)
+                                .font(.urbanistMedium(15))
+                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                            Spacer()
+                            if selectedDistrict == district {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(.cakeBrown)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Select City")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
