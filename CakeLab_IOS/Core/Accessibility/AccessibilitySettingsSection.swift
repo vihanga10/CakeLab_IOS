@@ -1,5 +1,6 @@
 import SwiftUI
 
+// Defines the three supported font size levels for accessibility font scaling
 enum AccessibilityFontScale: String, CaseIterable, Identifiable {
     case standard
     case large
@@ -15,6 +16,7 @@ enum AccessibilityFontScale: String, CaseIterable, Identifiable {
         }
     }
 
+    // Maps each font scale case to a SwiftUI DynamicTypeSize for system-wide text sizing
     var dynamicTypeSize: DynamicTypeSize {
         switch self {
         case .standard: return .large
@@ -24,11 +26,14 @@ enum AccessibilityFontScale: String, CaseIterable, Identifiable {
     }
 }
 
+// Settings section view that groups all accessibility controls (contrast, font scale, voice assistant)
 struct AccessibilitySettingsSection: View {
+    // Persisted user preferences stored in AppStorage so they survive app restarts
     @AppStorage("accessibilityHighContrastEnabled") private var highContrastEnabled = false
     @AppStorage("accessibilityFontScale") private var fontScaleRawValue = AccessibilityFontScale.standard.rawValue
     @AppStorage("inAppVoiceEnabled") private var inAppVoiceEnabled = false
 
+    // Converts the raw string stored in AppStorage to/from the AccessibilityFontScale enum
     private var fontScaleBinding: Binding<AccessibilityFontScale> {
         Binding(
             get: {
@@ -48,6 +53,7 @@ struct AccessibilitySettingsSection: View {
                 .padding(.horizontal, 4)
 
             VStack(spacing: 12) {
+                // Card 1: Contrast — contains high contrast toggle and font scale picker
                 accessibilityCard(title: "Contrast", icon: "circle.lefthalf.filled") {
                     toggleRow(
                         title: "High Contrast Mode",
@@ -73,6 +79,7 @@ struct AccessibilitySettingsSection: View {
                     .padding(.vertical, 14)
                 }
 
+                // Card 2: Voice Assistant — toggle to show/hide the floating speak-screen button
                 accessibilityCard(title: "Voice Assistant", icon: "speaker.wave.2.fill") {
                     toggleRow(
                         title: "Speak Screen button",
@@ -84,6 +91,7 @@ struct AccessibilitySettingsSection: View {
         }
     }
 
+    // Reusable card container with a branded icon + title header and injected content below
     private func accessibilityCard<Content: View>(
         title: String,
         icon: String,
@@ -117,6 +125,7 @@ struct AccessibilitySettingsSection: View {
         .shadow(color: Color.black.opacity(0.04), radius: 10, y: 5)
     }
 
+    // Reusable row with a title, subtitle description, and a toggle on the trailing side
     private func toggleRow(title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
@@ -141,6 +150,8 @@ struct AccessibilitySettingsSection: View {
     }
 }
 
+// Floating circular button overlaid on screen; visible only when in-app voice is enabled
+// Tapping it starts or stops reading the current screen aloud via SpeechManager
 struct FloatingSpeakButton: View {
     @AppStorage("inAppVoiceEnabled") private var inAppVoiceEnabled = false
     @ObservedObject private var speechManager = SpeechManager.shared
