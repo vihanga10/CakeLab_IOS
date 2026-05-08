@@ -173,6 +173,7 @@ final class BakerPortfolioViewModel: ObservableObject {
             batch.setData(["isPublished": publishedIDs.contains(work.id)], forDocument: ref, merge: true)
         }
         try await batch.commit()
+        NotificationCenter.default.post(name: Notification.Name("bakerPortfolioDidChange"), object: nil)
     }
 
     var publishedWorks: [PortfolioWork] {
@@ -211,12 +212,13 @@ struct BakerPortfolioManagerView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 18)
-                    .padding(.bottom, 32)
+                    .padding(.bottom, 104)
                 }
             }
         }
         .navigationBarBackButtonHidden(true)
         .navigationBarHidden(true)
+        .asBakerSubScreen()
         .task {
             await viewModel.loadPortfolio()
         }
@@ -311,13 +313,7 @@ struct BakerPortfolioManagerView: View {
 
             Spacer()
 
-            Button {
-                startCreatingWork()
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.cakeBrown)
-            }
+            Color.clear.frame(width: 24, height: 24)
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
@@ -343,12 +339,12 @@ struct BakerPortfolioManagerView: View {
                 summaryBadge(
                     title: "Saved Works",
                     value: "\(viewModel.works.count)",
-                    tint: Color(red: 0.93, green: 0.84, blue: 0.74)
+                    tint: Color(hex: "AFA499")
                 )
                 summaryBadge(
                     title: "Published",
                     value: "\(viewModel.publishedWorkIDs.count)/6",
-                    tint: Color(red: 0.85, green: 0.93, blue: 0.84)
+                    tint: Color(hex: "B2C9A4")
                 )
             }
 
@@ -365,16 +361,7 @@ struct BakerPortfolioManagerView: View {
             }
         }
         .padding(18)
-        .background(
-            LinearGradient(
-                colors: [
-                    Color(red: 0.99, green: 0.95, blue: 0.92),
-                    Color(red: 0.96, green: 0.92, blue: 0.88)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
+        .background(Color(hex: "F0EDEA"))
         .clipShape(RoundedRectangle(cornerRadius: 22))
     }
 
@@ -415,12 +402,13 @@ struct BakerPortfolioManagerView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
                         ForEach(viewModel.publishedWorks.prefix(6)) { work in
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .center, spacing: 8) {
                                 PortfolioWorkImageView(imageBase64: work.imageBase64, height: 110)
                                 Text(work.title)
                                     .font(.urbanistSemiBold(13))
                                     .foregroundColor(Color(hex: "5D3714"))
                                     .lineLimit(1)
+                                    .multilineTextAlignment(.center)
                             }
                             .frame(width: 132)
                         }
@@ -430,7 +418,7 @@ struct BakerPortfolioManagerView: View {
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(Color(hex: "B2C9A4").opacity(0.55))
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 3)
     }
@@ -509,31 +497,34 @@ struct BakerPortfolioManagerView: View {
     }
 }
 
-private struct PortfolioWorkCard: View {
+struct PortfolioWorkCard: View {
     let work: PortfolioWork
     let isPublished: Bool
+    var showsActions: Bool = true
     let onTogglePublished: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             ZStack(alignment: .topTrailing) {
-                PortfolioWorkImageView(imageBase64: work.imageBase64, height: 220)
+                PortfolioWorkImageView(imageBase64: work.imageBase64, height: 150)
 
-                Text(isPublished ? "Published" : "Draft")
-                    .font(.urbanistBold(11))
-                    .foregroundColor(isPublished ? Color(red: 0.17, green: 0.53, blue: 0.23) : Color.cakeBrown)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(isPublished ? Color(red: 0.86, green: 0.95, blue: 0.86) : Color.white.opacity(0.92))
-                    .clipShape(Capsule())
-                    .padding(12)
+                if showsActions {
+                    Text(isPublished ? "Published" : "Draft")
+                        .font(.urbanistBold(11))
+                        .foregroundColor(isPublished ? Color(red: 0.17, green: 0.53, blue: 0.23) : Color.cakeBrown)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(isPublished ? Color(red: 0.86, green: 0.95, blue: 0.86) : Color.white.opacity(0.92))
+                        .clipShape(Capsule())
+                        .padding(10)
+                }
             }
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 7) {
                 Text(work.title)
-                    .font(.urbanistBold(18))
+                    .font(.urbanistBold(16))
                     .foregroundColor(Color(hex: "5D3714"))
 
                 if !work.description.isEmpty {
@@ -553,39 +544,41 @@ private struct PortfolioWorkCard: View {
                 }
             }
 
-            HStack(spacing: 10) {
-                Button(action: onTogglePublished) {
-                    Text(isPublished ? "Remove From Profile" : "Publish To Profile")
-                        .font(.urbanistBold(13))
-                        .foregroundColor(isPublished ? .white : .cakeBrown)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 42)
-                        .background(isPublished ? Color.cakeBrown : Color.cakeBrown.opacity(0.12))
-                        .clipShape(Capsule())
-                }
+            if showsActions {
+                HStack(spacing: 10) {
+                    Button(action: onTogglePublished) {
+                        Text(isPublished ? "Remove From Profile" : "Publish To Profile")
+                            .font(.urbanistBold(13))
+                            .foregroundColor(isPublished ? .white : .cakeBrown)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 40)
+                            .background(isPublished ? Color.cakeBrown : Color.cakeBrown.opacity(0.12))
+                            .clipShape(Capsule())
+                    }
 
-                Button(action: onEdit) {
-                    Image(systemName: "square.and.pencil")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.cakeBrown)
-                        .frame(width: 42, height: 42)
-                        .background(Color(red: 0.98, green: 0.96, blue: 0.94))
-                        .clipShape(Circle())
-                }
+                    Button(action: onEdit) {
+                        Image(systemName: "square.and.pencil")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.cakeBrown)
+                            .frame(width: 40, height: 40)
+                            .background(Color(red: 0.98, green: 0.96, blue: 0.94))
+                            .clipShape(Circle())
+                    }
 
-                Button(action: onDelete) {
-                    Image(systemName: "trash")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.red.opacity(0.85))
-                        .frame(width: 42, height: 42)
-                        .background(Color.red.opacity(0.08))
-                        .clipShape(Circle())
+                    Button(action: onDelete) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.red.opacity(0.85))
+                            .frame(width: 40, height: 40)
+                            .background(Color.red.opacity(0.08))
+                            .clipShape(Circle())
+                    }
                 }
             }
         }
-        .padding(16)
+        .padding(14)
         .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 22))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
         .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
     }
 }
@@ -599,27 +592,22 @@ private struct PortfolioWorkEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        ZStack {
+            Color.white.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                headerBar
+
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
                     photoSection
                     detailsSection
                     traitsSection
+                    saveButton
                 }
                 .padding(20)
+                .padding(.bottom, 20)
             }
-            .navigationTitle("Portfolio Work")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(isSaving ? "Saving..." : "Save") {
-                        onSave()
-                    }
-                    .disabled(isSaving)
-                }
             }
         }
         .onChange(of: selectedPhotoItem) { _, item in
@@ -629,6 +617,29 @@ private struct PortfolioWorkEditorSheet: View {
                 draft.imageBase64 = encodeImageToBase64(image)
             }
         }
+    }
+
+    private var headerBar: some View {
+        HStack {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.cakeBrown)
+            }
+
+            Spacer()
+
+            Text("Portfolio Work")
+                .font(.urbanistBold(18))
+                .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
+
+            Spacer()
+
+            Color.white.frame(width: 24)
+        }
+        .padding(.horizontal, 20)
+        .frame(height: 56)
+        .background(Color.white)
     }
 
     private var photoSection: some View {
@@ -736,11 +747,27 @@ private struct PortfolioWorkEditorSheet: View {
                         }
                     }
                     .padding(14)
-                    .background(Color(red: 0.98, green: 0.96, blue: 0.94))
+                    .background(Color(hex: "F0EDEA"))
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                 }
             }
         }
+    }
+
+    private var saveButton: some View {
+        Button {
+            onSave()
+        } label: {
+            Text(isSaving ? "Saving..." : "Save Portfolio Work")
+                .font(.urbanistBold(15))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(Color.cakeBrown)
+                .clipShape(Capsule())
+        }
+        .disabled(isSaving)
+        .opacity(isSaving ? 0.6 : 1)
     }
 
     private func editorField(label: String, placeholder: String, text: Binding<String>) -> some View {
@@ -767,7 +794,7 @@ private struct PortfolioWorkEditorSheet: View {
     }
 }
 
-private struct PortfolioWorkImageView: View {
+struct PortfolioWorkImageView: View {
     let imageBase64: String
     let height: CGFloat
 
@@ -814,7 +841,7 @@ private struct PortfolioWorkImageView: View {
     }
 }
 
-private struct PortfolioTraitBar: View {
+struct PortfolioTraitBar: View {
     let trait: PortfolioTrait
 
     var body: some View {
@@ -832,15 +859,9 @@ private struct PortfolioTraitBar: View {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.cakeBrown.opacity(0.12))
+                        .fill(Color(hex: "A59688").opacity(0.20))
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.cakeBrown, Color(red: 0.86, green: 0.55, blue: 0.30)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                        .fill(Color(hex: "A59688"))
                         .frame(width: geo.size.width * CGFloat(trait.score) / 100)
                 }
             }

@@ -820,6 +820,26 @@ struct BidsReceivedView: View {
         let deliveryDateTime = mergeDateAndTime(date: finalDeliveryDate, time: request.expectedTime)
         let serviceFee = 250.0
         let totalPaid = bid.amount + serviceFee
+        let requestSnapshot: [String: Any] = [
+            "id": request.id,
+            "title": request.title,
+            "description": request.description,
+            "customerName": request.customerName,
+            "customerCity": request.location,
+            "category": request.category,
+            "budgetText": "LKR \(Int(request.budgetMin).formatted()) - \(Int(request.budgetMax).formatted())",
+            "expectedDateText": Self.dateFormatter.string(from: request.expectedDate),
+            "expectedTimeText": Self.timeFormatter.string(from: request.expectedTime),
+            "tier": request.tier,
+            "cakeSize": request.cakeSize,
+            "sugarLevel": request.sugarLevel,
+            "flavours": request.flavours,
+            "styles": request.styles,
+            "dietary": request.dietary,
+            "fillingFlavour": request.fillingFlavour,
+            "specialInstructions": request.specialInstructions,
+            "referenceImages": request.referenceImages
+        ]
 
         let orderData: [String: Any] = [
             "customerId": request.customerID,
@@ -829,6 +849,15 @@ struct BidsReceivedView: View {
             "cakeName": request.title,
             "category": request.category,
             "categories": request.category.isEmpty ? [] : [request.category],
+            "description": request.description,
+            "styles": request.styles,
+            "dietary": request.dietary,
+            "tier": request.tier,
+            "cakeSize": request.cakeSize,
+            "sugarLevel": request.sugarLevel,
+            "flavours": request.flavours,
+            "fillingFlavour": request.fillingFlavour,
+            "specialInstructions": request.specialInstructions,
             "budgetMin": request.budgetMin,
             "budgetMax": request.budgetMax,
             "status": "confirmed",
@@ -848,6 +877,7 @@ struct BidsReceivedView: View {
             "createdAt": Timestamp(date: Date()),
             "requestDocumentID": request.id,
             "bidID": bid.id,
+            "requestSnapshot": requestSnapshot,
             "amount": bid.amount,
             "paymentStatus": "paid",
             "selected": true
@@ -857,8 +887,12 @@ struct BidsReceivedView: View {
             "orderID": orderID,
             "requestDocumentID": request.id,
             "bidID": bid.id,
+            "cakeName": request.title,
             "customerId": request.customerID,
+            "customerID": request.customerID,
+            "customerName": request.customerName,
             "bakerId": bid.bakerID,
+            "bakerID": bid.bakerID,
             "bakerName": bid.bakerName,
             "amount": bid.amount,
             "serviceFee": serviceFee,
@@ -886,6 +920,7 @@ struct BidsReceivedView: View {
             batch.updateData([
                 "status": "accepted",
                 "orderID": orderID,
+                "requestSnapshot": requestSnapshot,
                 "updatedAt": Timestamp(date: Date())
             ], forDocument: bidRef)
 

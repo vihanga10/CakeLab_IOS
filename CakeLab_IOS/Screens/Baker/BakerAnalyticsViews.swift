@@ -23,12 +23,13 @@ struct BakerPerformanceAnalyticsView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 18)
-                    .padding(.bottom, 32)
+                    .padding(.bottom, 104)
                 }
             }
         }
         .navigationBarBackButtonHidden(true)
         .navigationBarHidden(true)
+        .asBakerSubScreen()
     }
 
     private var summaryCard: some View {
@@ -208,12 +209,13 @@ struct BakerEarningsAnalyticsView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 18)
-                    .padding(.bottom, 32)
+                    .padding(.bottom, 104)
                 }
             }
         }
         .navigationBarBackButtonHidden(true)
         .navigationBarHidden(true)
+        .asBakerSubScreen()
     }
 
     private var summaryCard: some View {
@@ -531,25 +533,14 @@ struct BakerEarningsSnapshot {
     }
 
     private static func earningsEntries(orders: [CakeOrder], payments: [BakerPaymentRecord]) -> [BakerEarningsEntry] {
-        if !payments.isEmpty {
-            let orderLookup = Dictionary(uniqueKeysWithValues: orders.map { ($0.id, $0) })
-            return payments.compactMap { payment in
-                guard payment.isSuccess else { return nil }
-                let category = orderLookup[payment.orderID]?.category.trimmingCharacters(in: .whitespacesAndNewlines)
-                return BakerEarningsEntry(
-                    amount: payment.amount,
-                    date: payment.createdAt,
-                    category: category?.isEmpty == false ? category! : "Custom"
-                )
-            }
-        }
-
-        return orders.map { order in
-            let category = order.category.trimmingCharacters(in: .whitespacesAndNewlines)
+        let orderLookup = Dictionary(uniqueKeysWithValues: orders.map { ($0.id, $0) })
+        return payments.compactMap { payment in
+            guard payment.isSuccess else { return nil }
+            let category = orderLookup[payment.orderID]?.category.trimmingCharacters(in: .whitespacesAndNewlines)
             return BakerEarningsEntry(
-                amount: order.amount,
-                date: order.deliveryDate,
-                category: category.isEmpty ? "Custom" : category
+                amount: payment.amount,
+                date: payment.createdAt,
+                category: category?.isEmpty == false ? category! : "Custom"
             )
         }
     }

@@ -635,35 +635,32 @@ struct BakerHomeView: View {
 
     private func loadEarningsThisMonth(bakerUID: String) async {
         let db = Firestore.firestore()
-        let statuses = ["completed", "delivered", "done"]
-        var seen = Set<String>()
-        var completed: [CakeOrder] = []
+        let cal = Calendar.current
+        let now = Date()
+        let thisMonthStart = cal.date(from: cal.dateComponents([.year, .month], from: now)) ?? now
+        let nextMonthStart = cal.date(byAdding: .month, value: 1, to: thisMonthStart) ?? now
+        var total: Double = 0
+
         do {
-            for key in ["artisanId", "bakerID", "bakerId"] {
-                let snap = try await db.collection("orders")
-                    .whereField(key, isEqualTo: bakerUID)
-                    .whereField("status", in: statuses)
-                    .getDocuments()
-                for doc in snap.documents {
-                    guard !seen.contains(doc.documentID),
-                          let order = CakeOrder(document: doc) else { continue }
-                    seen.insert(doc.documentID)
-                    completed.append(order)
+            let snap = try await db.collection("payments")
+                .whereField("bakerId", isEqualTo: bakerUID)
+                .getDocuments()
+
+            total = snap.documents.reduce(0) { runningTotal, doc in
+                let data = doc.data()
+                let status = (data["status"] as? String ?? "success").lowercased()
+                let paidAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date.distantPast
+                guard status == "success",
+                      paidAt >= thisMonthStart,
+                      paidAt < nextMonthStart else {
+                    return runningTotal
                 }
+                return runningTotal + parseMoneyValue(data["amount"])
             }
         } catch {
             print("BakerHome: earnings error – \(error.localizedDescription)")
         }
-        let cal = Calendar.current
-        let now = Date()
-        let thisMonth = cal.component(.month, from: now)
-        let thisYear  = cal.component(.year,  from: now)
-        let monthly = completed.filter {
-            cal.component(.month, from: $0.deliveryDate) == thisMonth &&
-            cal.component(.year,  from: $0.deliveryDate) == thisYear
-        }
-        // Consistent with BakerOrdersView: 3,500 LKR per completed order
-        let total = Double(monthly.count) * 3_500
+
         if total >= 1_000_000 {
             earningsThisMonth = String(format: "LKR %.1fM", total / 1_000_000)
         } else if total >= 1_000 {
@@ -671,6 +668,17 @@ struct BakerHomeView: View {
         } else {
             earningsThisMonth = String(format: "LKR %.0f", total)
         }
+    }
+
+    private func parseMoneyValue(_ value: Any?) -> Double {
+        if let value = value as? Double { return value }
+        if let value = value as? Int { return Double(value) }
+        if let value = value as? NSNumber { return value.doubleValue }
+        if let value = value as? String {
+            let cleaned = value.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return Double(cleaned) ?? 0
+        }
+        return 0
     }
 }
 

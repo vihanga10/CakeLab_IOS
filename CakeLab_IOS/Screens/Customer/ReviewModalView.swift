@@ -384,11 +384,33 @@ struct ReviewModalView: View {
             let document = try await db.collection("users").document(customerId).getDocument()
             let data = document.data() ?? [:]
             let name = (data["name"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            let imageBase64 = (data["profileImageBase64"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let remoteImageBase64 = firstString(
+                data["profileImageBase64"],
+                data["avatarBase64"],
+                data["photoBase64"]
+            )
+            let localImageBase64 = UserDefaults.standard.string(forKey: "profileAvatar_\(customerId)") ?? ""
+            let imageBase64 = firstString(remoteImageBase64, localImageBase64)
+
+            if remoteImageBase64.isEmpty && !imageBase64.isEmpty {
+                try? await db.collection("users").document(customerId).setData([
+                    "profileImageBase64": imageBase64,
+                    "avatarBase64": imageBase64,
+                    "updatedAt": FieldValue.serverTimestamp()
+                ], merge: true)
+            }
+
             return (name, imageBase64)
         } catch {
-            return ("", "")
+            let localImageBase64 = UserDefaults.standard.string(forKey: "profileAvatar_\(customerId)") ?? ""
+            return ("", localImageBase64)
         }
+    }
+
+    private func firstString(_ values: Any?...) -> String {
+        values.compactMap { $0 as? String }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first(where: { !$0.isEmpty }) ?? ""
     }
 
     private func updateBakerReviewStats() async {

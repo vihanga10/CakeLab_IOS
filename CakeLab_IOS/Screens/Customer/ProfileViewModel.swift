@@ -65,6 +65,18 @@ final class ProfileViewModel: ObservableObject {
         // Store in UserDefaults (local storage) instead of Firestore
         UserDefaults.standard.set(base64String, forKey: "profileAvatar_\(user.id)")
         user.avatarURL = nil // Don't store in Firestore
+
+        do {
+            try await db.collection("users").document(user.id).setData([
+                "profileImageBase64": base64String,
+                "avatarBase64": base64String,
+                "updatedAt": FieldValue.serverTimestamp()
+            ], merge: true)
+        } catch {
+            errorMessage = "Profile photo saved on this device, but could not sync for other users."
+            print("ERROR syncing profile photo to Firestore: \(error.localizedDescription)")
+        }
+
         uploadProgress = 1.0
         
         print("DEBUG: Profile photo stored locally as Base64 (\(String(format: "%.2f", sizeInMB))MB)")

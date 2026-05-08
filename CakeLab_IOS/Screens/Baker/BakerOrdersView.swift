@@ -175,6 +175,39 @@ struct BakerOrdersView: View {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first(where: { !$0.isEmpty }) ?? ""
     }
+
+    private func parseDouble(_ value: Any?) -> Double {
+        if let value = value as? Double { return value }
+        if let value = value as? Int { return Double(value) }
+        if let value = value as? NSNumber { return value.doubleValue }
+        if let value = value as? String {
+            let cleaned = value.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return Double(cleaned) ?? 0
+        }
+        return 0
+    }
+
+    private func loadPaidAmountsByOrderID(db: Firestore) async -> [String: Double] {
+        do {
+            let snapshot = try await db.collection("payments")
+                .whereField("bakerId", isEqualTo: user.id)
+                .getDocuments()
+
+            return snapshot.documents.reduce(into: [String: Double]()) { totals, document in
+                let data = document.data()
+                let status = firstString(data["status"], "success").lowercased()
+                guard status == "success" else { return }
+
+                let orderID = firstString(data["orderID"])
+                guard !orderID.isEmpty else { return }
+
+                totals[orderID, default: 0] += parseDouble(data["amount"])
+            }
+        } catch {
+            print("Error loading baker payment totals: \(error.localizedDescription)")
+            return [:]
+        }
+    }
     
     private func loadCompletedOrdersData() async {
         isLoading = true
@@ -200,9 +233,12 @@ struct BakerOrdersView: View {
             
             completedOrders = allOrders.sorted { $0.deliveryDate > $1.deliveryDate }
             completedCount = completedOrders.count
-            
-            // Calculate total earnings (estimate: 3500 LKR per order)
-            totalEarnings = Double(completedCount) * 3500
+
+            let paidAmountsByOrderID = await loadPaidAmountsByOrderID(db: db)
+            totalEarnings = completedOrders.reduce(0) { total, order in
+                let paidAmount = paidAmountsByOrderID[order.id] ?? 0
+                return total + (paidAmount > 0 ? paidAmount : order.amount)
+            }
             isLoading = false
         } catch {
             print("Error loading completed orders: \(error.localizedDescription)")

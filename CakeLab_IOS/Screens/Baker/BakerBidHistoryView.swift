@@ -54,7 +54,7 @@ struct BakerBidHistoryView: View {
                                 }
                             }
                             .padding(.top, 16)
-                            .padding(.bottom, 32)
+                            .padding(.bottom, 104)
                         }
                     }
                 }
@@ -70,6 +70,7 @@ struct BakerBidHistoryView: View {
                 await viewModel.loadBidHistory(bakerID: user.id)
             }
         }
+        .asBakerSubScreen()
     }
 
     private var headerBar: some View {
@@ -141,13 +142,35 @@ final class BakerBidHistoryViewModel: ObservableObject {
                     document.data()["requestDocumentID"] as? String
                 }
             )
-            let accessibleRequests = await loadAccessibleOpenRequests(requestIDs: requestIDs)
+            let bidIDs = Set(bidSnapshot.documents.map(\.documentID))
+            let customerIDs = Set(
+                bidSnapshot.documents.compactMap { document in
+                    firstString(document.data()["customerID"], document.data()["customerId"])
+                }.filter { !$0.isEmpty }
+            )
+            let openRequests = await loadAccessibleRequests(requestIDs: requestIDs)
+            let directRequests = await loadDirectRequestDocuments(requestIDs: requestIDs)
+            let accessibleRequests = openRequests.merging(directRequests) { current, direct in
+                current.enriched(with: direct)
+            }
+            let accessibleOrders = await loadAccessibleOrders(
+                bakerID: trimmedBakerID,
+                requestIDs: requestIDs,
+                bidIDs: bidIDs
+            )
+            let customerNames = await loadCustomerNames(customerIDs: customerIDs)
             var loadedItems: [BakerBidHistoryItem] = []
 
             for bidDocument in bidSnapshot.documents {
                 let bidData = bidDocument.data()
                 guard let bid = BakerBidHistoryBid(document: bidDocument) else { continue }
-                let request = accessibleRequests[bid.requestDocumentID] ?? BakerBidHistoryRequest(bidData: bidData, bid: bid)
+                let snapshotRequest = BakerBidHistoryRequest(bidData: bidData, bid: bid)
+                let orderRequest = accessibleOrders[bid.requestDocumentID] ?? accessibleOrders[bid.id]
+                let request = (accessibleRequests[bid.requestDocumentID] ?? snapshotRequest)
+                    .enriched(
+                        with: orderRequest,
+                        customerNameOverride: customerNames[bid.customerID]
+                    )
                 loadedItems.append(BakerBidHistoryItem(bid: bid, request: request))
             }
 
@@ -160,23 +183,116 @@ final class BakerBidHistoryViewModel: ObservableObject {
         isLoading = false
     }
 
-    private func loadAccessibleOpenRequests(requestIDs: Set<String>) async -> [String: BakerBidHistoryRequest] {
+    private func loadAccessibleRequests(requestIDs: Set<String>) async -> [String: BakerBidHistoryRequest] {
         guard !requestIDs.isEmpty else { return [:] }
 
-        do {
-            let snapshot = try await db.collection("cakeRequests")
-                .whereField("status", isEqualTo: "open")
-                .getDocuments()
+        var result: [String: BakerBidHistoryRequest] = [:]
+        let statuses = ["open"]
 
-            return snapshot.documents.reduce(into: [:]) { result, document in
-                guard requestIDs.contains(document.documentID),
-                      let record = CakeRequestRecord(document: document) else { return }
-                result[document.documentID] = BakerBidHistoryRequest(record: record)
+        for status in statuses {
+            do {
+                let snapshot = try await db.collection("cakeRequests")
+                    .whereField("status", isEqualTo: status)
+                    .getDocuments()
+
+                for document in snapshot.documents {
+                    guard requestIDs.contains(document.documentID),
+                          let record = CakeRequestRecord(document: document) else { continue }
+                    result[document.documentID] = BakerBidHistoryRequest(record: record)
+                }
+            } catch {
+                print("Bid history could not load \(status) request records: \(error.localizedDescription)")
             }
-        } catch {
-            print("Bid history could not load open request records: \(error.localizedDescription)")
-            return [:]
         }
+
+        return result
+    }
+
+    private func loadDirectRequestDocuments(requestIDs: Set<String>) async -> [String: BakerBidHistoryRequest] {
+        guard !requestIDs.isEmpty else { return [:] }
+
+        var result: [String: BakerBidHistoryRequest] = [:]
+        for requestID in requestIDs {
+            do {
+                let snapshot = try await db.collection("cakeRequests").document(requestID).getDocument()
+                guard let record = CakeRequestRecord(document: snapshot) else { continue }
+                result[requestID] = BakerBidHistoryRequest(record: record)
+            } catch {
+                print("Bid history could not load request \(requestID): \(error.localizedDescription)")
+            }
+        }
+
+        return result
+    }
+
+    private func loadAccessibleOrders(
+        bakerID: String,
+        requestIDs: Set<String>,
+        bidIDs: Set<String>
+    ) async -> [String: BakerBidHistoryRequest] {
+        guard !requestIDs.isEmpty || !bidIDs.isEmpty else { return [:] }
+
+        var result: [String: BakerBidHistoryRequest] = [:]
+        var seenOrderIDs: Set<String> = []
+
+        for key in ["bakerID", "bakerId", "artisanId"] {
+            do {
+                let snapshot = try await db.collection("orders")
+                    .whereField(key, isEqualTo: bakerID)
+                    .getDocuments()
+
+                for document in snapshot.documents where !seenOrderIDs.contains(document.documentID) {
+                    let data = document.data()
+                    let requestID = firstString(data["requestDocumentID"], data["cakeRequestID"], data["requestID"])
+                    let bidID = firstString(data["bidID"], data["acceptedBidID"])
+                    let matchesRequest = (!requestID.isEmpty && requestIDs.contains(requestID))
+                        || requestIDs.contains { document.documentID.hasPrefix("\($0)_") }
+                    let matchesBid = (!bidID.isEmpty && bidIDs.contains(bidID))
+                        || bidIDs.contains(document.documentID)
+
+                    guard matchesRequest || matchesBid else { continue }
+
+                    let request = BakerBidHistoryRequest(orderID: document.documentID, orderData: data)
+                    if !requestID.isEmpty {
+                        result[requestID] = request
+                    }
+                    if !bidID.isEmpty {
+                        result[bidID] = request
+                    }
+                    result[document.documentID] = request
+                    seenOrderIDs.insert(document.documentID)
+                }
+            } catch {
+                print("Bid history could not load completed orders for \(key): \(error.localizedDescription)")
+            }
+        }
+
+        return result
+    }
+
+    private func loadCustomerNames(customerIDs: Set<String>) async -> [String: String] {
+        guard !customerIDs.isEmpty else { return [:] }
+
+        var result: [String: String] = [:]
+        for customerID in customerIDs {
+            do {
+                let snapshot = try await db.collection("users").document(customerID).getDocument()
+                let data = snapshot.data() ?? [:]
+                let name = firstString(data["name"], data["fullName"], data["email"])
+                if !name.isEmpty {
+                    result[customerID] = name
+                }
+            } catch {
+                print("Bid history could not load customer \(customerID): \(error.localizedDescription)")
+            }
+        }
+        return result
+    }
+
+    private func firstString(_ values: Any?...) -> String {
+        values.compactMap { $0 as? String }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first(where: { !$0.isEmpty }) ?? ""
     }
 }
 
@@ -219,6 +335,46 @@ struct BakerBidHistoryRequest: Hashable {
         title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Cake Request" : title
     }
 
+    init(
+        id: String,
+        title: String,
+        description: String,
+        customerName: String,
+        customerCity: String,
+        displayCategory: String,
+        budgetText: String,
+        expectedDateText: String,
+        expectedTimeText: String,
+        tier: Int,
+        cakeSize: String,
+        sugarLevel: Double,
+        flavours: [String],
+        styles: [String],
+        dietary: [String],
+        fillingFlavour: String,
+        specialInstructions: String,
+        referenceImages: [String]
+    ) {
+        self.id = id
+        self.title = title
+        self.description = description
+        self.customerName = customerName
+        self.customerCity = customerCity
+        self.displayCategory = displayCategory
+        self.budgetText = budgetText
+        self.expectedDateText = expectedDateText
+        self.expectedTimeText = expectedTimeText
+        self.tier = tier
+        self.cakeSize = cakeSize
+        self.sugarLevel = sugarLevel
+        self.flavours = flavours
+        self.styles = styles
+        self.dietary = dietary
+        self.fillingFlavour = fillingFlavour
+        self.specialInstructions = specialInstructions
+        self.referenceImages = referenceImages
+    }
+
     init(record: CakeRequestRecord) {
         self.id = record.id
         self.title = record.displayTitle
@@ -242,24 +398,251 @@ struct BakerBidHistoryRequest: Hashable {
 
     init(bidData: [String: Any], bid: BakerBidHistoryBid) {
         let snapshot = bidData["requestSnapshot"] as? [String: Any] ?? [:]
-        self.id = snapshot["id"] as? String ?? bid.requestDocumentID
-        self.title = snapshot["title"] as? String ?? bidData["requestTitle"] as? String ?? "Cake Request"
-        self.description = snapshot["description"] as? String ?? "Cake request details are not available for this older bid."
-        self.customerName = snapshot["customerName"] as? String ?? "Customer"
-        self.customerCity = snapshot["customerCity"] as? String ?? "Customer Location"
-        self.displayCategory = snapshot["category"] as? String ?? "Custom Cake"
-        self.budgetText = snapshot["budgetText"] as? String ?? "Not specified"
-        self.expectedDateText = snapshot["expectedDateText"] as? String ?? "Not specified"
-        self.expectedTimeText = snapshot["expectedTimeText"] as? String ?? "Not specified"
-        self.tier = Self.intValue(snapshot["tier"])
-        self.cakeSize = snapshot["cakeSize"] as? String ?? ""
-        self.sugarLevel = Self.doubleValue(snapshot["sugarLevel"], defaultValue: 0.5)
-        self.flavours = snapshot["flavours"] as? [String] ?? []
-        self.styles = snapshot["styles"] as? [String] ?? []
-        self.dietary = snapshot["dietary"] as? [String] ?? []
-        self.fillingFlavour = snapshot["fillingFlavour"] as? String ?? ""
-        self.specialInstructions = snapshot["specialInstructions"] as? String ?? ""
-        self.referenceImages = snapshot["referenceImages"] as? [String] ?? []
+        self.id = Self.firstString(snapshot["id"], bid.requestDocumentID)
+        self.title = Self.firstString(snapshot["title"], bidData["requestTitle"], bidData["cakeName"], "Cake Request")
+        self.description = Self.firstString(snapshot["description"], bidData["description"], bidData["specialInstructions"], "Cake request details are not available for this older bid.")
+        self.customerName = Self.firstString(snapshot["customerName"], bidData["customerName"], "Customer")
+        self.customerCity = Self.firstString(snapshot["customerCity"], bidData["customerCity"], bidData["customerAddress"], "Customer Location")
+        self.displayCategory = Self.firstString(snapshot["category"], bidData["category"], "Custom Cake")
+        self.budgetText = Self.firstString(snapshot["budgetText"], bidData["budgetText"], Self.budgetText(budgetMin: bidData["budgetMin"], budgetMax: bidData["budgetMax"], amount: bidData["amount"]), "Not specified")
+        self.expectedDateText = Self.firstString(snapshot["expectedDateText"], bidData["expectedDateText"], Self.formattedDateText(bidData["expectedDate"]), "Not specified")
+        self.expectedTimeText = Self.firstString(snapshot["expectedTimeText"], bidData["expectedTimeText"], Self.formattedTimeText(bidData["expectedTime"]), "Not specified")
+        self.tier = Self.intValue(Self.firstValue(snapshot, bidData, keys: ["tier", "servings", "tiers"]))
+        self.cakeSize = Self.firstString(snapshot["cakeSize"], bidData["cakeSize"])
+        self.sugarLevel = Self.doubleValue(Self.firstValue(snapshot, bidData, keys: ["sugarLevel"]), defaultValue: 0.5)
+        self.flavours = Self.stringArrayValue(Self.firstValue(snapshot, bidData, keys: ["flavours", "flavors"]))
+        self.styles = Self.stringArrayValue(Self.firstValue(snapshot, bidData, keys: ["styles", "cakeStyles"]))
+        self.dietary = Self.stringArrayValue(Self.firstValue(snapshot, bidData, keys: ["dietary", "dietaryRestrictions"]))
+        self.fillingFlavour = Self.firstString(snapshot["fillingFlavour"], snapshot["fillingFlavor"], bidData["fillingFlavour"], bidData["fillingFlavor"])
+        self.specialInstructions = Self.firstString(snapshot["specialInstructions"], bidData["specialInstructions"], bidData["notes"])
+        self.referenceImages = Self.stringArrayValue(Self.firstValue(snapshot, bidData, keys: ["referenceImages", "images"]))
+    }
+
+    init(orderID: String, orderData: [String: Any]) {
+        let snapshot = orderData["requestSnapshot"] as? [String: Any] ?? [:]
+        let requestID = Self.firstString(orderData["requestDocumentID"], orderData["cakeRequestID"], orderData["requestID"], snapshot["id"])
+        let budgetText = Self.budgetText(
+            budgetMin: orderData["budgetMin"],
+            budgetMax: orderData["budgetMax"],
+            amount: orderData["amount"]
+        )
+        let orderReferenceImages = orderData["referenceImages"] as? [String] ?? []
+        let snapshotReferenceImages = snapshot["referenceImages"] as? [String] ?? []
+
+        self.id = requestID.isEmpty ? orderID : requestID
+        self.title = Self.firstString(orderData["cakeName"], snapshot["title"], orderData["title"], "Cake Request")
+        self.description = Self.firstString(
+            snapshot["description"],
+            orderData["description"],
+            orderData["specialInstructions"],
+            "Cake request details are not available for this older bid."
+        )
+        self.customerName = Self.firstString(snapshot["customerName"], orderData["customerName"], orderData["customerFullName"], "Customer")
+        self.customerCity = Self.firstString(
+            orderData["deliveryCity"],
+            orderData["customerCity"],
+            snapshot["customerCity"],
+            orderData["deliveryAddress"],
+            orderData["customerAddress"],
+            "Customer Location"
+        )
+        self.displayCategory = Self.firstString(orderData["category"], snapshot["category"], "Custom Cake")
+        self.budgetText = Self.firstString(snapshot["budgetText"], budgetText, "Not specified")
+        self.expectedDateText = Self.firstString(
+            Self.formattedDateText(orderData["deliveryDate"]),
+            snapshot["expectedDateText"],
+            "Not specified"
+        )
+        self.expectedTimeText = Self.firstString(
+            Self.formattedTimeText(orderData["deliveryTime"]),
+            Self.formattedTimeText(orderData["deliveryDateTime"]),
+            snapshot["expectedTimeText"],
+            "Not specified"
+        )
+        self.tier = Self.intValue(Self.firstValue(snapshot, orderData, keys: ["tier", "servings", "tiers"]))
+        self.cakeSize = Self.firstString(snapshot["cakeSize"], orderData["cakeSize"])
+        self.sugarLevel = Self.doubleValue(Self.firstValue(snapshot, orderData, keys: ["sugarLevel"]), defaultValue: 0.5)
+        self.flavours = Self.stringArrayValue(Self.firstValue(snapshot, orderData, keys: ["flavours", "flavors"]))
+        self.styles = Self.stringArrayValue(Self.firstValue(snapshot, orderData, keys: ["styles", "cakeStyles"]))
+        self.dietary = Self.stringArrayValue(Self.firstValue(snapshot, orderData, keys: ["dietary", "dietaryRestrictions"]))
+        self.fillingFlavour = Self.firstString(snapshot["fillingFlavour"], snapshot["fillingFlavor"], orderData["fillingFlavour"], orderData["fillingFlavor"])
+        self.specialInstructions = Self.firstString(snapshot["specialInstructions"], orderData["specialInstructions"], orderData["notes"])
+        self.referenceImages = orderReferenceImages.isEmpty ? snapshotReferenceImages : orderReferenceImages
+    }
+
+    func enriched(with fallback: BakerBidHistoryRequest?, customerNameOverride: String? = nil) -> BakerBidHistoryRequest {
+        guard let fallback else {
+            return withCustomerNameOverride(customerNameOverride)
+        }
+
+        return BakerBidHistoryRequest(
+            id: Self.bestString(id, fallback.id),
+            title: Self.bestString(title, fallback.title, defaultValue: "Cake Request"),
+            description: Self.bestDescription(description, fallback.description),
+            customerName: Self.bestCustomerName(customerNameOverride, customerName, fallback.customerName),
+            customerCity: Self.bestString(customerCity, fallback.customerCity, defaultValue: "Customer Location"),
+            displayCategory: Self.bestString(displayCategory, fallback.displayCategory, defaultValue: "Custom Cake"),
+            budgetText: Self.bestSpecifiedString(budgetText, fallback.budgetText),
+            expectedDateText: Self.bestSpecifiedString(expectedDateText, fallback.expectedDateText),
+            expectedTimeText: Self.bestSpecifiedString(expectedTimeText, fallback.expectedTimeText),
+            tier: tier > 0 ? tier : fallback.tier,
+            cakeSize: Self.bestSpecifiedString(cakeSize, fallback.cakeSize),
+            sugarLevel: hasCakeCustomizationDetails ? sugarLevel : fallback.sugarLevel,
+            flavours: flavours.isEmpty ? fallback.flavours : flavours,
+            styles: styles.isEmpty ? fallback.styles : styles,
+            dietary: dietary.isEmpty ? fallback.dietary : dietary,
+            fillingFlavour: Self.bestSpecifiedString(fillingFlavour, fallback.fillingFlavour),
+            specialInstructions: Self.bestSpecifiedString(specialInstructions, fallback.specialInstructions),
+            referenceImages: referenceImages.isEmpty ? fallback.referenceImages : referenceImages
+        )
+    }
+
+    private var hasCakeCustomizationDetails: Bool {
+        tier > 0 ||
+            !cakeSize.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            !flavours.isEmpty ||
+            !styles.isEmpty ||
+            !dietary.isEmpty ||
+            !fillingFlavour.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            !specialInstructions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func withCustomerNameOverride(_ override: String?) -> BakerBidHistoryRequest {
+        BakerBidHistoryRequest(
+            id: id,
+            title: title,
+            description: description,
+            customerName: Self.bestCustomerName(override, customerName),
+            customerCity: customerCity,
+            displayCategory: displayCategory,
+            budgetText: budgetText,
+            expectedDateText: expectedDateText,
+            expectedTimeText: expectedTimeText,
+            tier: tier,
+            cakeSize: cakeSize,
+            sugarLevel: sugarLevel,
+            flavours: flavours,
+            styles: styles,
+            dietary: dietary,
+            fillingFlavour: fillingFlavour,
+            specialInstructions: specialInstructions,
+            referenceImages: referenceImages
+        )
+    }
+
+    private static func firstString(_ values: Any?...) -> String {
+        values.compactMap { $0 as? String }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first(where: { !$0.isEmpty }) ?? ""
+    }
+
+    private static func firstValue(_ primary: [String: Any], _ fallback: [String: Any], keys: [String]) -> Any? {
+        for key in keys {
+            if let value = primary[key] { return value }
+        }
+        for key in keys {
+            if let value = fallback[key] { return value }
+        }
+        return nil
+    }
+
+    private static func stringArrayValue(_ value: Any?) -> [String] {
+        if let values = value as? [String] {
+            return values
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        }
+
+        if let values = value as? [Any] {
+            return values.compactMap { $0 as? String }
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        }
+
+        if let value = value as? String {
+            return value
+                .split(separator: ",")
+                .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        }
+
+        return []
+    }
+
+    private static func bestString(_ primary: String, _ fallback: String, defaultValue: String = "") -> String {
+        let primary = primary.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !primary.isEmpty { return primary }
+        let fallback = fallback.trimmingCharacters(in: .whitespacesAndNewlines)
+        return fallback.isEmpty ? defaultValue : fallback
+    }
+
+    private static func bestSpecifiedString(_ primary: String, _ fallback: String) -> String {
+        let primary = primary.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !primary.isEmpty && primary != "Not specified" { return primary }
+        let fallback = fallback.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !fallback.isEmpty && fallback != "Not specified" { return fallback }
+        return "Not specified"
+    }
+
+    private static func bestCustomerName(_ values: String?...) -> String {
+        for value in values {
+            let candidate = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !candidate.isEmpty && candidate != "Customer" {
+                return candidate
+            }
+        }
+        return "Customer"
+    }
+
+    private static func bestDescription(_ primary: String, _ fallback: String) -> String {
+        let unavailable = "Cake request details are not available for this older bid."
+        let primary = primary.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !primary.isEmpty && primary != unavailable && primary != "No description provided." {
+            return primary
+        }
+
+        let fallback = fallback.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !fallback.isEmpty && fallback != unavailable && fallback != "No description provided." {
+            return fallback
+        }
+
+        return unavailable
+    }
+
+    private static func budgetText(budgetMin: Any?, budgetMax: Any?, amount: Any?) -> String {
+        let min = doubleValue(budgetMin)
+        let max = doubleValue(budgetMax)
+        if min > 0 && max > 0 {
+            return "LKR \(Int(min).formatted()) - \(Int(max).formatted())"
+        }
+
+        let amount = doubleValue(amount)
+        if amount > 0 {
+            return "LKR \(Int(amount).formatted())"
+        }
+
+        return ""
+    }
+
+    private static func formattedDateText(_ value: Any?) -> String {
+        guard let date = dateValue(value) else { return "" }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd/MM/yyyy"
+        return formatter.string(from: date)
+    }
+
+    private static func formattedTimeText(_ value: Any?) -> String {
+        guard let date = dateValue(value) else { return "" }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "hh:mm a"
+        return formatter.string(from: date)
+    }
+
+    private static func dateValue(_ value: Any?) -> Date? {
+        if let value = value as? Timestamp { return value.dateValue() }
+        if let value = value as? Date { return value }
+        if let value = value as? NSNumber { return Date(timeIntervalSince1970: value.doubleValue) }
+        return nil
     }
 
     private static func intValue(_ value: Any?) -> Int {

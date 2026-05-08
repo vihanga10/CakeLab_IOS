@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import Combine
 import FirebaseFirestore
 import FirebaseAuth
 import UIKit
@@ -16,10 +17,20 @@ struct BakerProfileView: View {
     @State private var earningsData: EarningsData = .empty
     @State private var reviews: [Review] = []
     @State private var paymentRecords: [BakerPaymentRecord] = []
+    @State private var selectedPortfolioWork: PortfolioPreviewWork?
 
     private var completedOrdersText: String { "\(profileData.completedOrders)" }
-    private var reviewsText: String { "\(profileData.reviewCount)" }
-    private var avgRatingText: String { String(format: "%.1f", profileData.rating) }
+    private var reviewsText: String {
+        let liveReviewCount = reviews.count
+        return "\(liveReviewCount > 0 ? liveReviewCount : profileData.reviewCount)"
+    }
+    private var avgRatingText: String {
+        if !reviews.isEmpty {
+            let average = reviews.reduce(0.0) { $0 + Double($1.rating) } / Double(reviews.count)
+            return String(format: "%.1f", average)
+        }
+        return String(format: "%.1f", profileData.rating)
+    }
     private var locationText: String {
         let address = profileData.address.trimmingCharacters(in: .whitespacesAndNewlines)
         let city = profileData.city.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -111,6 +122,14 @@ struct BakerProfileView: View {
                 await loadProfileData()
                 await loadAnalyticsData()
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("bakerPortfolioDidChange"))) { _ in
+            Task { await loadProfileData() }
+        }
+        .sheet(item: $selectedPortfolioWork) { work in
+            PortfolioPreviewDetailSheet(work: work)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
 
@@ -349,7 +368,12 @@ struct BakerProfileView: View {
             } else {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                     ForEach(profileData.portfolioWorks.prefix(6)) { work in
-                        PortfolioThumbnail(work: work)
+                        Button {
+                            selectedPortfolioWork = work
+                        } label: {
+                            PortfolioThumbnail(work: work)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -471,7 +495,9 @@ struct BakerProfileView: View {
             PortfolioPreviewWork(
                 id: "legacy-\(index)",
                 title: "Portfolio Work",
-                imageReference: imageRef
+                description: "",
+                imageReference: imageRef,
+                traits: []
             )
         }
     }
@@ -495,34 +521,40 @@ struct BakerProfileView: View {
     private func loadAnalyticsData() async {
         let db = Firestore.firestore()
 
+        async let ordersTask = fetchCompletedOrders(db: db)
+        async let paymentsTask = fetchPayments(db: db)
+        async let reviewsTask = fetchReviews(db: db)
+
         do {
-            async let ordersTask = fetchCompletedOrders(db: db)
-            async let paymentsTask = fetchPayments(db: db)
-            async let reviewsTask = db.collection("reviews")
-                .whereField("bakerID", isEqualTo: user.id)
-                .order(by: "createdAt", descending: true)
-
-            let (orders, payments, reviewSnapshot) = try await (ordersTask, paymentsTask, reviewsTask.getDocuments())
-            completedOrders = orders
-            paymentRecords = payments
-            reviews = reviewSnapshot.documents.compactMap { Review(document: $0) }
-            monthlyOrders = performanceSnapshot.monthlyOrders.map { MonthlyOrderData(month: $0.label, count: Int($0.value)) }
-
-            let summary = earningsSnapshot
-            earningsData = EarningsData(
-                totalEarningsThisMonth: summary.totalEarningsThisMonth,
-                totalEarningsLastMonth: summary.totalEarningsLastMonth,
-                totalEarningsThisYear: summary.totalEarningsThisYear,
-                avgPerOrder: summary.avgPerOrder
-            )
+            completedOrders = try await ordersTask
         } catch {
-            print("Error loading analytics data: \(error.localizedDescription)")
+            print("Error loading completed order analytics: \(error.localizedDescription)")
             completedOrders = []
-            paymentRecords = []
-            reviews = []
-            monthlyOrders = []
-            earningsData = .empty
         }
+
+        do {
+            paymentRecords = try await paymentsTask
+        } catch {
+            print("Error loading baker payment analytics: \(error.localizedDescription)")
+            paymentRecords = []
+        }
+
+        do {
+            reviews = try await reviewsTask
+        } catch {
+            print("Error loading review analytics: \(error.localizedDescription)")
+            reviews = []
+        }
+
+        monthlyOrders = performanceSnapshot.monthlyOrders.map { MonthlyOrderData(month: $0.label, count: Int($0.value)) }
+
+        let summary = earningsSnapshot
+        earningsData = EarningsData(
+            totalEarningsThisMonth: summary.totalEarningsThisMonth,
+            totalEarningsLastMonth: summary.totalEarningsLastMonth,
+            totalEarningsThisYear: summary.totalEarningsThisYear,
+            avgPerOrder: summary.avgPerOrder
+        )
     }
 
     private func fetchCompletedOrders(db: Firestore) async throws -> [CakeOrder] {
@@ -530,19 +562,45 @@ struct BakerProfileView: View {
         var orders: [CakeOrder] = []
 
         for key in ["bakerID", "bakerId", "artisanId"] {
-            let snapshot = try await db.collection("orders")
-                .whereField(key, isEqualTo: user.id)
-                .whereField("status", in: statuses)
-                .getDocuments()
+            do {
+                let snapshot = try await db.collection("orders")
+                    .whereField(key, isEqualTo: user.id)
+                    .whereField("status", in: statuses)
+                    .getDocuments()
 
-            for doc in snapshot.documents {
-                if let order = CakeOrder(document: doc), !orders.contains(where: { $0.id == order.id }) {
-                    orders.append(order)
+                for doc in snapshot.documents {
+                    if let order = CakeOrder(document: doc), !orders.contains(where: { $0.id == order.id }) {
+                        orders.append(order)
+                    }
                 }
+            } catch {
+                print("Unable to load completed orders by \(key): \(error.localizedDescription)")
             }
         }
 
         return orders.sorted { $0.deliveryDate < $1.deliveryDate }
+    }
+
+    private func fetchReviews(db: Firestore) async throws -> [Review] {
+        var reviewsByID: [String: Review] = [:]
+
+        for key in ["bakerID", "bakerId", "artisanId"] {
+            do {
+                let snapshot = try await db.collection("reviews")
+                    .whereField(key, isEqualTo: user.id)
+                    .getDocuments()
+
+                for document in snapshot.documents {
+                    if let review = Review(document: document) {
+                        reviewsByID[review.id] = review
+                    }
+                }
+            } catch {
+                print("Unable to load reviews by \(key): \(error.localizedDescription)")
+            }
+        }
+
+        return reviewsByID.values.sorted { $0.createdAt > $1.createdAt }
     }
 
     private func fetchPayments(db: Firestore) async throws -> [BakerPaymentRecord] {
@@ -741,7 +799,10 @@ struct BakerProfileView: View {
             Divider().padding(.leading, 52)
             menuRow(icon: "lock.fill", label: "Change Password", color: Color(red: 0.7, green: 0.45, blue: 0.1))
             Divider().padding(.leading, 52)
-            menuRow(icon: "globe", label: "Language", color: Color(red: 0.2, green: 0.5, blue: 0.8))
+            NavigationLink(destination: BakerProfileDetailView(kind: .language)) {
+                menuRow(icon: "globe", label: "Language", color: Color(red: 0.2, green: 0.5, blue: 0.8))
+            }
+            .buttonStyle(.plain)
             Divider().padding(.leading, 52)
             NavigationLink(destination: BakerPortfolioManagerView(user: user)) {
                 menuRow(icon: "photo.stack.fill", label: "Edit Portfolio", color: Color.cakeBrown)
@@ -815,11 +876,20 @@ struct BakerProfileView: View {
             }
             .buttonStyle(.plain)
             Divider().padding(.leading, 52)
-            settingsRow(icon: "lock.fill", label: "Privacy & Security", color: Color.cakeBrown)
+            NavigationLink(destination: BakerProfileDetailView(kind: .privacySecurity)) {
+                settingsRow(icon: "lock.fill", label: "Privacy & Security", color: Color.cakeBrown)
+            }
+            .buttonStyle(.plain)
             Divider().padding(.leading, 52)
-            settingsRow(icon: "creditcard.fill", label: "Payment Details", color: Color(red: 0.2, green: 0.6, blue: 0.4))
+            NavigationLink(destination: BakerPaymentDetailsView(user: user)) {
+                settingsRow(icon: "creditcard.fill", label: "Payment Details", color: Color(red: 0.2, green: 0.6, blue: 0.4))
+            }
+            .buttonStyle(.plain)
             Divider().padding(.leading, 52)
-            settingsRow(icon: "questionmark.circle.fill", label: "Help & Support", color: Color(red: 0.7, green: 0.45, blue: 0.1))
+            NavigationLink(destination: BakerProfileDetailView(kind: .helpSupport)) {
+                settingsRow(icon: "questionmark.circle.fill", label: "Help & Support", color: Color(red: 0.7, green: 0.45, blue: 0.1))
+            }
+            .buttonStyle(.plain)
             Divider().padding(.leading, 52)
             Button {
                 do {
@@ -869,6 +939,478 @@ struct BakerProfileView: View {
                 .foregroundColor(.cakeGrey)
         }
         .padding(14)
+    }
+}
+
+// MARK: - Baker Profile Detail Pages
+enum BakerProfileDetailKind {
+    case language
+    case privacySecurity
+    case helpSupport
+
+    var title: String {
+        switch self {
+        case .language: return "Language"
+        case .privacySecurity: return "Privacy & Security"
+        case .helpSupport: return "Help & Support"
+        }
+    }
+}
+
+struct BakerProfileDetailView: View {
+    let kind: BakerProfileDetailKind
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedLanguage = UserDefaults.standard.string(forKey: "bakerAppLanguage") ?? "English"
+    @State private var profileVisibility = UserDefaults.standard.string(forKey: "bakerProfileVisibility") ?? "Public"
+    @State private var showPortfolio = UserDefaults.standard.object(forKey: "bakerShowPortfolio") as? Bool ?? true
+    @State private var newOrderAlerts = UserDefaults.standard.object(forKey: "bakerNewOrderAlerts") as? Bool ?? true
+    @State private var bidUpdateAlerts = UserDefaults.standard.object(forKey: "bakerBidUpdateAlerts") as? Bool ?? true
+    @State private var dataSharing = UserDefaults.standard.object(forKey: "bakerDataSharing") as? Bool ?? false
+    @State private var biometricAuth = UserDefaults.standard.object(forKey: "bakerBiometricAuth") as? Bool ?? false
+    @State private var expandedFAQs: Set<Int> = []
+    @State private var searchText = ""
+
+    var body: some View {
+        ZStack {
+            Color.white.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                headerBar
+
+                ScrollView(showsIndicators: false) {
+                    Group {
+                        switch kind {
+                        case .language:
+                            BakerLanguageDetailContent(selectedLanguage: $selectedLanguage)
+                        case .privacySecurity:
+                            BakerPrivacySecurityDetailContent(
+                                profileVisibility: $profileVisibility,
+                                showPortfolio: $showPortfolio,
+                                newOrderAlerts: $newOrderAlerts,
+                                bidUpdateAlerts: $bidUpdateAlerts,
+                                dataSharing: $dataSharing,
+                                biometricAuth: $biometricAuth
+                            )
+                        case .helpSupport:
+                            BakerHelpSupportDetailContent(searchText: $searchText, expandedFAQs: $expandedFAQs)
+                        }
+                    }
+                    .padding(.bottom, 24)
+                }
+
+                Button {
+                    saveSettings()
+                    dismiss()
+                } label: {
+                    Text("Save & Done")
+                        .font(.urbanistSemiBold(16))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 54)
+                        .background(Color(hex: "5D3714"))
+                        .clipShape(Capsule())
+                        .shadow(color: Color.black.opacity(0.08), radius: 10, y: 5)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+                .padding(.bottom, 88)
+            }
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+        .asBakerSubScreen()
+    }
+
+    private var headerBar: some View {
+        HStack {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.cakeBrown)
+            }
+
+            Spacer()
+
+            Text(kind.title)
+                .font(.urbanistBold(18))
+                .foregroundColor(Color(hex: "5D3714"))
+
+            Spacer()
+
+            Color.clear.frame(width: 24, height: 24)
+        }
+        .padding(.horizontal, 20)
+        .frame(height: 56)
+        .background(Color.white)
+    }
+
+    private func saveSettings() {
+        UserDefaults.standard.set(selectedLanguage, forKey: "bakerAppLanguage")
+        UserDefaults.standard.set(profileVisibility, forKey: "bakerProfileVisibility")
+        UserDefaults.standard.set(showPortfolio, forKey: "bakerShowPortfolio")
+        UserDefaults.standard.set(newOrderAlerts, forKey: "bakerNewOrderAlerts")
+        UserDefaults.standard.set(bidUpdateAlerts, forKey: "bakerBidUpdateAlerts")
+        UserDefaults.standard.set(dataSharing, forKey: "bakerDataSharing")
+        UserDefaults.standard.set(biometricAuth, forKey: "bakerBiometricAuth")
+    }
+}
+
+struct BakerLanguageDetailContent: View {
+    @Binding var selectedLanguage: String
+    private let languages = [("English", "GB"), ("Sinhala", "LK"), ("Tamil", "IN")]
+
+    var body: some View {
+        VStack(spacing: 12) {
+            VStack(spacing: 0) {
+                ForEach(Array(languages.enumerated()), id: \.offset) { index, language in
+                    Button { selectedLanguage = language.0 } label: {
+                        HStack(spacing: 16) {
+                            Text(language.1)
+                                .font(.urbanistBold(13))
+                                .foregroundColor(.cakeBrown)
+                                .frame(width: 42, height: 30)
+                                .background(Color.cakeBrown.opacity(0.08))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                            Text(language.0)
+                                .font(.urbanistMedium(16))
+                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+
+                            Spacer()
+
+                            if selectedLanguage == language.0 {
+                                Circle()
+                                    .fill(Color(hex: "C17C3D"))
+                                    .frame(width: 24, height: 24)
+                                    .overlay(
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 12, weight: .bold))
+                                            .foregroundColor(.white)
+                                    )
+                            } else {
+                                Circle()
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 2)
+                                    .frame(width: 24, height: 24)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 16)
+                    }
+                    .buttonStyle(.plain)
+
+                    if index < languages.count - 1 {
+                        Divider().padding(.leading, 74)
+                    }
+                }
+            }
+            .background(Color.white.opacity(0.95))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.black.opacity(0.03), lineWidth: 1))
+            .shadow(color: Color.black.opacity(0.03), radius: 8, y: 4)
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    Image(systemName: "info.circle.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(Color(hex: "4C8B35"))
+                    Text("Language Preference")
+                        .font(.urbanistSemiBold(14))
+                        .foregroundColor(Color(hex: "4C8B35"))
+                }
+
+                Text("Your selected language will be used for baker profile, orders, bids, and support screens.")
+                    .font(.urbanistRegular(13))
+                    .foregroundColor(Color(hex: "676767"))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(Color(hex: "E9F9E1").opacity(0.5))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+        }
+    }
+}
+
+struct BakerPrivacySecurityDetailContent: View {
+    @Binding var profileVisibility: String
+    @Binding var showPortfolio: Bool
+    @Binding var newOrderAlerts: Bool
+    @Binding var bidUpdateAlerts: Bool
+    @Binding var dataSharing: Bool
+    @Binding var biometricAuth: Bool
+
+    var body: some View {
+        VStack(spacing: 20) {
+            detailSection(title: "Profile & Visibility") {
+                profileVisibilityRow
+                Divider().padding(.leading, 16)
+                toggleRow(title: "Portfolio Visibility", subtitle: "Show your cake gallery to customers", isOn: $showPortfolio)
+            }
+
+            detailSection(title: "Communication") {
+                toggleRow(title: "New Request Alerts", subtitle: "Get notified when matching requests arrive", isOn: $newOrderAlerts)
+                Divider().padding(.leading, 16)
+                toggleRow(title: "Bid Update Alerts", subtitle: "Receive accepted bid and payment updates", isOn: $bidUpdateAlerts)
+                Divider().padding(.leading, 16)
+                toggleRow(title: "Data Sharing", subtitle: "Help improve CakeLab baker analytics", isOn: $dataSharing)
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Security")
+                    .font(.urbanistMedium(14))
+                    .foregroundColor(Color(hex: "676767"))
+                    .padding(.horizontal, 20)
+
+                toggleRow(title: "Biometric Authentication", subtitle: "Use Face ID or Touch ID to login", isOn: $biometricAuth)
+                    .background(Color.white.opacity(0.95))
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.black.opacity(0.03), lineWidth: 1))
+                    .shadow(color: Color.black.opacity(0.03), radius: 8, y: 4)
+                    .padding(.horizontal, 20)
+            }
+
+            detailSection(title: "Data Management") {
+                Button {} label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "trash.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.red)
+                            .frame(width: 34, height: 34)
+                            .background(Color.red.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                        Text("Delete Baker Account")
+                            .font(.urbanistRegular(15))
+                            .foregroundColor(.red)
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.red)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.top, 20)
+    }
+
+    private var profileVisibilityRow: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Profile Visibility")
+                    .font(.urbanistMedium(14))
+                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                Text("Control who can see your baker profile")
+                    .font(.urbanistRegular(12))
+                    .foregroundColor(Color(hex: "7B7B7B"))
+            }
+
+            Spacer()
+
+            Picker("", selection: $profileVisibility) {
+                Text("Public").tag("Public")
+                Text("Private").tag("Private")
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 118)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+
+    private func toggleRow(title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.urbanistMedium(14))
+                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                Text(subtitle)
+                    .font(.urbanistRegular(12))
+                    .foregroundColor(Color(hex: "7B7B7B"))
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: isOn)
+                .tint(Color(hex: "C17C3D"))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+
+    private func detailSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.urbanistMedium(14))
+                .foregroundColor(Color(hex: "676767"))
+                .padding(.horizontal, 20)
+
+            VStack(spacing: 0) {
+                content()
+            }
+            .background(Color.white.opacity(0.95))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.black.opacity(0.03), lineWidth: 1))
+            .shadow(color: Color.black.opacity(0.03), radius: 8, y: 4)
+            .padding(.horizontal, 20)
+        }
+    }
+}
+
+struct BakerHelpSupportDetailContent: View {
+    @Binding var searchText: String
+    @Binding var expandedFAQs: Set<Int>
+
+    private let faqs = [
+        ("How do I place a bid?", "Open the Bids tab, review a matching request, enter your price and delivery details, then submit the bid."),
+        ("Where can I see accepted bids?", "Accepted bids move into Orders after the customer confirms the bid and completes payment."),
+        ("How do I update an order status?", "Open an active order, choose the current progress stage, and save the status update."),
+        ("How do customers find my bakery?", "Customers see your profile, portfolio, rating, address, city, and accepted bid details."),
+        ("How do I edit my portfolio?", "Go to My Profile, open Edit Portfolio, and update your cake photos and descriptions."),
+        ("When do I receive payment notifications?", "You receive a notification when a customer completes payment for your accepted bid.")
+    ]
+
+    private var filteredFAQs: [(Int, (String, String))] {
+        if searchText.isEmpty {
+            return faqs.enumerated().map { ($0.offset, $0.element) }
+        }
+
+        return faqs.enumerated()
+            .filter { item in
+                item.element.0.localizedCaseInsensitiveContains(searchText) ||
+                item.element.1.localizedCaseInsensitiveContains(searchText)
+            }
+            .map { ($0.offset, $0.element) }
+    }
+
+    var body: some View {
+        VStack(spacing: 20) {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(Color(hex: "7B7B7B"))
+
+                TextField("Search FAQs...", text: $searchText)
+                    .font(.urbanistRegular(14))
+                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+
+                if !searchText.isEmpty {
+                    Button { searchText = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(Color(hex: "7B7B7B"))
+                    }
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color(hex: "F5F5F5"))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Frequently Asked Questions")
+                    .font(.urbanistMedium(14))
+                    .foregroundColor(Color(hex: "676767"))
+                    .padding(.horizontal, 20)
+
+                if filteredFAQs.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 32, weight: .semibold))
+                            .foregroundColor(Color(hex: "C17C3D").opacity(0.5))
+                        Text("No FAQs found")
+                            .font(.urbanistMedium(16))
+                            .foregroundColor(Color(hex: "676767"))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 32)
+                    .padding(.horizontal, 20)
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(Array(filteredFAQs.enumerated()), id: \.element.0) { index, faq in
+                            BakerFAQItemView(
+                                question: faq.1.0,
+                                answer: faq.1.1,
+                                isExpanded: expandedFAQs.contains(faq.0),
+                                onToggle: {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        if expandedFAQs.contains(faq.0) {
+                                            expandedFAQs.remove(faq.0)
+                                        } else {
+                                            expandedFAQs.insert(faq.0)
+                                        }
+                                    }
+                                }
+                            )
+
+                            if index < filteredFAQs.count - 1 {
+                                Divider().padding(.horizontal, 16)
+                            }
+                        }
+                    }
+                    .background(Color.white.opacity(0.95))
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.black.opacity(0.03), lineWidth: 1))
+                    .shadow(color: Color.black.opacity(0.03), radius: 8, y: 4)
+                    .padding(.horizontal, 20)
+                }
+            }
+        }
+    }
+}
+
+struct BakerFAQItemView: View {
+    let question: String
+    let answer: String
+    let isExpanded: Bool
+    let onToggle: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Button(action: onToggle) {
+                HStack(spacing: 12) {
+                    Text(question)
+                        .font(.urbanistSemiBold(14))
+                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .lineLimit(2)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color(hex: "7B7B7B"))
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 0) {
+                    Divider().padding(.horizontal, 16)
+
+                    Text(answer)
+                        .font(.urbanistRegular(13))
+                        .foregroundColor(Color(hex: "676767"))
+                        .lineLimit(nil)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
     }
 }
 
@@ -960,23 +1502,100 @@ private struct PortfolioThumbnail: View {
 private struct PortfolioPreviewWork: Identifiable {
     let id: String
     let title: String
+    let description: String
     let imageReference: String
+    let traits: [PortfolioTrait]
 
-    init(id: String, title: String, imageReference: String) {
+    init(id: String, title: String, description: String, imageReference: String, traits: [PortfolioTrait]) {
         self.id = id
         self.title = title
+        self.description = description
         self.imageReference = imageReference
+        self.traits = traits
     }
 
     init?(dictionary: [String: Any]) {
         let id = (dictionary["workID"] as? String ?? UUID().uuidString).trimmingCharacters(in: .whitespacesAndNewlines)
         let title = (dictionary["title"] as? String ?? "Portfolio Work").trimmingCharacters(in: .whitespacesAndNewlines)
+        let description = (dictionary["description"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let imageReference = (dictionary["imageBase64"] as? String ?? dictionary["imageURL"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let traitsData = dictionary["traits"] as? [[String: Any]] ?? []
         guard !imageReference.isEmpty else { return nil }
 
         self.id = id
         self.title = title.isEmpty ? "Portfolio Work" : title
+        self.description = description
         self.imageReference = imageReference
+        self.traits = traitsData.compactMap(PortfolioTrait.init(dictionary:))
+    }
+}
+
+private struct PortfolioPreviewDetailSheet: View {
+    let work: PortfolioPreviewWork
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            Color.white.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                headerBar
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        PortfolioWorkImageView(imageBase64: work.imageReference, height: 170)
+
+                        Text(work.title)
+                            .font(.urbanistBold(17))
+                            .foregroundColor(Color(hex: "5D3714"))
+
+                        if !work.description.isEmpty {
+                            Text(work.description)
+                                .font(.urbanistRegular(13))
+                                .foregroundColor(.cakeGrey)
+                                .lineSpacing(3)
+                        }
+
+                        if !work.traits.isEmpty {
+                            VStack(spacing: 10) {
+                                ForEach(work.traits) { trait in
+                                    PortfolioTraitBar(trait: trait)
+                                }
+                            }
+                            .padding(.top, 4)
+                        }
+                    }
+                    .padding(18)
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                    .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
+                    .padding(20)
+                }
+            }
+        }
+    }
+
+    private var headerBar: some View {
+        HStack {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.cakeBrown)
+            }
+
+            Spacer()
+
+            Text("Portfolio Work")
+                .font(.urbanistBold(18))
+                .foregroundColor(Color(hex: "5D3714"))
+
+            Spacer()
+
+            Color.clear.frame(width: 24, height: 24)
+        }
+        .padding(.horizontal, 20)
+        .frame(height: 56)
+        .background(Color.white)
     }
 }
 
@@ -1222,6 +1841,512 @@ struct BakerEditProfileSheet: View {
                 .background(Color(red: 0.97, green: 0.96, blue: 0.94))
                 .cornerRadius(12)
         }
+    }
+}
+
+// MARK: - Baker Payment Details
+struct BakerPaymentDetailsRecord: Identifiable {
+    let id: String
+    let orderID: String
+    let customerID: String
+    let cakeName: String
+    let customerName: String
+    let amount: Double
+    let serviceFee: Double
+    let total: Double
+    let method: String
+    let cardLast4: String
+    let status: String
+    let paidAt: Date
+
+    var isSuccess: Bool { status.lowercased() == "success" }
+    var isApplePay: Bool { method.lowercased().contains("apple") }
+    var isGooglePay: Bool { method.lowercased().contains("google") }
+    var isCash: Bool { method.lowercased().contains("cash") }
+    var isCard: Bool { method.lowercased().contains("card") && !isApplePay && !isGooglePay }
+}
+
+@MainActor
+final class BakerPaymentDetailsViewModel: ObservableObject {
+    @Published var payments: [BakerPaymentDetailsRecord] = []
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+
+    private let db = Firestore.firestore()
+
+    var totalReceived: Double {
+        payments.filter(\.isSuccess).reduce(0) { $0 + $1.amount }
+    }
+
+    var groupedByMonth: [(month: String, records: [BakerPaymentDetailsRecord])] {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        var grouped: [String: [BakerPaymentDetailsRecord]] = [:]
+
+        for payment in payments {
+            grouped[formatter.string(from: payment.paidAt), default: []].append(payment)
+        }
+
+        return grouped.keys
+            .sorted { lhs, rhs in
+                guard let lhsDate = grouped[lhs]?.first?.paidAt,
+                      let rhsDate = grouped[rhs]?.first?.paidAt else { return lhs > rhs }
+                return lhsDate > rhsDate
+            }
+            .map { month in (month: month, records: grouped[month] ?? []) }
+    }
+
+    func load(bakerID: String) async {
+        let trimmedBakerID = bakerID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedBakerID.isEmpty else {
+            payments = []
+            return
+        }
+
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            let paymentSnapshot = try await db.collection("payments")
+                .whereField("bakerId", isEqualTo: trimmedBakerID)
+                .getDocuments()
+            let paymentDocuments = paymentSnapshot.documents
+
+            var orderNames: [String: String] = [:]
+            var orderCustomerNames: [String: String] = [:]
+            var customerNames: [String: String] = [:]
+
+            let orderIDs = Set(paymentDocuments.compactMap { firstString($0.data()["orderID"]) }.filter { !$0.isEmpty })
+            for orderID in orderIDs {
+                if let orderSnapshot = try? await db.collection("orders").document(orderID).getDocument(),
+                   let orderData = orderSnapshot.data() {
+                    orderNames[orderID] = firstString(orderData["cakeName"], orderData["title"], "Cake Order")
+                    orderCustomerNames[orderID] = firstString(orderData["customerName"], orderData["customerFullName"])
+                }
+            }
+
+            let customerIDs = Set(paymentDocuments.compactMap { firstString($0.data()["customerId"], $0.data()["customerID"]) }.filter { !$0.isEmpty })
+            for customerID in customerIDs {
+                if let userSnapshot = try? await db.collection("users").document(customerID).getDocument(),
+                   let userData = userSnapshot.data() {
+                    customerNames[customerID] = firstString(userData["name"], userData["fullName"], userData["email"])
+                }
+            }
+
+            payments = paymentDocuments.map { document in
+                let data = document.data()
+                let orderID = firstString(data["orderID"])
+                let customerID = firstString(data["customerId"], data["customerID"])
+
+                return BakerPaymentDetailsRecord(
+                    id: document.documentID,
+                    orderID: orderID,
+                    customerID: customerID,
+                    cakeName: firstString(data["cakeName"], orderNames[orderID], "Cake Order"),
+                    customerName: firstString(data["customerName"], customerNames[customerID], orderCustomerNames[orderID], "Customer"),
+                    amount: parseDouble(data["amount"]),
+                    serviceFee: parseDouble(data["serviceFee"]),
+                    total: parseDouble(data["total"]),
+                    method: firstString(data["method"], "Card"),
+                    cardLast4: firstString(data["cardLast4"]),
+                    status: firstString(data["status"], "success"),
+                    paidAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+                )
+            }
+            .sorted { $0.paidAt > $1.paidAt }
+        } catch {
+            errorMessage = "Unable to load payment details."
+            payments = []
+        }
+    }
+
+    private func firstString(_ values: Any?...) -> String {
+        values.compactMap { $0 as? String }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first(where: { !$0.isEmpty }) ?? ""
+    }
+
+    private func parseDouble(_ value: Any?) -> Double {
+        if let value = value as? Double { return value }
+        if let value = value as? Int { return Double(value) }
+        if let value = value as? NSNumber { return value.doubleValue }
+        if let value = value as? String {
+            let cleaned = value.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return Double(cleaned) ?? 0
+        }
+        return 0
+    }
+}
+
+struct BakerPaymentDetailsView: View {
+    let user: AppUser
+    @StateObject private var viewModel = BakerPaymentDetailsViewModel()
+    @Environment(\.dismiss) private var dismiss
+
+    private static let currencyFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 2
+        return formatter
+    }()
+
+    private static let cardDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter
+    }()
+
+    var body: some View {
+        ZStack {
+            Color.white.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                headerBar
+
+                if viewModel.isLoading {
+                    ProgressView("Loading payments...")
+                        .tint(.cakeBrown)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let error = viewModel.errorMessage {
+                    errorState(message: error)
+                } else if viewModel.payments.isEmpty {
+                    emptyState
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView(showsIndicators: false) {
+                        LazyVStack(spacing: 20) {
+                            summaryCard
+                                .padding(.horizontal, 16)
+                                .padding(.top, 16)
+
+                            ForEach(viewModel.groupedByMonth, id: \.month) { section in
+                                VStack(alignment: .leading, spacing: 12) {
+                                    HStack(spacing: 10) {
+                                        Text(section.month.uppercased())
+                                            .font(.urbanistSemiBold(11))
+                                            .foregroundColor(.cakeGrey)
+                                        Rectangle()
+                                            .fill(Color(red: 0.85, green: 0.85, blue: 0.85))
+                                            .frame(height: 1)
+                                    }
+                                    .padding(.horizontal, 16)
+
+                                    ForEach(section.records) { record in
+                                        BakerPaymentDetailsCard(
+                                            record: record,
+                                            dateFormatter: Self.cardDateFormatter,
+                                            currencyFormatter: Self.currencyFormatter
+                                        )
+                                        .padding(.horizontal, 16)
+                                    }
+                                }
+                            }
+
+                            Spacer().frame(height: 104)
+                        }
+                    }
+                    .refreshable {
+                        await viewModel.load(bakerID: user.id)
+                    }
+                }
+            }
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+        .task {
+            await viewModel.load(bakerID: user.id)
+        }
+        .asBakerSubScreen()
+    }
+
+    private var headerBar: some View {
+        HStack {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.cakeBrown)
+            }
+
+            Spacer()
+
+            Text("Payment Details")
+                .font(.urbanistBold(18))
+                .foregroundColor(Color(hex: "5D3714"))
+
+            Spacer()
+
+            Color.clear.frame(width: 24)
+        }
+        .padding(.horizontal, 20)
+        .frame(height: 56)
+        .background(Color.white)
+    }
+
+    private var summaryCard: some View {
+        ZStack {
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(red: 93/255, green: 55/255, blue: 20/255),
+                    Color(red: 148/255, green: 98/255, blue: 58/255)
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .cornerRadius(22)
+
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Total Received")
+                            .font(.urbanistRegular(13))
+                            .foregroundColor(.white.opacity(0.72))
+                        Text("LKR \(Self.currencyFormatter.string(for: viewModel.totalReceived) ?? "0.00")")
+                            .font(.urbanistBold(30))
+                            .foregroundColor(.white)
+                    }
+
+                    Spacer()
+
+                    ZStack {
+                        Circle()
+                            .fill(.white.opacity(0.18))
+                            .frame(width: 58, height: 58)
+                        Image(systemName: "banknote.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.white)
+                    }
+                }
+
+                Rectangle()
+                    .fill(Color.white.opacity(0.25))
+                    .frame(height: 1)
+
+                HStack(spacing: 28) {
+                    summaryStatView(icon: "checkmark.circle.fill", value: "\(viewModel.payments.filter(\.isSuccess).count)", label: "Successful")
+                    summaryStatView(icon: "cart.fill", value: "\(viewModel.payments.count)", label: "Payments")
+                    Spacer()
+                }
+            }
+            .padding(.horizontal, 22)
+            .padding(.vertical, 20)
+        }
+        .shadow(color: Color(red: 93/255, green: 55/255, blue: 20/255).opacity(0.32), radius: 16, x: 0, y: 7)
+    }
+
+    private func summaryStatView(icon: String, value: String, label: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 15))
+                .foregroundColor(.white.opacity(0.80))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(value)
+                    .font(.urbanistBold(16))
+                    .foregroundColor(.white)
+                Text(label)
+                    .font(.urbanistRegular(11))
+                    .foregroundColor(.white.opacity(0.68))
+            }
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 18) {
+            ZStack {
+                Circle()
+                    .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+                    .frame(width: 96, height: 96)
+                Image(systemName: "creditcard")
+                    .font(.system(size: 38))
+                    .foregroundColor(.cakeBrown.opacity(0.55))
+            }
+
+            Text("No Payments Yet")
+                .font(.urbanistBold(19))
+                .foregroundColor(Color(red: 0.18, green: 0.18, blue: 0.18))
+
+            Text("Customer payments for your accepted bids will appear here.")
+                .font(.urbanistRegular(14))
+                .foregroundColor(.cakeGrey)
+                .multilineTextAlignment(.center)
+                .lineSpacing(4)
+                .padding(.horizontal, 44)
+        }
+    }
+
+    private func errorState(message: String) -> some View {
+        VStack(spacing: 14) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 40))
+                .foregroundColor(.orange.opacity(0.7))
+            Text(message)
+                .font(.urbanistRegular(14))
+                .foregroundColor(.cakeGrey)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+            Button("Retry") {
+                Task { await viewModel.load(bakerID: user.id) }
+            }
+            .font(.urbanistSemiBold(14))
+            .foregroundColor(.cakeBrown)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct BakerPaymentDetailsCard: View {
+    let record: BakerPaymentDetailsRecord
+    let dateFormatter: DateFormatter
+    let currencyFormatter: NumberFormatter
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 13)
+                        .fill(paymentMethodBackgroundColor)
+                        .frame(width: 54, height: 54)
+                    Image(systemName: paymentMethodIcon)
+                        .font(.system(size: paymentMethodIconSize))
+                        .foregroundColor(paymentMethodIconColor)
+                }
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(record.cakeName)
+                        .font(.urbanistBold(15))
+                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .lineLimit(1)
+
+                    Text("Customer: \(record.customerName)")
+                        .font(.urbanistRegular(13))
+                        .foregroundColor(Color(red: 0.42, green: 0.42, blue: 0.42))
+
+                    paymentMethodBadge
+                }
+
+                Spacer(minLength: 4)
+
+                VStack(alignment: .trailing, spacing: 6) {
+                    Text("LKR \(currencyFormatter.string(for: record.amount) ?? "0")")
+                        .font(.urbanistBold(15))
+                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text(record.isSuccess ? "Received" : record.status.capitalized)
+                            .font(.urbanistSemiBold(11))
+                            .foregroundColor(record.isSuccess ? Color(red: 0.10, green: 0.58, blue: 0.35) : .orange)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(record.isSuccess ? Color(red: 0.10, green: 0.58, blue: 0.35).opacity(0.11) : Color.orange.opacity(0.11))
+                            .clipShape(Capsule())
+
+                        Text(dateFormatter.string(from: record.paidAt))
+                            .font(.urbanistRegular(10))
+                            .foregroundColor(.cakeGrey)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
+
+            Rectangle()
+                .fill(Color(red: 0.92, green: 0.92, blue: 0.92))
+                .frame(height: 1)
+                .padding(.horizontal, 16)
+
+            HStack {
+                breakdownItem(label: "Baker Receives", value: "LKR \(Int(record.amount).formatted())", highlight: true)
+                Spacer()
+                Image(systemName: "plus")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(red: 0.75, green: 0.75, blue: 0.75))
+                Spacer()
+                breakdownItem(label: "Service Fee", value: "LKR \(Int(record.serviceFee).formatted())")
+                Spacer()
+                Image(systemName: "equal")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color(red: 0.75, green: 0.75, blue: 0.75))
+                Spacer()
+                breakdownItem(label: "Customer Paid", value: "LKR \(Int(record.total).formatted())")
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 11)
+        }
+        .background(Color.white)
+        .cornerRadius(18)
+        .shadow(color: Color.black.opacity(0.055), radius: 10, x: 0, y: 3)
+    }
+
+    private func breakdownItem(label: String, value: String, highlight: Bool = false) -> some View {
+        VStack(alignment: .center, spacing: 3) {
+            Text(value)
+                .font(highlight ? .urbanistBold(12) : .urbanistSemiBold(12))
+                .foregroundColor(highlight ? Color(hex: "5D3714") : Color(red: 0.22, green: 0.22, blue: 0.22))
+            Text(label)
+                .font(.urbanistRegular(10))
+                .foregroundColor(.cakeGrey)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+    }
+
+    private var paymentMethodIcon: String {
+        if record.isApplePay { return "apple.logo" }
+        if record.isGooglePay { return "g.circle.fill" }
+        if record.isCash { return "banknote.fill" }
+        return "creditcard.fill"
+    }
+
+    private var paymentMethodIconSize: CGFloat {
+        record.isApplePay ? 22 : 20
+    }
+
+    private var paymentMethodIconColor: Color {
+        if record.isApplePay { return .black }
+        if record.isGooglePay { return Color(red: 0.2, green: 0.5, blue: 0.95) }
+        if record.isCash { return Color(red: 0.2, green: 0.65, blue: 0.2) }
+        return .cakeBrown
+    }
+
+    private var paymentMethodBackgroundColor: Color {
+        if record.isApplePay { return Color.black.opacity(0.07) }
+        if record.isGooglePay { return Color(red: 0.2, green: 0.5, blue: 0.95).opacity(0.1) }
+        if record.isCash { return Color(red: 0.2, green: 0.65, blue: 0.2).opacity(0.1) }
+        return Color(red: 0.92, green: 0.90, blue: 0.87)
+    }
+
+    @ViewBuilder
+    private var paymentMethodBadge: some View {
+        if record.isApplePay {
+            badge(icon: "apple.logo", text: "Apple Pay", color: .black, background: Color.black.opacity(0.08))
+        } else if record.isGooglePay {
+            badge(icon: "g.circle.fill", text: "Google Pay", color: Color(red: 0.2, green: 0.5, blue: 0.95), background: Color(red: 0.2, green: 0.5, blue: 0.95).opacity(0.1))
+        } else if record.isCash {
+            badge(icon: "banknote.fill", text: "Cash", color: Color(red: 0.2, green: 0.65, blue: 0.2), background: Color(red: 0.2, green: 0.65, blue: 0.2).opacity(0.1))
+        } else {
+            badge(icon: "creditcard.fill", text: fullCardNumber(record.cardLast4), color: Color(hex: "5D3714"), background: Color(red: 0.92, green: 0.88, blue: 0.83))
+        }
+    }
+
+    private func badge(icon: String, text: String, color: Color, background: Color) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 10))
+            Text(text)
+                .font(.urbanistSemiBold(11))
+        }
+        .foregroundColor(color)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(background)
+        .clipShape(Capsule())
+    }
+
+    private func fullCardNumber(_ last4: String) -> String {
+        last4.isEmpty ? "Card Payment" : "•••• •••• •••• \(last4)"
     }
 }
 

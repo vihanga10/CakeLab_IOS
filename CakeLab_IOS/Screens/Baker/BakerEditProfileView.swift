@@ -102,13 +102,14 @@ struct BakerEditProfileView: View {
                         // MARK: Update Button
                         updateButton
                             .padding(.horizontal, 20)
-                            .padding(.bottom, 40)
+                            .padding(.bottom, 104)
                     }
                 }
             }
         }
         .navigationBarBackButtonHidden(true)
         .navigationBarHidden(true)
+        .asBakerSubScreen()
         .task {
             await loadExistingData()
         }

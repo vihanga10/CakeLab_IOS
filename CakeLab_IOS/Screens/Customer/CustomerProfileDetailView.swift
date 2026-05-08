@@ -28,7 +28,8 @@ struct CustomerProfileDetailView: View {
     }
 
     private var displayName: String {
-        viewModel.user.name.isEmpty ? "Sunadi Perera" : viewModel.user.name
+        let name = viewModel.user.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? "Add your name" : name
     }
 
     private var locationText: String {
@@ -40,7 +41,7 @@ struct CustomerProfileDetailView: View {
             return parts.joined(separator: ", ")
         }
 
-        return "Colombo, Sri Lanka"
+        return "Add your location"
     }
 
     var body: some View {
