@@ -134,7 +134,7 @@ struct AccessibilitySettingsSection: View {
 
             Toggle("", isOn: isOn)
                 .labelsHidden()
-                .tint(Color(hex: "C17C3D"))
+                .tint(.cakeBrown)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 14)

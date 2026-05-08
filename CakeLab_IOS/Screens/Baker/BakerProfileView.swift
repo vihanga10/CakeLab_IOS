@@ -18,6 +18,7 @@ struct BakerProfileView: View {
     @State private var reviews: [Review] = []
     @State private var paymentRecords: [BakerPaymentRecord] = []
     @State private var selectedPortfolioWork: PortfolioPreviewWork?
+    @State private var showSignOutAlert = false
 
     private var completedOrdersText: String { "\(profileData.completedOrders)" }
     private var reviewsText: String {
@@ -135,6 +136,14 @@ struct BakerProfileView: View {
             PortfolioPreviewDetailSheet(work: work)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+        .alert("Sign Out?", isPresented: $showSignOutAlert) {
+            Button("No", role: .cancel) {}
+            Button("Yes, Sign Out", role: .destructive) {
+                performSignOut()
+            }
+        } message: {
+            Text("Are you sure you want to sign out of your CakeLab baker account?")
         }
     }
 
@@ -897,11 +906,7 @@ struct BakerProfileView: View {
             .buttonStyle(.plain)
             Divider().padding(.leading, 52)
             Button {
-                do {
-                    try AppSessionManager.shared.signOutCompletely()
-                } catch {
-                    print("Logout failed: \(error.localizedDescription)")
-                }
+                showSignOutAlert = true
             } label: {
                 HStack(spacing: 14) {
                     ZStack {
@@ -923,6 +928,14 @@ struct BakerProfileView: View {
         .background(Color.white)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
+    }
+
+    private func performSignOut() {
+        do {
+            try AppSessionManager.shared.signOutCompletely()
+        } catch {
+            print("Logout failed: \(error.localizedDescription)")
+        }
     }
 
     private func settingsRow(icon: String, label: String, color: Color) -> some View {
@@ -958,6 +971,15 @@ enum BakerProfileDetailKind {
         case .language: return "Language"
         case .privacySecurity: return "Privacy & Security"
         case .helpSupport: return "Help & Support"
+        }
+    }
+
+    var needsSaveButton: Bool {
+        switch self {
+        case .language, .privacySecurity:
+            return true
+        case .helpSupport:
+            return false
         }
     }
 }
@@ -1004,22 +1026,24 @@ struct BakerProfileDetailView: View {
                     .padding(.bottom, 24)
                 }
 
-                Button {
-                    saveSettings()
-                    dismiss()
-                } label: {
-                    Text("Save & Done")
-                        .font(.urbanistSemiBold(16))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 54)
-                        .background(Color(hex: "5D3714"))
-                        .clipShape(Capsule())
-                        .shadow(color: Color.black.opacity(0.08), radius: 10, y: 5)
+                if kind.needsSaveButton {
+                    Button {
+                        saveSettings()
+                        dismiss()
+                    } label: {
+                        Text("Save & Done")
+                            .font(.urbanistSemiBold(16))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 54)
+                            .background(Color(hex: "5D3714"))
+                            .clipShape(Capsule())
+                            .shadow(color: Color.black.opacity(0.08), radius: 10, y: 5)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 88)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 88)
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -1246,7 +1270,7 @@ struct BakerPrivacySecurityDetailContent: View {
             Spacer()
 
             Toggle("", isOn: isOn)
-                .tint(Color(hex: "C17C3D"))
+                .tint(.cakeBrown)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)

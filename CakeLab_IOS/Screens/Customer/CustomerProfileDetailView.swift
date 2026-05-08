@@ -19,6 +19,7 @@ struct CustomerProfileDetailView: View {
     @State private var searchText: String = ""
     @State private var selectedTermsTab: Int = 0
     @State private var showDeleteAlert = false
+    @State private var showLogoutAlert = false
     @State private var localAvatar: UIImage? = nil
     @State private var inlineDetailTabDepthApplied = false
 
@@ -95,24 +96,26 @@ struct CustomerProfileDetailView: View {
                             }
                         }
                         
-                        VStack(spacing: 12) {
-                            Button(action: {
-                                saveDetailSettings()
-                                selectedDetailView = nil
-                            }) {
-                                Text("Save & Done")
-                                    .font(.urbanistSemiBold(16))
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 54)
-                                    .background(Color(hex: "5D3714"))
-                                    .cornerRadius(27)
-                                    .shadow(color: Color.black.opacity(0.08), radius: 10, y: 5)
+                        if detailViewNeedsSaveButton {
+                            VStack(spacing: 12) {
+                                Button(action: {
+                                    saveDetailSettings()
+                                    selectedDetailView = nil
+                                }) {
+                                    Text("Save & Done")
+                                        .font(.urbanistSemiBold(16))
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 54)
+                                        .background(Color(hex: "5D3714"))
+                                        .cornerRadius(27)
+                                        .shadow(color: Color.black.opacity(0.08), radius: 10, y: 5)
+                                }
+                                .padding(.horizontal, 20)
                             }
-                            .padding(.horizontal, 20)
+                            .padding(.top, 12)
+                            .padding(.bottom, 94)
                         }
-                        .padding(.top, 12)
-                        .padding(.bottom, 94)
                     } else {
                         ScrollView(showsIndicators: false) {
                             VStack(spacing: 26) {
@@ -227,11 +230,7 @@ struct CustomerProfileDetailView: View {
                                 .padding(.horizontal, 16)
 
                                 Button(action: {
-                                    do {
-                                        try AppSessionManager.shared.signOutCompletely()
-                                    } catch {
-                                        print("Logout failed: \(error.localizedDescription)")
-                                    }
+                                    showLogoutAlert = true
                                 }) {
                                     Text("Log Out")
                                         .font(.urbanistSemiBold(16))
@@ -268,6 +267,14 @@ struct CustomerProfileDetailView: View {
             .navigationDestination(isPresented: $showPaymentHistory) {
                 PaymentHistoryView(user: user)
             }
+            .alert("Log Out?", isPresented: $showLogoutAlert) {
+                Button("No", role: .cancel) {}
+                Button("Yes, Log Out", role: .destructive) {
+                    performLogout()
+                }
+            } message: {
+                Text("Are you sure you want to log out of your CakeLab account?")
+            }
             .alert("Delete Account", isPresented: $showDeleteAlert) {
                 Button("Cancel", role: .cancel) {}
                 Button("Delete", role: .destructive) {
@@ -302,6 +309,10 @@ struct CustomerProfileDetailView: View {
         default: return ""
         }
     }
+
+    private var detailViewNeedsSaveButton: Bool {
+        selectedDetailView == "language" || selectedDetailView == "privacy"
+    }
     
     private func saveDetailSettings() {
         UserDefaults.standard.set(selectedLanguage, forKey: "appLanguage")
@@ -310,6 +321,14 @@ struct CustomerProfileDetailView: View {
         UserDefaults.standard.set(marketingEmails, forKey: "marketingEmails")
         UserDefaults.standard.set(dataSharing, forKey: "dataSharing")
         UserDefaults.standard.set(biometricAuth, forKey: "biometricAuth")
+    }
+
+    private func performLogout() {
+        do {
+            try AppSessionManager.shared.signOutCompletely()
+        } catch {
+            print("Logout failed: \(error.localizedDescription)")
+        }
     }
 
     private func updateInlineDetailTabDepth(for detailView: String?) {
@@ -603,7 +622,7 @@ struct PrivacyDetailContent: View {
                         }
                         Spacer()
                         Toggle("", isOn: $showOrderHistory)
-                            .tint(Color(hex: "C17C3D"))
+                            .tint(.cakeBrown)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
@@ -633,7 +652,7 @@ struct PrivacyDetailContent: View {
                         }
                         Spacer()
                         Toggle("", isOn: $marketingEmails)
-                            .tint(Color(hex: "C17C3D"))
+                            .tint(.cakeBrown)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
@@ -651,7 +670,7 @@ struct PrivacyDetailContent: View {
                         }
                         Spacer()
                         Toggle("", isOn: $dataSharing)
-                            .tint(Color(hex: "C17C3D"))
+                            .tint(.cakeBrown)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
@@ -680,7 +699,7 @@ struct PrivacyDetailContent: View {
                     }
                     Spacer()
                     Toggle("", isOn: $biometricAuth)
-                        .tint(Color(hex: "C17C3D"))
+                        .tint(.cakeBrown)
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
