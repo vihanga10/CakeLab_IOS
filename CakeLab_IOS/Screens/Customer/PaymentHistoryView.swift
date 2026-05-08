@@ -338,6 +338,7 @@ struct PaymentRecordCard: View {
     let record: PaymentRecord
     let dateFmt: DateFormatter
     let currencyFmt: NumberFormatter
+    @State private var selectedReceipt: PDFReceiptData?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -440,6 +441,45 @@ struct PaymentRecordCard: View {
         .background(Color.white)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.055), radius: 10, x: 0, y: 3)
+        .contextMenu {
+            Button {
+                selectedReceipt = receiptData
+            } label: {
+                Label("View PDF Receipt", systemImage: "doc.richtext")
+            }
+        }
+        .sheet(item: $selectedReceipt) { receipt in
+            PDFReceiptPreviewView(receipt: receipt)
+        }
+    }
+
+    private var receiptData: PDFReceiptData {
+        PDFReceiptData(
+            id: record.id,
+            title: "Payment Receipt",
+            receiptNumber: record.id,
+            cakeName: record.cakeName,
+            payerLabel: "Customer",
+            payerName: record.cardholderName.isEmpty ? "Customer" : record.cardholderName,
+            receiverLabel: "Baker",
+            receiverName: record.bakerName,
+            paymentMethod: paymentMethodText,
+            status: record.status,
+            paidAt: record.paidAt,
+            subtotalLabel: "Bid Amount",
+            subtotal: record.amount,
+            serviceFee: record.serviceFee,
+            totalLabel: "Total Paid",
+            total: record.total
+        )
+    }
+
+    private var paymentMethodText: String {
+        if record.isApplePay { return "Apple Pay" }
+        if record.isGooglePay { return "Google Pay" }
+        if record.isCash { return "Cash" }
+        if record.cardLast4.isEmpty { return record.method.isEmpty ? "Card" : record.method }
+        return "\(record.method) \(record.maskedCard)"
     }
 
     private func breakdownItem(label: String, value: String, highlight: Bool = false) -> some View {
