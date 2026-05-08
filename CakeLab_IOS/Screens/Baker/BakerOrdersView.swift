@@ -8,6 +8,7 @@ struct BakerOrdersView: View {
     let user: AppUser
     @State private var selectedTab: OrderTab = .active
     @State private var activeOrders: [CakeOrder] = []
+    @State private var activeOrderCustomers: [String: BakerOrderCustomerProfile] = [:]
     @State private var completedOrders: [CakeOrder] = []
     @State private var totalEarnings: Double = 0
     @State private var completedCount: Int = 0
@@ -93,6 +94,7 @@ struct BakerOrdersView: View {
         do {
             let statuses = ["confirmed", "baking", "decorating", "quality_check"]
             var allOrders: [CakeOrder] = []
+            var customerProfiles: [String: BakerOrderCustomerProfile] = [:]
 
             for key in ["artisanId", "bakerID", "bakerId"] {
                 let query = db.collection("orders")
@@ -103,16 +105,75 @@ struct BakerOrdersView: View {
                 for doc in snapshot.documents {
                     if let order = CakeOrder(document: doc), !allOrders.contains(where: { $0.id == order.id }) {
                         allOrders.append(order)
+                        customerProfiles[order.id] = await fetchCustomerProfile(order: order, orderData: doc.data())
                     }
                 }
             }
 
             activeOrders = allOrders.sorted { $0.deliveryDate < $1.deliveryDate }
+            activeOrderCustomers = customerProfiles
             isLoadingActive = false
         } catch {
             print("Error loading active baker orders: \(error.localizedDescription)")
             isLoadingActive = false
         }
+    }
+
+    private func fetchCustomerProfile(order: CakeOrder, orderData: [String: Any]) async -> BakerOrderCustomerProfile {
+        let db = Firestore.firestore()
+        let fallbackName = firstString(orderData["customerName"], orderData["customerFullName"])
+        let fallbackAddress = firstString(orderData["deliveryAddress"], orderData["customerAddress"])
+        let fallbackCity = firstString(orderData["deliveryCity"], orderData["customerCity"])
+        let fallbackImageBase64 = firstString(
+            orderData["customerProfileImageBase64"],
+            orderData["customerImageBase64"],
+            orderData["customerImage"],
+            UserDefaults.standard.string(forKey: "profileAvatar_\(order.customerId)")
+        )
+        let fallbackImageURL = firstString(orderData["customerImageURL"], orderData["customerAvatarURL"])
+
+        guard !order.customerId.isEmpty else {
+            return BakerOrderCustomerProfile(
+                name: fallbackName.isEmpty ? "Customer" : fallbackName,
+                address: fallbackAddress,
+                city: fallbackCity,
+                profileImageBase64: fallbackImageBase64,
+                imageURL: fallbackImageURL
+            )
+        }
+
+        do {
+            let snapshot = try await db.collection("users").document(order.customerId).getDocument()
+            let userData = snapshot.data() ?? [:]
+            let rawCity = firstString(fallbackCity, userData["city"])
+
+            return BakerOrderCustomerProfile(
+                name: firstString(fallbackName, userData["name"], userData["fullName"], userData["email"], order.customerId),
+                address: firstString(fallbackAddress, userData["address"]),
+                city: SriLankaDistricts.canonical(rawCity) ?? rawCity,
+                profileImageBase64: firstString(
+                    fallbackImageBase64,
+                    userData["profileImageBase64"],
+                    userData["avatarBase64"],
+                    userData["photoBase64"]
+                ),
+                imageURL: firstString(fallbackImageURL, userData["imageURL"], userData["avatarURL"], userData["photoURL"])
+            )
+        } catch {
+            return BakerOrderCustomerProfile(
+                name: fallbackName.isEmpty ? "Customer" : fallbackName,
+                address: fallbackAddress,
+                city: fallbackCity,
+                profileImageBase64: fallbackImageBase64,
+                imageURL: fallbackImageURL
+            )
+        }
+    }
+
+    private func firstString(_ values: Any?...) -> String {
+        values.compactMap { $0 as? String }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first(where: { !$0.isEmpty }) ?? ""
     }
     
     private func loadCompletedOrdersData() async {
@@ -172,7 +233,10 @@ struct BakerOrdersView: View {
                         NavigationLink {
                             BakerOrderStatusView(orderID: order.id)
                         } label: {
-                            BakerActiveOrderCardFromCakeOrder(order: order)
+                            BakerActiveOrderCardFromCakeOrder(
+                                order: order,
+                                customer: activeOrderCustomers[order.id] ?? .fallback(for: order)
+                            )
                         }
                         .buttonStyle(.plain)
                     }
@@ -592,7 +656,15 @@ struct BakerCompletedOrderCardFromCakeOrder: View {
                     .fill(Color(red: 0.95, green: 0.93, blue: 0.90))
                     .frame(width: 48, height: 48)
                 
-                if let imageURL = order.imageURL, let url = URL(string: imageURL) {
+                if let firstReferenceImage = order.referenceImages.first,
+                   let imageData = Data(base64Encoded: firstReferenceImage),
+                   let uiImage = UIImage(data: imageData) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 48, height: 48)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                } else if let imageURL = order.imageURL, !imageURL.isEmpty, let url = URL(string: imageURL) {
                     AsyncImage(url: url) { phase in
                         switch phase {
                         case .success(let image):
@@ -643,8 +715,32 @@ struct BakerCompletedOrderCardFromCakeOrder: View {
     }
 }
 
+struct BakerOrderCustomerProfile {
+    let name: String
+    let address: String
+    let city: String
+    let profileImageBase64: String
+    let imageURL: String
+
+    static func fallback(for order: CakeOrder) -> BakerOrderCustomerProfile {
+        BakerOrderCustomerProfile(
+            name: order.customerId.isEmpty ? "Customer" : order.customerId,
+            address: "",
+            city: "",
+            profileImageBase64: "",
+            imageURL: ""
+        )
+    }
+
+    var displayLocation: String {
+        let location = SriLankaDistricts.displayLocation(address: address, city: city)
+        return location.isEmpty ? "Delivery address not provided" : location
+    }
+}
+
 struct BakerActiveOrderCardFromCakeOrder: View {
     let order: CakeOrder
+    let customer: BakerOrderCustomerProfile
 
     private let stepLabels = ["Confirmed", "Baking", "Decorating", "Quality\nChecking", "Delivered"]
 
@@ -719,36 +815,24 @@ struct BakerActiveOrderCardFromCakeOrder: View {
             Divider()
                 .padding(.horizontal, 18)
 
-            // ── Bakery Info ────────────────────────────────────────────
+            // ── Customer Delivery Info ─────────────────────────────────
             HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
-                        .frame(width: 48, height: 48)
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 22))
-                        .foregroundColor(.cakeBrown.opacity(0.5))
-                }
+                customerProfileImage
+
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(order.artisanName)
+                    Text(customer.name)
                         .font(.urbanistBold(14))
                         .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                    HStack(spacing: 3) {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 11))
-                            .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.1))
-                        Text(order.artisanRating)
-                            .font(.urbanistRegular(12))
-                            .foregroundColor(.cakeGrey)
-                    }
-                    HStack(spacing: 4) {
+
+                    HStack(alignment: .top, spacing: 4) {
                         Image(systemName: "mappin.circle.fill")
                             .font(.system(size: 11))
                             .foregroundColor(.cakeGrey)
-                        Text(order.artisanAddress)
+                            .padding(.top, 2)
+                        Text(customer.displayLocation)
                             .font(.urbanistRegular(11))
                             .foregroundColor(.cakeGrey)
-                            .lineLimit(1)
+                            .lineLimit(2)
                     }
                 }
                 Spacer()
@@ -759,6 +843,56 @@ struct BakerActiveOrderCardFromCakeOrder: View {
         .background(Color.white)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 3)
+    }
+
+    private var customerProfileImage: some View {
+        Group {
+            if let image = decodeBase64Image(customer.profileImageBase64) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else if let url = URL(string: customer.imageURL), !customer.imageURL.isEmpty {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    default:
+                        customerProfilePlaceholder
+                    }
+                }
+            } else {
+                customerProfilePlaceholder
+            }
+        }
+        .frame(width: 48, height: 48)
+        .clipShape(Circle())
+    }
+
+    private var customerProfilePlaceholder: some View {
+        Circle()
+            .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+            .overlay(
+                Image(systemName: "person.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(.cakeBrown.opacity(0.5))
+            )
+    }
+
+    private func decodeBase64Image(_ rawBase64: String) -> UIImage? {
+        let trimmed = rawBase64.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let payload: String
+        if let commaIndex = trimmed.firstIndex(of: ",") {
+            payload = String(trimmed[trimmed.index(after: commaIndex)...])
+        } else {
+            payload = trimmed
+        }
+
+        guard let data = Data(base64Encoded: payload) else { return nil }
+        return UIImage(data: data)
     }
 }
 

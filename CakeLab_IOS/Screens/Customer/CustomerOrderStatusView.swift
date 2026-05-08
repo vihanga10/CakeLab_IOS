@@ -617,7 +617,7 @@ struct CustomerOrderStatusView: View {
     }
 
     private func expectedDeliveryCard(deliveryDateText: String) -> some View {
-        HStack(alignment: .top, spacing: 18) {
+        HStack(alignment: .top, spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Expected Date")
                     .font(.urbanistSemiBold(12))
@@ -626,13 +626,13 @@ struct CustomerOrderStatusView: View {
                     .font(.urbanistBold(14))
                     .foregroundColor(Color(red: 0.08, green: 0.08, blue: 0.08))
             }
-            .frame(width: 118, alignment: .topLeading)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
 
             Rectangle()
                 .fill(Color(red: 0.80, green: 0.80, blue: 0.80))
                 .frame(width: 1, height: 38)
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .trailing, spacing: 8) {
                 Text("Expected Time")
                     .font(.urbanistSemiBold(12))
                     .foregroundColor(accent)
@@ -640,9 +640,10 @@ struct CustomerOrderStatusView: View {
                     .font(.urbanistBold(14))
                     .foregroundColor(Color(red: 0.08, green: 0.08, blue: 0.08))
             }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, alignment: .topTrailing)
         }
         .padding(16)
+        .frame(maxWidth: .infinity)
         .background(surface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
