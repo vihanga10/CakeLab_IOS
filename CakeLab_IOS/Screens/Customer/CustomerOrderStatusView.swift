@@ -234,6 +234,7 @@ struct OrderStatusBakerProfile {
 struct CustomerOrderStatusView: View {
     let orderID: String
     let fallbackOrder: CustomerOrder
+    let showsCalendarAction: Bool
 
     @StateObject private var viewModel = CustomerOrderStatusViewModel()
     @Environment(\.dismiss) private var dismiss
@@ -250,6 +251,12 @@ struct CustomerOrderStatusView: View {
 
     private let surface = Color.white
     private let accent = Color.cakeBrown
+
+    init(orderID: String, fallbackOrder: CustomerOrder, showsCalendarAction: Bool = true) {
+        self.orderID = orderID
+        self.fallbackOrder = fallbackOrder
+        self.showsCalendarAction = showsCalendarAction
+    }
 
     private static let dateFmt: DateFormatter = {
         let f = DateFormatter()
@@ -591,24 +598,26 @@ struct CustomerOrderStatusView: View {
                 }
             }
 
-            Button {
-                Task {
-                    await addDeliveryEventToCalendar(deliveryDateText: deliveryDateText)
+            if showsCalendarAction {
+                Button {
+                    Task {
+                        await addDeliveryEventToCalendar(deliveryDateText: deliveryDateText)
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text("Add Delivery to Calendar")
+                            .font(.urbanistSemiBold(14))
+                    }
+                    .foregroundColor(accent)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 38)
+                    .background(Color(red: 0.92, green: 0.90, blue: 0.87))
+                    .cornerRadius(19)
                 }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 12, weight: .semibold))
-                    Text("Add Delivery to Calendar")
-                        .font(.urbanistSemiBold(14))
-                }
-                .foregroundColor(accent)
-                .frame(maxWidth: .infinity)
-                .frame(height: 38)
-                .background(Color(red: 0.92, green: 0.90, blue: 0.87))
-                .cornerRadius(19)
+                .padding(.top, 14)
             }
-            .padding(.top, 14)
         }
         .padding(16)
         .background(surface)

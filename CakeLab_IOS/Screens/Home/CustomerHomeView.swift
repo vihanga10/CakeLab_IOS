@@ -97,6 +97,17 @@ struct CustomerHomeView: View {
                                 .font(.urbanistRegular(14))
                                 .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
                                 .tint(.cakeBrown)
+
+                            if isSearching {
+                                Button {
+                                    searchText = ""
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 15))
+                                        .foregroundColor(.cakeGrey.opacity(0.75))
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
                         .padding(.horizontal, 14)
                         .padding(.vertical, 12)
@@ -105,8 +116,12 @@ struct CustomerHomeView: View {
                         .padding(.horizontal, 20)
                         .padding(.bottom, 20) 
                         
-                        // MARK: - Dream Cake Request Card
-                        VStack(alignment: .leading, spacing: 0) {
+                        if isSearching {
+                            homeSearchResults
+                                .padding(.bottom, 32)
+                        } else {
+                            // MARK: - Dream Cake Request Card
+                            VStack(alignment: .leading, spacing: 0) {
                             Text("Bring Your Cake Vision to Life")
                                 .font(.urbanistBold(17))
                                 .foregroundColor(Color(red: 0, green: 0, blue: 0))
@@ -143,16 +158,16 @@ struct CustomerHomeView: View {
                                 .background(Color.cakeBrown)
                                 .clipShape(Capsule())
                             }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 22)
-                        .background(Color(red: 235/255, green: 228/255, blue: 222/255))
-                        .cornerRadius(16)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 28)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 22)
+                            .background(Color(red: 235/255, green: 228/255, blue: 222/255))
+                            .cornerRadius(16)
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 28)
 
                         // MARK: - What Are You Craving?
-                        VStack(alignment: .leading, spacing: 16) {
+                            VStack(alignment: .leading, spacing: 16) {
                             Text("What are you craving today?")
                                 .font(.urbanistBold(15))
                                 .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
@@ -197,11 +212,11 @@ struct CustomerHomeView: View {
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 4)
                             }
-                        }
-                        .padding(.bottom, 28)
+                            }
+                            .padding(.bottom, 28)
                         
                         // MARK: - Active Orders  (user-specific — fetched per logged-in user)
-                        VStack(alignment: .leading, spacing: 14) {
+                            VStack(alignment: .leading, spacing: 14) {
                             HStack {
                                 Text("Active Orders")
                                     .font(.urbanistBold(15))
@@ -296,11 +311,11 @@ struct CustomerHomeView: View {
                                     .padding(.vertical, 4)
                                 }
                             }
-                        }
-                        .padding(.bottom, 28)
+                            }
+                            .padding(.bottom, 28)
                         
                         // MARK: - Artisans Near You  (common — same list for all customers)
-                        VStack(alignment: .leading, spacing: 14) {
+                            VStack(alignment: .leading, spacing: 14) {
                             HStack {
                                 Text("Artisans Near You")
                                     .font(.urbanistBold(15))
@@ -341,8 +356,9 @@ struct CustomerHomeView: View {
                                 }
                                 .padding(.horizontal, 20)
                             }
+                            }
+                            .padding(.bottom, 32)
                         }
-                        .padding(.bottom, 32)
                     }
                 }
 
@@ -371,6 +387,307 @@ struct CustomerHomeView: View {
                 await artisans
             }
         }
+    }
+
+    // MARK: - Home Search
+    private var normalizedSearchText: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var isSearching: Bool {
+        !normalizedSearchText.isEmpty
+    }
+
+    private var filteredSearchCategories: [(name: String, image: String)] {
+        guard isSearching else { return [] }
+        return categories.filter { category in
+            category.name.lowercased().contains(normalizedSearchText)
+        }
+    }
+
+    private var filteredSearchOrders: [CakeOrder] {
+        guard isSearching else { return [] }
+        return viewModel.activeOrders.filter { order in
+            order.cakeName.lowercased().contains(normalizedSearchText)
+            || order.id.lowercased().contains(normalizedSearchText)
+            || order.artisanName.lowercased().contains(normalizedSearchText)
+            || order.statusLabel.lowercased().contains(normalizedSearchText)
+            || order.category.lowercased().contains(normalizedSearchText)
+        }
+    }
+
+    private var filteredSearchArtisans: [ArtisanProfile] {
+        guard isSearching else { return [] }
+        return artisansVM.artisans.filter { artisan in
+            artisan.name.lowercased().contains(normalizedSearchText)
+            || artisan.location.lowercased().contains(normalizedSearchText)
+            || artisan.city.lowercased().contains(normalizedSearchText)
+            || artisan.specialties.contains { $0.lowercased().contains(normalizedSearchText) }
+        }
+    }
+
+    private var searchResultCount: Int {
+        filteredSearchCategories.count + filteredSearchOrders.count + filteredSearchArtisans.count
+    }
+
+    private var homeSearchResults: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Search Results")
+                    .font(.urbanistBold(15))
+                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+
+                Spacer()
+
+                Text("\(searchResultCount)")
+                    .font(.urbanistSemiBold(12))
+                    .foregroundColor(.cakeBrown)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color(red: 0.96, green: 0.94, blue: 0.91))
+                    .clipShape(Capsule())
+            }
+            .padding(.horizontal, 20)
+
+            if viewModel.isLoadingOrders || artisansVM.isLoading {
+                ProgressView("Searching...")
+                    .font(.urbanistRegular(13))
+                    .tint(.cakeBrown)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+            }
+
+            if searchResultCount == 0 && !viewModel.isLoadingOrders && !artisansVM.isLoading {
+                VStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 30))
+                        .foregroundColor(.cakeBrown.opacity(0.35))
+                    Text("No matching cakes or artisans")
+                        .font(.urbanistSemiBold(13))
+                        .foregroundColor(.cakeGrey)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 28)
+            } else {
+                if !filteredSearchCategories.isEmpty {
+                    homeSearchSection(title: "Cake Categories") {
+                        ForEach(filteredSearchCategories, id: \.name) { category in
+                            NavigationLink(destination: CreateCakeRequestView(user: user)) {
+                                homeCategorySearchRow(category: category)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                if !filteredSearchOrders.isEmpty {
+                    homeSearchSection(title: "Active Orders") {
+                        ForEach(filteredSearchOrders) { order in
+                            NavigationLink(destination: CustomerOrderStatusView(
+                                orderID: order.id,
+                                fallbackOrder: CustomerOrder(from: order)
+                            )) {
+                                homeOrderSearchRow(order: order)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                if !filteredSearchArtisans.isEmpty {
+                    homeSearchSection(title: "Artisans") {
+                        ForEach(filteredSearchArtisans) { artisan in
+                            Button {
+                                homeSelectedArtisan = artisan
+                            } label: {
+                                homeArtisanSearchRow(artisan: artisan)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func homeSearchSection<Content: View>(
+        title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.urbanistSemiBold(13))
+                .foregroundColor(.cakeGrey)
+                .padding(.horizontal, 20)
+
+            VStack(spacing: 10) {
+                content()
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+
+    private func homeCategorySearchRow(category: (name: String, image: String)) -> some View {
+        HStack(spacing: 12) {
+            homeCategoryImage(category: category, size: 50)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(category.name)
+                    .font(.urbanistSemiBold(14))
+                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .lineLimit(1)
+                Text("Cake category")
+                    .font(.urbanistRegular(11))
+                    .foregroundColor(.cakeGrey)
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.cakeGrey.opacity(0.75))
+        }
+        .padding(12)
+        .background(Color.white)
+        .cornerRadius(14)
+        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+    }
+
+    private func homeOrderSearchRow(order: CakeOrder) -> some View {
+        HStack(spacing: 12) {
+            homeOrderImage(order: order, size: 50)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(order.cakeName)
+                    .font(.urbanistSemiBold(14))
+                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .lineLimit(1)
+
+                HStack(spacing: 6) {
+                    Text(order.statusLabel)
+                        .font(.urbanistSemiBold(10))
+                        .foregroundColor(order.statusColor)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(order.statusColor.opacity(0.12))
+                        .cornerRadius(8)
+
+                    Text(order.formattedDeliveryDate)
+                        .font(.urbanistRegular(11))
+                        .foregroundColor(.cakeGrey)
+                }
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.cakeGrey.opacity(0.75))
+        }
+        .padding(12)
+        .background(Color.white)
+        .cornerRadius(14)
+        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+    }
+
+    private func homeArtisanSearchRow(artisan: ArtisanProfile) -> some View {
+        HStack(spacing: 12) {
+            homeArtisanImage(artisan: artisan, size: 50, cornerRadius: 10)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(artisan.name)
+                    .font(.urbanistSemiBold(14))
+                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .lineLimit(1)
+
+                HStack(spacing: 4) {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.1))
+                    Text("\(artisan.ratingText) \(artisan.reviewsText)")
+                        .font(.urbanistRegular(11))
+                        .foregroundColor(.cakeGrey)
+                        .lineLimit(1)
+                }
+
+                Text(artisan.specialties.prefix(2).joined(separator: " / "))
+                    .font(.urbanistRegular(11))
+                    .foregroundColor(.cakeGrey)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Circle()
+                .fill(artisan.isOnline ? Color(red: 0.15, green: 0.72, blue: 0.25) : Color.gray.opacity(0.45))
+                .frame(width: 10, height: 10)
+        }
+        .padding(12)
+        .background(Color.white)
+        .cornerRadius(14)
+        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+    }
+
+    @ViewBuilder
+    private func homeCategoryImage(category: (name: String, image: String), size: CGFloat) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(red: 0.93, green: 0.91, blue: 0.89))
+                .frame(width: size, height: size)
+
+            if UIImage(named: category.image) != nil {
+                Image(category.image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .clipped()
+            } else {
+                Image(systemName: "birthday.cake.fill")
+                    .font(.system(size: max(18, size * 0.42)))
+                    .foregroundColor(.cakeBrown.opacity(0.45))
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    @ViewBuilder
+    private func homeOrderImage(order: CakeOrder, size: CGFloat) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(red: 0.93, green: 0.91, blue: 0.89))
+                .frame(width: size, height: size)
+
+            if let firstImage = order.referenceImages.first,
+               let imageData = Data(base64Encoded: firstImage),
+               let uiImage = UIImage(data: imageData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .clipped()
+            } else if let rawURL = order.imageURL, !rawURL.isEmpty, let url = URL(string: rawURL) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: size, height: size)
+                            .clipped()
+                    default:
+                        Image(systemName: "birthday.cake.fill")
+                            .font(.system(size: max(18, size * 0.42)))
+                            .foregroundColor(.cakeBrown.opacity(0.45))
+                    }
+                }
+            } else {
+                Image(systemName: "birthday.cake.fill")
+                    .font(.system(size: max(18, size * 0.42)))
+                    .foregroundColor(.cakeBrown.opacity(0.45))
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
     
     // MARK: - Load Profile Avatar

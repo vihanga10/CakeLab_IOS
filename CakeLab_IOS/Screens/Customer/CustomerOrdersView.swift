@@ -292,7 +292,16 @@ struct CustomerOrdersView: View {
                             ScrollView(showsIndicators: false) {
                                 VStack(spacing: 16) {
                                     ForEach(viewModel.completedOrders, id: \.id) { order in
-                                        OrderCard(order: order, stepLabels: stepLabels)
+                                        NavigationLink {
+                                            CustomerOrderStatusView(
+                                                orderID: order.id,
+                                                fallbackOrder: order,
+                                                showsCalendarAction: false
+                                            )
+                                        } label: {
+                                            CompletedOrderCard(order: order)
+                                        }
+                                        .buttonStyle(.plain)
                                     }
                                 }
                                 .padding(.horizontal, 16)
@@ -513,6 +522,175 @@ struct OrderCard: View {
         }
 
         return order.bakerReviewCount > 0 ? "\(rating) (\(reviewText))" : rating
+    }
+
+    private var bakerLocationText: String {
+        let display = SriLankaDistricts.displayLocation(address: order.bakerAddress, city: order.bakerCity)
+        return display.isEmpty ? "Address not provided" : display
+    }
+
+    private func decodeBase64Image(_ rawBase64: String) -> UIImage? {
+        let trimmed = rawBase64.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let payload: String
+        if let commaIndex = trimmed.firstIndex(of: ",") {
+            payload = String(trimmed[trimmed.index(after: commaIndex)...])
+        } else {
+            payload = trimmed
+        }
+
+        guard let data = Data(base64Encoded: payload) else { return nil }
+        return UIImage(data: data)
+    }
+}
+
+// MARK: - Completed Order Card
+struct CompletedOrderCard: View {
+    let order: CustomerOrder
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 14) {
+            orderImage
+
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(alignment: .top, spacing: 8) {
+                    Text(order.cakeName)
+                        .font(.urbanistSemiBold(15))
+                        .foregroundColor(Color(red: 0.10, green: 0.10, blue: 0.10))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color(red: 0.70, green: 0.70, blue: 0.70))
+                        .padding(.top, 3)
+                }
+
+                HStack(spacing: 6) {
+                    bakerProfileImage
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(order.bakerName)
+                            .font(.urbanistSemiBold(12))
+                            .foregroundColor(Color(red: 0.22, green: 0.22, blue: 0.22))
+                            .lineLimit(1)
+
+                        Text(bakerLocationText)
+                            .font(.urbanistRegular(11))
+                            .foregroundColor(.cakeGrey)
+                            .lineLimit(1)
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 10, weight: .semibold))
+                        Text(order.deliveryDate)
+                            .font(.urbanistSemiBold(11))
+                    }
+                    .foregroundColor(.cakeBrown)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(Color(red: 0.96, green: 0.94, blue: 0.91))
+                    .clipShape(Capsule())
+
+                    statusBadge
+                }
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 3)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.black.opacity(0.05), lineWidth: 1)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var orderImage: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(red: 0.95, green: 0.93, blue: 0.90))
+
+            if !order.referenceImages.isEmpty,
+               let imageData = Data(base64Encoded: order.referenceImages[0]),
+               let uiImage = UIImage(data: imageData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 72, height: 72)
+                    .clipped()
+            } else if UIImage(named: order.imageName) != nil {
+                Image(order.imageName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 72, height: 72)
+                    .clipped()
+            } else {
+                Image(systemName: "birthday.cake.fill")
+                    .font(.system(size: 28))
+                    .foregroundColor(.cakeBrown.opacity(0.42))
+            }
+        }
+        .frame(width: 72, height: 72)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private var statusBadge: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 10, weight: .semibold))
+            Text("Delivered")
+                .font(.urbanistSemiBold(11))
+        }
+        .foregroundColor(Color(red: 0.18, green: 0.58, blue: 0.25))
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(Color(red: 0.90, green: 0.97, blue: 0.91))
+        .clipShape(Capsule())
+    }
+
+    private var bakerProfileImage: some View {
+        Group {
+            if let image = decodeBase64Image(order.bakerProfileImageBase64) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else if let url = URL(string: order.bakerImageURL), !order.bakerImageURL.isEmpty {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    default:
+                        bakerProfileFallback
+                    }
+                }
+            } else {
+                bakerProfileFallback
+            }
+        }
+        .frame(width: 28, height: 28)
+        .clipShape(Circle())
+    }
+
+    private var bakerProfileFallback: some View {
+        Circle()
+            .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+            .overlay(
+                Image(systemName: "person.fill")
+                    .font(.system(size: 13))
+                    .foregroundColor(.cakeBrown.opacity(0.5))
+            )
     }
 
     private var bakerLocationText: String {

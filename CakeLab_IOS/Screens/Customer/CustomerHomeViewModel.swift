@@ -9,7 +9,7 @@ import FirebaseFirestore
 // ┌────────────────────────────────────────────────────────┐
 // │  Component            │  Data source                   │
 // ├────────────────────────────────────────────────────────┤
-// │  Search Bar           │  Static UI – no DB needed      │
+// │  Search Bar           │  Searches loaded home data     │
 // │  Dream Cake Card      │  Static UI – no DB needed      │
 // │  What Are You         │  Static constants – same for   │
 // │    Craving?           │  every customer                │
