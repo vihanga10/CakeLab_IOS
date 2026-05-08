@@ -16,7 +16,7 @@ extension Font {
     }
 
     static func urbanist(_ weight: UrbanistWeight, size: CGFloat) -> Font {
-        .custom(weight.rawValue, size: size)
+        .custom(weight.rawValue, size: size, relativeTo: .body)
     }
 
     // Convenience shorthands

@@ -102,6 +102,11 @@ struct BakerProfileView: View {
                                 .padding(.horizontal, 20)
                                 .padding(.bottom, 20)
 
+                            // MARK: Accessibility
+                            AccessibilitySettingsSection()
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 20)
+
                             // MARK: Settings
                             settingsSection
                                 .padding(.horizontal, 20)

@@ -202,6 +202,9 @@ struct CustomerProfileDetailView: View {
                                 }
                                 .padding(.horizontal, 16)
 
+                                AccessibilitySettingsSection()
+                                    .padding(.horizontal, 16)
+
                                 ProfileSection(title: "Support") {
                                     Button(action: { selectedDetailView = "help" }) {
                                         MenuItemRow(

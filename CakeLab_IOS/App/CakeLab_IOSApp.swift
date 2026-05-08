@@ -24,12 +24,20 @@ struct CakeLab_IOSApp: App {
   @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
   @Environment(\.scenePhase) private var scenePhase
   @StateObject private var notificationManager = NotificationManager()
+  @AppStorage("accessibilityHighContrastEnabled") private var highContrastEnabled = false
+  @AppStorage("accessibilityFontScale") private var fontScaleRawValue = AccessibilityFontScale.standard.rawValue
+
+  private var accessibilityFontScale: AccessibilityFontScale {
+    AccessibilityFontScale(rawValue: fontScaleRawValue) ?? .standard
+  }
 
 
   var body: some Scene {
     WindowGroup {
       ContentView()
         .preferredColorScheme(.light)
+        .dynamicTypeSize(accessibilityFontScale.dynamicTypeSize)
+        .contrast(highContrastEnabled ? 1.2 : 1.0)
         .environment(\.managedObjectContext, CoreDataStack.shared.viewContext)
         .environmentObject(notificationManager)
         .notificationOverlay(notificationManager)

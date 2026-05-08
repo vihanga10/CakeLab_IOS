@@ -163,6 +163,17 @@ struct CustomerTabView: View {
             if !navState.isOnSubScreen {
                 CustomerTabBar(selectedTab: selectedTabBinding)
             }
+
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    FloatingSpeakButton()
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 96)
+                }
+            }
+            .zIndex(3)
         }
         .ignoresSafeArea(.keyboard)
         .onChange(of: widgetRoute) { _, newRoute in
