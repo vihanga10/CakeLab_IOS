@@ -21,6 +21,39 @@ struct WidgetOrderSummary: Codable, Hashable {
     let currentStep: Int
     let deliveryDate: Date
     let counterpartName: String
+    let referenceImageBase64: String?
+    let bakerID: String?
+    let bakerName: String?
+    let bakerRating: String?
+    let bakerReviewCount: Int?
+    let bakerAddress: String?
+    let bakerCity: String?
+    let bakerProfileImageBase64: String?
+    let bakerImageURL: String?
+    let customerName: String?
+    let customerAddress: String?
+    let customerCity: String?
+    let customerID: String?
+    let customerProfileImageBase64: String?
+    let customerImageURL: String?
+}
+
+private struct WidgetBakerProfile {
+    let name: String
+    let ratingText: String
+    let reviewCount: Int
+    let address: String
+    let city: String
+    let profileImageBase64: String
+    let imageURL: String
+}
+
+private struct WidgetCustomerProfile {
+    let name: String
+    let address: String
+    let city: String
+    let profileImageBase64: String
+    let imageURL: String
 }
 
 struct WidgetMatchingRequestSummary: Codable, Hashable {
@@ -142,9 +175,11 @@ final class WidgetDataSyncManager {
             .whereField("status", in: statuses)
             .getDocuments()
 
-        return snapshot.documents
+        let orders = snapshot.documents
             .compactMap(makeOrderSummary)
             .sorted { $0.deliveryDate < $1.deliveryDate }
+
+        return await enrichCustomerOrdersWithBakerProfiles(orders)
     }
 
     private func fetchBakerActiveOrders(bakerID: String) async throws -> [WidgetOrderSummary] {
@@ -166,7 +201,171 @@ final class WidgetDataSyncManager {
             }
         }
 
-        return map.values.sorted { $0.deliveryDate < $1.deliveryDate }
+        let orders = map.values.sorted { $0.deliveryDate < $1.deliveryDate }
+        return await enrichBakerOrdersWithCustomerProfiles(orders)
+    }
+
+    private func enrichCustomerOrdersWithBakerProfiles(_ orders: [WidgetOrderSummary]) async -> [WidgetOrderSummary] {
+        var cache: [String: WidgetBakerProfile] = [:]
+        var enriched: [WidgetOrderSummary] = []
+        enriched.reserveCapacity(orders.count)
+
+        for order in orders {
+            guard let bakerID = order.bakerID?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !bakerID.isEmpty else {
+                enriched.append(order)
+                continue
+            }
+
+            let profile: WidgetBakerProfile
+            if let cached = cache[bakerID] {
+                profile = cached
+            } else {
+                profile = await fetchBakerProfile(bakerID: bakerID)
+                cache[bakerID] = profile
+            }
+
+            enriched.append(
+                WidgetOrderSummary(
+                    id: order.id,
+                    cakeName: order.cakeName,
+                    status: order.status,
+                    currentStep: order.currentStep,
+                    deliveryDate: order.deliveryDate,
+                    counterpartName: profile.name.isEmpty ? order.counterpartName : profile.name,
+                    referenceImageBase64: order.referenceImageBase64,
+                    bakerID: bakerID,
+                    bakerName: profile.name.isEmpty ? order.bakerName : profile.name,
+                    bakerRating: profile.ratingText.isEmpty ? order.bakerRating : profile.ratingText,
+                    bakerReviewCount: profile.reviewCount,
+                    bakerAddress: profile.address.isEmpty ? order.bakerAddress : profile.address,
+                    bakerCity: profile.city.isEmpty ? order.bakerCity : profile.city,
+                    bakerProfileImageBase64: profile.profileImageBase64,
+                    bakerImageURL: profile.imageURL,
+                    customerName: order.customerName,
+                    customerAddress: order.customerAddress,
+                    customerCity: order.customerCity,
+                    customerID: order.customerID,
+                    customerProfileImageBase64: order.customerProfileImageBase64,
+                    customerImageURL: order.customerImageURL
+                )
+            )
+        }
+
+        return enriched
+    }
+
+    private func fetchBakerProfile(bakerID: String) async -> WidgetBakerProfile {
+        async let artisanProfile = fetchProfileData(collection: "artisans", documentID: bakerID)
+        async let userProfile = fetchProfileData(collection: "users", documentID: bakerID)
+
+        let (artisanData, userData) = await (artisanProfile, userProfile)
+        let primaryData = artisanData ?? [:]
+        let fallbackData = userData ?? [:]
+
+        let rating = doubleFromAny(primaryData["rating"])
+        let ratingText = rating > 0
+            ? String(format: "%.1f", rating)
+            : firstString(primaryData["artisanRating"], fallbackData["artisanRating"])
+
+        return WidgetBakerProfile(
+            name: firstString(primaryData["shopName"], primaryData["name"], fallbackData["name"]),
+            ratingText: ratingText,
+            reviewCount: intFromAny(primaryData["reviewCount"]),
+            address: firstString(primaryData["address"], primaryData["location"], fallbackData["address"]),
+            city: firstString(primaryData["city"], fallbackData["city"]),
+            profileImageBase64: firstString(primaryData["profileImageBase64"], fallbackData["profileImageBase64"]),
+            imageURL: firstString(primaryData["imageURL"], primaryData["avatarURL"], fallbackData["imageURL"], fallbackData["avatarURL"])
+        )
+    }
+
+    private func fetchProfileData(collection: String, documentID: String) async -> [String: Any]? {
+        do {
+            let document = try await db.collection(collection).document(documentID).getDocument()
+            return document.data()
+        } catch {
+            return nil
+        }
+    }
+
+    private func enrichBakerOrdersWithCustomerProfiles(_ orders: [WidgetOrderSummary]) async -> [WidgetOrderSummary] {
+        var cache: [String: WidgetCustomerProfile] = [:]
+        var enriched: [WidgetOrderSummary] = []
+        enriched.reserveCapacity(orders.count)
+
+        for order in orders {
+            guard let customerID = order.customerID?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !customerID.isEmpty else {
+                enriched.append(order)
+                continue
+            }
+
+            let profile: WidgetCustomerProfile
+            if let cached = cache[customerID] {
+                profile = cached
+            } else {
+                profile = await fetchCustomerProfile(customerID: customerID, fallback: order)
+                cache[customerID] = profile
+            }
+
+            enriched.append(
+                WidgetOrderSummary(
+                    id: order.id,
+                    cakeName: order.cakeName,
+                    status: order.status,
+                    currentStep: order.currentStep,
+                    deliveryDate: order.deliveryDate,
+                    counterpartName: profile.name.isEmpty ? order.counterpartName : profile.name,
+                    referenceImageBase64: order.referenceImageBase64,
+                    bakerID: order.bakerID,
+                    bakerName: order.bakerName,
+                    bakerRating: order.bakerRating,
+                    bakerReviewCount: order.bakerReviewCount,
+                    bakerAddress: order.bakerAddress,
+                    bakerCity: order.bakerCity,
+                    bakerProfileImageBase64: order.bakerProfileImageBase64,
+                    bakerImageURL: order.bakerImageURL,
+                    customerName: profile.name.isEmpty ? order.customerName : profile.name,
+                    customerAddress: profile.address.isEmpty ? order.customerAddress : profile.address,
+                    customerCity: profile.city.isEmpty ? order.customerCity : profile.city,
+                    customerID: customerID,
+                    customerProfileImageBase64: profile.profileImageBase64.isEmpty ? order.customerProfileImageBase64 : profile.profileImageBase64,
+                    customerImageURL: profile.imageURL.isEmpty ? order.customerImageURL : profile.imageURL
+                )
+            )
+        }
+
+        return enriched
+    }
+
+    private func fetchCustomerProfile(customerID: String, fallback order: WidgetOrderSummary) async -> WidgetCustomerProfile {
+        do {
+            let snapshot = try await db.collection("users").document(customerID).getDocument()
+            let data = snapshot.data() ?? [:]
+            return WidgetCustomerProfile(
+                name: firstString(order.customerName, data["name"], data["fullName"], data["email"], customerID),
+                address: firstString(order.customerAddress, data["address"]),
+                city: firstString(order.customerCity, data["city"]),
+                profileImageBase64: firstString(
+                    order.customerProfileImageBase64,
+                    data["profileImageBase64"],
+                    data["avatarBase64"],
+                    data["customerProfileImageBase64"],
+                    data["customerImageBase64"],
+                    data["customerImage"],
+                    data["photoBase64"]
+                ),
+                imageURL: firstString(order.customerImageURL, data["imageURL"], data["avatarURL"], data["photoURL"], data["customerImageURL"], data["customerAvatarURL"])
+            )
+        } catch {
+            return WidgetCustomerProfile(
+                name: order.customerName ?? "",
+                address: order.customerAddress ?? "",
+                city: order.customerCity ?? "",
+                profileImageBase64: order.customerProfileImageBase64 ?? "",
+                imageURL: order.customerImageURL ?? ""
+            )
+        }
     }
 
     private func fetchLatestMatchingRequest(bakerID: String) async throws -> WidgetMatchingRequestSummary? {
@@ -222,10 +421,13 @@ final class WidgetDataSyncManager {
         guard let deliveryDate = dateFromAny(data["deliveryDate"]) else { return nil }
 
         let currentStep = intFromAny(data["currentStep"])
+        let bakerID = firstString(data["artisanId"], data["bakerID"], data["bakerId"])
+        let customerID = firstString(data["customerId"], data["customerID"])
         let counterpart = (data["artisanName"] as? String)
             ?? (data["customerName"] as? String)
             ?? (data["customerEmail"] as? String)
             ?? "CakeLab"
+        let referenceImageBase64 = (data["referenceImages"] as? [String])?.first
 
         return WidgetOrderSummary(
             id: document.documentID,
@@ -233,7 +435,22 @@ final class WidgetDataSyncManager {
             status: status,
             currentStep: max(1, min(5, currentStep == 0 ? 1 : currentStep)),
             deliveryDate: deliveryDate,
-            counterpartName: counterpart
+            counterpartName: counterpart,
+            referenceImageBase64: referenceImageBase64,
+            bakerID: bakerID,
+            bakerName: firstString(data["artisanName"], data["bakerName"]),
+            bakerRating: firstString(data["artisanRating"], data["bakerRating"]),
+            bakerReviewCount: intFromAny(data["bakerReviewCount"]),
+            bakerAddress: firstString(data["artisanAddress"], data["bakerAddress"]),
+            bakerCity: firstString(data["bakerCity"]),
+            bakerProfileImageBase64: firstString(data["bakerProfileImageBase64"]),
+            bakerImageURL: firstString(data["bakerImageURL"]),
+            customerName: firstString(data["customerName"], data["customerEmail"]),
+            customerAddress: firstString(data["customerAddress"], data["deliveryAddress"], data["address"]),
+            customerCity: firstString(data["customerCity"], data["deliveryCity"], data["city"]),
+            customerID: customerID,
+            customerProfileImageBase64: firstString(data["customerProfileImageBase64"], data["customerImageBase64"], data["customerImage"]),
+            customerImageURL: firstString(data["customerImageURL"], data["customerAvatarURL"])
         )
     }
 
@@ -266,6 +483,12 @@ final class WidgetDataSyncManager {
             .components(separatedBy: .whitespacesAndNewlines)
             .filter { !$0.isEmpty }
             .joined(separator: " ")
+    }
+
+    private func firstString(_ values: Any?...) -> String {
+        values.compactMap { $0 as? String }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first(where: { !$0.isEmpty }) ?? ""
     }
 
     private func dateFromAny(_ raw: Any?) -> Date? {

@@ -1,5 +1,6 @@
 import WidgetKit
 import SwiftUI
+import UIKit
 
 private enum SharedKeys {
     static let appGroupID = "group.com.vihanga.CakeLab-IOS"
@@ -19,6 +20,21 @@ private struct SnapshotOrder: Codable {
     let currentStep: Int
     let deliveryDate: Date
     let counterpartName: String
+    let referenceImageBase64: String?
+    let bakerID: String?
+    let bakerName: String?
+    let bakerRating: String?
+    let bakerReviewCount: Int?
+    let bakerAddress: String?
+    let bakerCity: String?
+    let bakerProfileImageBase64: String?
+    let bakerImageURL: String?
+    let customerName: String?
+    let customerAddress: String?
+    let customerCity: String?
+    let customerID: String?
+    let customerProfileImageBase64: String?
+    let customerImageURL: String?
 }
 
 private struct SnapshotMatchingRequest: Codable {
@@ -110,6 +126,7 @@ struct CustomerNearestOrderWidget: Widget {
         .configurationDisplayName("Customer Delivery Step")
         .description("Shows your nearest active order and current delivery step.")
         .supportedFamilies([.systemMedium])
+        .contentMarginsDisabled()
     }
 }
 
@@ -162,40 +179,246 @@ private struct CustomerNearestOrderWidgetView: View {
             } else if entry.payload.role != .customer {
                 RoleMismatchWidgetCard(message: "This widget is available for customer accounts.")
             } else if let order = entry.payload.customerNearestOrder {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("Nearest Delivery")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Text(dateText(order.deliveryDate))
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-
-                    Text(order.cakeName)
-                        .font(.system(size: 16, weight: .bold))
-                        .lineLimit(2)
-
-                    HStack(spacing: 8) {
-                        StatusPill(status: order.status)
-                        Spacer()
-                        Text("Step \(max(1, min(5, order.currentStep)))/5")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.brown)
-                    }
-
-                    ProgressView(value: Double(max(1, min(5, order.currentStep))), total: 5)
-                        .tint(.green)
-                }
-                .padding(14)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .background(WidgetCardBackground())
+                CustomerNearestDeliveryCard(order: order)
             } else {
                 EmptyDataWidgetCard(message: "No active orders.")
             }
         }
         .widgetURL(URL(string: "cakelab://widget/customer/status"))
+    }
+}
+
+private struct CustomerNearestDeliveryCard: View {
+    let order: SnapshotOrder
+    private let horizontalInset: CGFloat = 6
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 9) {
+                orderImage
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Text(order.cakeName)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(Color(red: 0.11, green: 0.11, blue: 0.11))
+                            .lineLimit(2)
+
+                        Spacer(minLength: 0)
+                    }
+
+                    HStack(alignment: .top, spacing: 8) {
+                        CompactStatusBadge(status: order.status)
+
+                        Spacer(minLength: 0)
+
+                        VStack(alignment: .trailing, spacing: 1) {
+                            Text("Delivery Date:")
+                                .font(.system(size: 9, weight: .regular))
+                                .foregroundColor(Color(red: 0.48, green: 0.48, blue: 0.48))
+                            Text(dateText(order.deliveryDate))
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(Color(red: 0.14, green: 0.14, blue: 0.14))
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, horizontalInset)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+
+            WidgetOrderProgressTracker(currentStep: order.currentStep)
+                .padding(.horizontal, horizontalInset)
+                .padding(.bottom, 4)
+
+            Divider()
+                .padding(.horizontal, horizontalInset)
+
+            HStack(spacing: 8) {
+                bakerProfileImage
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(bakerName)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(Color(red: 0.10, green: 0.10, blue: 0.10))
+                        .lineLimit(1)
+                    HStack(spacing: 3) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 9))
+                            .foregroundColor(Color(red: 1.0, green: 0.74, blue: 0.08))
+                        Text(bakerRatingText)
+                            .font(.system(size: 10, weight: .regular))
+                            .foregroundColor(Color(red: 0.50, green: 0.50, blue: 0.50))
+                            .lineLimit(1)
+                    }
+                    if !bakerLocationText.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "mappin.circle.fill")
+                                .font(.system(size: 9))
+                                .foregroundColor(Color(red: 0.50, green: 0.50, blue: 0.50))
+                            Text(bakerLocationText)
+                                .font(.system(size: 10, weight: .regular))
+                                .foregroundColor(Color(red: 0.50, green: 0.50, blue: 0.50))
+                                .lineLimit(1)
+                        }
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, horizontalInset)
+            .padding(.top, 4)
+            .padding(.bottom, 4)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Color.white)
+    }
+
+    private var orderImage: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+
+            if let image = widgetImage(from: order.referenceImageBase64) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 58, height: 58)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            } else {
+                Image(systemName: "birthday.cake.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(Color(red: 0.37, green: 0.22, blue: 0.08).opacity(0.45))
+            }
+        }
+        .frame(width: 58, height: 58)
+        .clipped()
+    }
+
+    private var bakerProfileImage: some View {
+        Group {
+            if let image = widgetImage(from: order.bakerProfileImageBase64) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Circle()
+                    .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+                    .overlay(
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 13))
+                            .foregroundColor(Color(red: 0.37, green: 0.22, blue: 0.08).opacity(0.5))
+                    )
+            }
+        }
+        .frame(width: 28, height: 28)
+        .clipShape(Circle())
+    }
+
+    private var bakerName: String {
+        let resolved = order.bakerName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return resolved.isEmpty ? order.counterpartName : resolved
+    }
+
+    private var bakerRatingText: String {
+        let rating = order.bakerRating?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let reviewCount = order.bakerReviewCount ?? 0
+        let reviewText = "\(reviewCount) review\(reviewCount == 1 ? "" : "s")"
+
+        if rating.isEmpty || rating == "New baker" {
+            return reviewCount > 0 ? reviewText : "No reviews yet"
+        }
+
+        return reviewCount > 0 ? "\(rating) (\(reviewText))" : rating
+    }
+
+    private var bakerLocationText: String {
+        let address = order.bakerAddress?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let city = order.bakerCity?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        if address.isEmpty { return city }
+        if city.isEmpty || address.localizedCaseInsensitiveContains(city) { return address }
+        return "\(address), \(city)"
+    }
+}
+
+private struct CompactStatusBadge: View {
+    let status: String
+
+    var body: some View {
+        Text(statusLabel(status))
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundColor(statusColor(status))
+            .padding(.horizontal, 9)
+            .padding(.vertical, 3)
+            .background(statusColor(status).opacity(0.12))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct WidgetOrderProgressTracker: View {
+    let currentStep: Int
+    private let labels = ["Confirmed", "Baking", "Decorating", "Quality\nChecking", "Delivered"]
+
+    var body: some View {
+        VStack(spacing: 3) {
+            HStack(spacing: 0) {
+                ForEach(1...5, id: \.self) { step in
+                    stepCircle(step)
+                    if step < 5 {
+                        Rectangle()
+                            .fill(step < clampedStep ? Color(red: 0.15, green: 0.60, blue: 0.22) : Color(red: 0.80, green: 0.80, blue: 0.80))
+                            .frame(height: 2)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+            }
+
+            HStack(spacing: 0) {
+                ForEach(labels.indices, id: \.self) { index in
+                    Text(labels[index])
+                        .font(.system(size: 7, weight: .regular))
+                        .foregroundColor(Color(red: 0.40, green: 0.40, blue: 0.40))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+        }
+    }
+
+    private var clampedStep: Int {
+        max(1, min(5, currentStep))
+    }
+
+    private func stepCircle(_ step: Int) -> some View {
+        ZStack {
+            if step < clampedStep {
+                Circle()
+                    .fill(Color(red: 0.15, green: 0.60, blue: 0.22))
+                    .frame(width: 18, height: 18)
+                Text("\(step)")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(.white)
+            } else if step == clampedStep {
+                Circle()
+                    .fill(Color(red: 0.92, green: 0.86, blue: 0.76))
+                    .frame(width: 18, height: 18)
+                Circle()
+                    .stroke(Color(red: 0.80, green: 0.72, blue: 0.60), lineWidth: 1.2)
+                    .frame(width: 18, height: 18)
+                Text("\(step)")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(Color(red: 0.50, green: 0.35, blue: 0.15))
+            } else {
+                Circle()
+                    .fill(Color(red: 0.82, green: 0.82, blue: 0.82))
+                    .frame(width: 18, height: 18)
+                Text("\(step)")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(.white)
+            }
+        }
+        .frame(width: 18)
     }
 }
 
@@ -211,41 +434,76 @@ private struct CustomerActiveOrdersWidgetView: View {
             } else if entry.payload.customerActiveOrders.isEmpty {
                 EmptyDataWidgetCard(message: "No active orders in your home list.")
             } else {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
+                VStack(alignment: .leading, spacing: 15) {
+                    HStack(alignment: .firstTextBaseline) {
                         Text("Active Orders")
-                            .font(.system(size: 15, weight: .bold))
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(Color(red: 0.12, green: 0.12, blue: 0.12))
                         Spacer()
-                        Text("\(entry.payload.customerActiveOrders.count)")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.secondary)
+                        Text("See all")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(Color(red: 0.37, green: 0.22, blue: 0.08))
                     }
 
-                    ForEach(Array(entry.payload.customerActiveOrders.prefix(3).enumerated()), id: \.element.id) { _, order in
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(statusColor(order.status).opacity(0.2))
-                                .frame(width: 8, height: 8)
-
-                            Text(order.cakeName)
-                                .font(.system(size: 12, weight: .medium))
-                                .lineLimit(1)
-
-                            Spacer()
-
-                            Text(shortDateText(order.deliveryDate))
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(.secondary)
+                    HStack(alignment: .top, spacing: 18) {
+                        ForEach(Array(entry.payload.customerActiveOrders.prefix(3).enumerated()), id: \.element.id) { _, order in
+                            CustomerActiveOrderCircleCard(order: order)
                         }
+                        Spacer(minLength: 0)
                     }
+
                     Spacer(minLength: 0)
                 }
-                .padding(14)
+                .padding(.horizontal, 16)
+                .padding(.top, 22)
+                .padding(.bottom, 8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .background(WidgetCardBackground())
+                .background(Color.white)
             }
         }
         .widgetURL(URL(string: "cakelab://widget/customer/active-list"))
+    }
+}
+
+private struct CustomerActiveOrderCircleCard: View {
+    let order: SnapshotOrder
+
+    private var orderNumber: String {
+        String(order.id.prefix(6))
+    }
+
+    var body: some View {
+        VStack(spacing: 9) {
+            ZStack {
+                Circle()
+                    .stroke(Color(red: 0.10, green: 0.66, blue: 0.20), lineWidth: 3)
+                    .frame(width: 76, height: 76)
+
+                Circle()
+                    .fill(Color(red: 0.93, green: 0.91, blue: 0.88))
+                    .frame(width: 68, height: 68)
+
+                if let image = widgetImage(from: order.referenceImageBase64) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 62, height: 62)
+                        .clipShape(Circle())
+                } else {
+                    Image(systemName: "birthday.cake.fill")
+                        .font(.system(size: 25, weight: .regular))
+                        .foregroundColor(Color(red: 0.37, green: 0.22, blue: 0.08).opacity(0.48))
+                }
+            }
+
+            Text("Order No:\n\(orderNumber)")
+                .font(.system(size: 13, weight: .regular))
+                .foregroundColor(Color(red: 0.20, green: 0.20, blue: 0.20))
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .frame(width: 82)
+        }
+        .frame(width: 82)
     }
 }
 
@@ -259,40 +517,156 @@ private struct BakerNearestOrderWidgetView: View {
             } else if entry.payload.role != .baker {
                 RoleMismatchWidgetCard(message: "This widget is available for baker accounts.")
             } else if let order = entry.payload.bakerNearestOrder {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("Nearest Delivery")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Text(dateText(order.deliveryDate))
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-
-                    Text(order.cakeName)
-                        .font(.system(size: 16, weight: .bold))
-                        .lineLimit(2)
-
-                    HStack(spacing: 8) {
-                        StatusPill(status: order.status)
-                        Spacer()
-                        Text("Step \(max(1, min(5, order.currentStep)))/5")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.brown)
-                    }
-
-                    ProgressView(value: Double(max(1, min(5, order.currentStep))), total: 5)
-                        .tint(.green)
-                }
-                .padding(14)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .background(WidgetCardBackground())
+                BakerNearestDeliveryCard(order: order)
             } else {
                 EmptyDataWidgetCard(message: "No active baking orders.")
             }
         }
         .widgetURL(URL(string: "cakelab://widget/baker/status"))
+    }
+}
+
+private struct BakerNearestDeliveryCard: View {
+    let order: SnapshotOrder
+    private let horizontalInset: CGFloat = 6
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 9) {
+                orderImage
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(order.cakeName)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(Color(red: 0.11, green: 0.11, blue: 0.11))
+                        .lineLimit(2)
+
+                    HStack(alignment: .top, spacing: 8) {
+                        CompactStatusBadge(status: order.status)
+
+                        Spacer(minLength: 0)
+
+                        VStack(alignment: .trailing, spacing: 1) {
+                            Text("Delivery Date:")
+                                .font(.system(size: 9, weight: .regular))
+                                .foregroundColor(Color(red: 0.48, green: 0.48, blue: 0.48))
+                            Text(dateText(order.deliveryDate))
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(Color(red: 0.14, green: 0.14, blue: 0.14))
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, horizontalInset)
+            .padding(.top, 6)
+            .padding(.bottom, 6)
+
+            WidgetOrderProgressTracker(currentStep: order.currentStep)
+                .padding(.horizontal, horizontalInset)
+                .padding(.bottom, 6)
+
+            Divider()
+                .padding(.horizontal, horizontalInset)
+
+            HStack(spacing: 8) {
+                customerProfileImage
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(customerName)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color(red: 0.10, green: 0.10, blue: 0.10))
+                        .lineLimit(1)
+                    if !customerLocationText.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "mappin.circle.fill")
+                                .font(.system(size: 9))
+                                .foregroundColor(Color(red: 0.50, green: 0.50, blue: 0.50))
+                            Text(customerLocationText)
+                                .font(.system(size: 10, weight: .regular))
+                                .foregroundColor(Color(red: 0.50, green: 0.50, blue: 0.50))
+                                .lineLimit(1)
+                        }
+                    }
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, horizontalInset)
+            .padding(.top, 4)
+            .padding(.bottom, 4)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Color.white)
+    }
+
+    private var orderImage: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+
+            if let image = widgetImage(from: order.referenceImageBase64) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 58, height: 58)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            } else {
+                Image(systemName: "birthday.cake.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(Color(red: 0.37, green: 0.22, blue: 0.08).opacity(0.45))
+            }
+        }
+        .frame(width: 58, height: 58)
+        .clipped()
+    }
+
+    private var customerName: String {
+        let resolved = order.customerName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return resolved.isEmpty ? order.counterpartName : resolved
+    }
+
+    private var customerLocationText: String {
+        let address = order.customerAddress?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let city = order.customerCity?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        if address.isEmpty { return city }
+        if city.isEmpty || address.localizedCaseInsensitiveContains(city) { return address }
+        return "\(address), \(city)"
+    }
+
+    private var customerProfileImage: some View {
+        Group {
+            if let image = widgetImage(from: order.customerProfileImageBase64) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else if let url = URL(string: order.customerImageURL ?? ""), !(order.customerImageURL ?? "").isEmpty {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    default:
+                        customerProfileFallback
+                    }
+                }
+            } else {
+                customerProfileFallback
+            }
+        }
+        .frame(width: 28, height: 28)
+        .clipShape(Circle())
+    }
+
+    private var customerProfileFallback: some View {
+        Circle()
+            .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+            .overlay(
+                Image(systemName: "person.fill")
+                    .font(.system(size: 13))
+                    .foregroundColor(Color(red: 0.37, green: 0.22, blue: 0.08).opacity(0.5))
+            )
     }
 }
 
@@ -470,4 +844,23 @@ private func shortDateText(_ date: Date) -> String {
     let formatter = DateFormatter()
     formatter.dateFormat = "dd MMM"
     return formatter.string(from: date)
+}
+
+private func widgetImage(from base64: String?) -> UIImage? {
+    guard let base64 else { return nil }
+    let trimmed = base64.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return nil }
+
+    let imagePayload: String
+    if let commaIndex = trimmed.firstIndex(of: ",") {
+        imagePayload = String(trimmed[trimmed.index(after: commaIndex)...])
+    } else {
+        imagePayload = trimmed
+    }
+
+    let normalized = imagePayload
+        .components(separatedBy: .whitespacesAndNewlines)
+        .joined()
+    guard let data = Data(base64Encoded: normalized) else { return nil }
+    return UIImage(data: data)
 }
