@@ -6,6 +6,7 @@
 //
 import SwiftUI
 import FirebaseCore
+import CoreData
 
 
 class AppDelegate: NSObject, UIApplicationDelegate {
@@ -29,6 +30,7 @@ struct CakeLab_IOSApp: App {
     WindowGroup {
       ContentView()
         .preferredColorScheme(.light)
+        .environment(\.managedObjectContext, CoreDataStack.shared.viewContext)
         .environmentObject(notificationManager)
         .notificationOverlay(notificationManager)
         .onChange(of: scenePhase) { _, phase in

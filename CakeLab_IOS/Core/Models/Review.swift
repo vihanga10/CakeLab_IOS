@@ -16,6 +16,26 @@ struct Review: Identifiable, Sendable {
         formatter.dateStyle = .medium
         return formatter.string(from: createdAt)
     }
+
+    init(
+        id: String,
+        bakerID: String,
+        customerID: String,
+        customerName: String,
+        customerImage: String?,
+        rating: Int,
+        comment: String,
+        createdAt: Date
+    ) {
+        self.id = id
+        self.bakerID = bakerID
+        self.customerID = customerID
+        self.customerName = customerName
+        self.customerImage = customerImage
+        self.rating = rating
+        self.comment = comment
+        self.createdAt = createdAt
+    }
     
     init?(document: DocumentSnapshot) {
         guard let data = document.data() else { return nil }

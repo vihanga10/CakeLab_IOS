@@ -1907,6 +1907,11 @@ final class BakerPaymentDetailsViewModel: ObservableObject {
         errorMessage = nil
         defer { isLoading = false }
 
+        let cachedPayments = CoreDataCacheService.shared.cachedBakerPayments(for: trimmedBakerID)
+        if !cachedPayments.isEmpty {
+            payments = cachedPayments
+        }
+
         do {
             let paymentSnapshot = try await db.collection("payments")
                 .whereField("bakerId", isEqualTo: trimmedBakerID)
@@ -1934,7 +1939,7 @@ final class BakerPaymentDetailsViewModel: ObservableObject {
                 }
             }
 
-            payments = paymentDocuments.map { document in
+            let loadedPayments = paymentDocuments.map { document in
                 let data = document.data()
                 let orderID = firstString(data["orderID"])
                 let customerID = firstString(data["customerId"], data["customerID"])
@@ -1955,9 +1960,12 @@ final class BakerPaymentDetailsViewModel: ObservableObject {
                 )
             }
             .sorted { $0.paidAt > $1.paidAt }
+            payments = loadedPayments
+            CoreDataCacheService.shared.cacheBakerPayments(loadedPayments, for: trimmedBakerID)
         } catch {
-            errorMessage = "Unable to load payment details."
-            payments = []
+            if payments.isEmpty {
+                errorMessage = "Unable to load payment details."
+            }
         }
     }
 
