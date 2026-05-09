@@ -45,14 +45,9 @@ struct BakerPerformanceAnalyticsView: View {
             }
         }
         .padding(18)
-        .background(
-            LinearGradient(
-                colors: [Color(red: 0.99, green: 0.95, blue: 0.92), Color(red: 0.96, green: 0.92, blue: 0.88)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
+        .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 22))
+        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
 
     private var monthlyOrdersCard: some View {
@@ -115,16 +110,16 @@ struct BakerPerformanceAnalyticsView: View {
             if snapshot.categoryMix.isEmpty {
                 analyticsEmptyState(message: "Order categories will appear here.")
             } else {
-                Chart(snapshot.categoryMix) { item in
+                Chart(Array(snapshot.categoryMix.enumerated()), id: \.element.id) { index, item in
                     SectorMark(
                         angle: .value("Orders", item.value),
                         innerRadius: .ratio(0.55),
                         angularInset: 2
                     )
-                    .foregroundStyle(by: .value("Category", item.label))
+                    .foregroundStyle(pastelChartColor(at: index))
                 }
                 .frame(height: 240)
-                .chartLegend(position: .bottom, spacing: 12)
+                pastelLegend(for: snapshot.categoryMix)
             }
         }
     }
@@ -161,7 +156,7 @@ struct BakerPerformanceAnalyticsView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(Color.white.opacity(0.7))
+        .background(Color(red: 0.98, green: 0.96, blue: 0.94))
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -235,14 +230,9 @@ struct BakerEarningsAnalyticsView: View {
             }
         }
         .padding(18)
-        .background(
-            LinearGradient(
-                colors: [Color(red: 0.91, green: 0.97, blue: 0.91), Color(red: 0.84, green: 0.94, blue: 0.86)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
+        .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 22))
+        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
 
     private var monthlyEarningsCard: some View {
@@ -271,16 +261,16 @@ struct BakerEarningsAnalyticsView: View {
             if snapshot.categoryEarnings.isEmpty {
                 analyticsEmptyState(message: "Completed order categories will show here.")
             } else {
-                Chart(snapshot.categoryEarnings) { item in
+                Chart(Array(snapshot.categoryEarnings.enumerated()), id: \.element.id) { index, item in
                     SectorMark(
                         angle: .value("Earnings", item.value),
                         innerRadius: .ratio(0.55),
                         angularInset: 2
                     )
-                    .foregroundStyle(by: .value("Category", item.label))
+                    .foregroundStyle(pastelChartColor(at: index))
                 }
                 .frame(height: 240)
-                .chartLegend(position: .bottom, spacing: 12)
+                pastelLegend(for: snapshot.categoryEarnings)
             }
         }
     }
@@ -290,12 +280,12 @@ struct BakerEarningsAnalyticsView: View {
             if snapshot.paymentMethods.isEmpty {
                 analyticsEmptyState(message: "Payment methods will appear after successful payments.")
             } else {
-                Chart(snapshot.paymentMethods) { item in
+                Chart(Array(snapshot.paymentMethods.enumerated()), id: \.element.id) { index, item in
                     BarMark(
                         x: .value("Amount", item.value),
                         y: .value("Method", item.label)
                     )
-                    .foregroundStyle(Color(red: 0.25, green: 0.48, blue: 0.86).gradient)
+                    .foregroundStyle(pastelChartColor(at: index).gradient)
                     .cornerRadius(6)
                 }
                 .frame(height: 220)
@@ -315,7 +305,7 @@ struct BakerEarningsAnalyticsView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(Color.white.opacity(0.7))
+        .background(Color(red: 0.95, green: 0.98, blue: 0.95))
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -376,6 +366,38 @@ private func analyticsEmptyState(message: String) -> some View {
     .frame(height: 180)
     .background(Color(red: 0.98, green: 0.96, blue: 0.94))
     .clipShape(RoundedRectangle(cornerRadius: 18))
+}
+
+private let pastelChartPalette: [Color] = [
+    Color(red: 0.98, green: 0.72, blue: 0.74),
+    Color(red: 0.74, green: 0.86, blue: 1.00),
+    Color(red: 0.78, green: 0.91, blue: 0.76),
+    Color(red: 0.96, green: 0.84, blue: 0.60),
+    Color(red: 0.82, green: 0.78, blue: 0.96),
+    Color(red: 0.72, green: 0.91, blue: 0.90),
+    Color(red: 0.96, green: 0.74, blue: 0.88)
+]
+
+private func pastelChartColor(at index: Int) -> Color {
+    pastelChartPalette[index % pastelChartPalette.count]
+}
+
+private func pastelLegend(for items: [AnalyticsChartPoint]) -> some View {
+    LazyVGrid(columns: [GridItem(.adaptive(minimum: 118), spacing: 8)], alignment: .leading, spacing: 8) {
+        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(pastelChartColor(at: index))
+                    .frame(width: 9, height: 9)
+                Text(item.label)
+                    .font(.urbanistRegular(11))
+                    .foregroundColor(.cakeGrey)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+        }
+    }
+    .padding(.top, 2)
 }
 
 struct BakerPerformanceSnapshot {

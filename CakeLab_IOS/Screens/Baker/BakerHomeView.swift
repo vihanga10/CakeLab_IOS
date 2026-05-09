@@ -343,65 +343,26 @@ struct BakerHomeView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(20)
             } else if matchingRequestsVM.bakerSpecialties.isEmpty {
-                VStack(spacing: 12) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "exclamationmark.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.orange)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Complete Your Profile")
-                                .font(.urbanistSemiBold(14))
-                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                            Text("Add specialties to see matching requests")
-                                .font(.urbanistRegular(12))
-                                .foregroundColor(.cakeGrey)
-                        }
-                        Spacer()
-                    }
-                    .padding(16)
-                    .background(Color(red: 1, green: 0.95, blue: 0.88))
-                    .cornerRadius(12)
-                }
+                homeEmptyState(
+                    icon: "person.crop.circle.badge.plus",
+                    title: "Complete your profile",
+                    message: "Add specialties to see matching customer requests.",
+                    iconColor: Color.cakeBrown.opacity(0.35)
+                )
             } else if matchingRequestsVM.matchingRequests.isEmpty {
-                VStack(spacing: 12) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "tray.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.cakeGrey.opacity(0.5))
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("No Matching Requests")
-                                .font(.urbanistSemiBold(14))
-                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                            Text("Check back soon for requests matching your specialties")
-                                .font(.urbanistRegular(12))
-                                .foregroundColor(.cakeGrey)
-                        }
-                        Spacer()
-                    }
-                    .padding(16)
-                    .background(Color(red: 0.97, green: 0.96, blue: 0.94))
-                    .cornerRadius(12)
-                }
+                homeEmptyState(
+                    icon: "sparkles",
+                    title: "No matching requests yet",
+                    message: "Requests that match your specialties will appear here.",
+                    iconColor: Color.cakeBrown.opacity(0.35)
+                )
             } else if filteredRequests.isEmpty {
-                VStack(spacing: 12) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "mappin.slash")
-                            .font(.system(size: 20))
-                            .foregroundColor(.cakeGrey.opacity(0.5))
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("No Requests in \(filterCity ?? "")")
-                                .font(.urbanistSemiBold(14))
-                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                            Text("Try selecting a different city or \"None\" to see all requests")
-                                .font(.urbanistRegular(12))
-                                .foregroundColor(.cakeGrey)
-                        }
-                        Spacer()
-                    }
-                    .padding(16)
-                    .background(Color(red: 0.97, green: 0.96, blue: 0.94))
-                    .cornerRadius(12)
-                }
+                homeEmptyState(
+                    icon: "mappin.slash",
+                    title: "No requests in \(filterCity ?? "this city")",
+                    message: "Try another city or clear the filter to see all requests.",
+                    iconColor: Color.cakeBrown.opacity(0.35)
+                )
             } else {
                 ForEach(Array(filteredRequests.prefix(2))) { cakeReq in
                     let req = cakeReq.toCakeRequest()
@@ -437,21 +398,7 @@ struct BakerHomeView: View {
                     .padding(.vertical, 4)
                 }
             } else if activeOrdersList.isEmpty {
-                VStack(spacing: 8) {
-                    Image(systemName: "cart.badge.plus")
-                        .font(.system(size: 34))
-                        .foregroundColor(.cakeBrown.opacity(0.35))
-                    Text("No active orders yet")
-                        .font(.urbanistSemiBold(13))
-                        .foregroundColor(.cakeGrey)
-                    Text("New orders will appear here once customers place them")
-                        .font(.urbanistRegular(12))
-                        .foregroundColor(.cakeGrey.opacity(0.7))
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 20)
+                activeOrdersEmptyState
             } else {
                 // Horizontal scrolling circles — mirrors customer home screen
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -499,6 +446,20 @@ struct BakerHomeView: View {
         }
     }
 
+    private var activeOrdersEmptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "tray")
+                .font(.system(size: 34))
+                .foregroundColor(.cakeGrey.opacity(0.6))
+            Text("No active orders yet")
+                .font(.urbanistRegular(14))
+                .foregroundColor(.cakeGrey)
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 22)
+    }
+
     // MARK: - Other Open Requests Preview (max 3, real data)
     private var otherOpenRequestsPreview: some View {
         VStack(spacing: 12) {
@@ -508,18 +469,12 @@ struct BakerHomeView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(20)
             } else if matchingRequestsVM.otherOpenRequests.isEmpty {
-                HStack(spacing: 12) {
-                    Image(systemName: "tray.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.cakeGrey.opacity(0.5))
-                    Text("No other open requests right now")
-                        .font(.urbanistRegular(13))
-                        .foregroundColor(.cakeGrey)
-                    Spacer()
-                }
-                .padding(16)
-                .background(Color(red: 0.97, green: 0.96, blue: 0.94))
-                .cornerRadius(12)
+                homeEmptyState(
+                    icon: "tray",
+                    title: "No other open requests yet",
+                    message: "Requests outside your specialties will appear here when available.",
+                    iconColor: Color.cakeBrown.opacity(0.35)
+                )
             } else {
                 ForEach(Array(matchingRequestsVM.otherOpenRequests.prefix(3))) { record in
                     let req = record.toCakeRequest()
@@ -534,6 +489,31 @@ struct BakerHomeView: View {
                 }
             }
         }
+    }
+
+    private func homeEmptyState(
+        icon: String,
+        title: String,
+        message: String,
+        iconColor: Color
+    ) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 34))
+                .foregroundColor(iconColor)
+            Text(title)
+                .font(.urbanistSemiBold(13))
+                .foregroundColor(.cakeGrey)
+                .multilineTextAlignment(.center)
+            Text(message)
+                .font(.urbanistRegular(12))
+                .foregroundColor(.cakeGrey.opacity(0.7))
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 20)
     }
 
     private func greetingText() -> String {

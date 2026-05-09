@@ -132,6 +132,9 @@ struct BakerProfileView: View {
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("bakerPortfolioDidChange"))) { _ in
             Task { await loadProfileData() }
         }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("bakerProfileDidChange"))) { _ in
+            Task { await loadProfileData() }
+        }
         .sheet(item: $selectedPortfolioWork) { work in
             PortfolioPreviewDetailSheet(work: work)
                 .presentationDetents([.medium, .large])
@@ -195,14 +198,28 @@ struct BakerProfileView: View {
                 AsyncImage(url: url) { phase in
                     switch phase {
                     case .success(let image): image.resizable().scaledToFill()
-                    default: Image("splash1").resizable().scaledToFill()
+                    default: coverFallback
                     }
                 }
             } else {
-                Image("splash1")
-                    .resizable()
-                    .scaledToFill()
+                coverFallback
             }
+        }
+    }
+
+    private var coverFallback: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color.cakeBrown.opacity(0.14),
+                    Color(red: 0.96, green: 0.93, blue: 0.89)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            Image(systemName: "photo")
+                .font(.system(size: 30, weight: .medium))
+                .foregroundColor(.cakeBrown.opacity(0.35))
         }
     }
 
@@ -250,14 +267,13 @@ struct BakerProfileView: View {
     }
 
     private var activeBadge: some View {
-        Text("Active")
+        Text(profileData.isOnline ? "Active" : "Inactive")
             .font(.urbanistMedium(12))
-            .foregroundColor(Color(red: 0.12, green: 0.58, blue: 0.29))
+            .foregroundColor(profileData.isOnline ? Color(red: 0.12, green: 0.58, blue: 0.29) : Color(red: 0.78, green: 0.12, blue: 0.12))
             .padding(.horizontal, 14)
             .padding(.vertical, 6)
-            .background(Color(red: 0.82, green: 0.95, blue: 0.86))
+            .background(profileData.isOnline ? Color(red: 0.82, green: 0.95, blue: 0.86) : Color(red: 1.0, green: 0.86, blue: 0.86))
             .clipShape(RoundedRectangle(cornerRadius: 6))
-            .opacity(profileData.isOnline ? 1 : 0.55)
     }
 
     // MARK: - Stats Row
@@ -911,11 +927,11 @@ struct BakerProfileView: View {
                 HStack(spacing: 14) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.red.opacity(0.12))
+                            .fill(Color(red: 1.0, green: 0.86, blue: 0.86))
                             .frame(width: 36, height: 36)
-                        Image(systemName: "rectangle.portrait.and.arrow.backward")
-                            .font(.system(size: 16))
-                            .foregroundColor(.red)
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(Color(red: 0.82, green: 0.08, blue: 0.08))
                     }
                     Text("Sign Out")
                         .font(.urbanistSemiBold(15))

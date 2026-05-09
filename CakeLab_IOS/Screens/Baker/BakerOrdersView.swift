@@ -28,7 +28,7 @@ struct BakerOrdersView: View {
                     // MARK: Custom Header (matches BakerMatchingRequestsView)
                     HStack {
                         Spacer()
-                        Text("Orders")
+                        Text("Order Details")
                             .font(.urbanistBold(18))
                             .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
                         Spacer()

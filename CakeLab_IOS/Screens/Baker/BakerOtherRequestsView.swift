@@ -69,20 +69,11 @@ struct BakerOtherRequestsView: View {
                         .tint(.cakeBrown)
                     Spacer()
                 } else if viewModel.otherOpenRequests.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "tray")
-                            .font(.system(size: 48))
-                            .foregroundColor(Color.cakeGrey.opacity(0.5))
-                        Text("No other open requests")
-                            .font(.urbanistSemiBold(16))
-                            .foregroundColor(.cakeGrey)
-                        Text("All open requests match your specialties, or there are no open requests right now.")
-                            .font(.urbanistRegular(13))
-                            .foregroundColor(.cakeGrey.opacity(0.7))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 20)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    emptyState(
+                        icon: "tray",
+                        title: "No other open requests yet",
+                        message: "Requests outside your specialties will appear here when available."
+                    )
                 } else {
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 14) {
@@ -131,5 +122,24 @@ struct BakerOtherRequestsView: View {
             await viewModel.loadMatchingRequests()
         }
         .asBakerSubScreen()
+    }
+
+    private func emptyState(icon: String, title: String, message: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 38))
+                .foregroundColor(Color.cakeBrown.opacity(0.35))
+            Text(title)
+                .font(.urbanistSemiBold(14))
+                .foregroundColor(.cakeGrey)
+                .multilineTextAlignment(.center)
+            Text(message)
+                .font(.urbanistRegular(13))
+                .foregroundColor(.cakeGrey.opacity(0.7))
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
+                .padding(.horizontal, 28)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

@@ -90,35 +90,19 @@ struct BakerMatchingRequestsView: View {
                             .tint(.cakeBrown)
                         Spacer()
                     } else if !viewModel.bakerSpecialties.isEmpty && filtered.isEmpty {
-                        VStack(spacing: 16) {
-                            Image(systemName: "tray")
-                                .font(.system(size: 48))
-                                .foregroundColor(Color.cakeGrey.opacity(0.5))
-                            Text("No matching requests")
-                                .font(.urbanistSemiBold(16))
-                                .foregroundColor(.cakeGrey)
-                            Text("We'll show customer requests that match your specialties: \(viewModel.bakerSpecialties.joined(separator: ", "))")
-                                .font(.urbanistRegular(13))
-                                .foregroundColor(.cakeGrey.opacity(0.7))
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 20)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        emptyState(
+                            icon: "sparkles",
+                            title: "No matching requests yet",
+                            message: "Requests that match your specialties will appear here.",
+                            iconColor: Color.cakeBrown.opacity(0.35)
+                        )
                     } else if viewModel.bakerSpecialties.isEmpty {
-                        VStack(spacing: 16) {
-                            Image(systemName: "exclamationmark.circle")
-                                .font(.system(size: 48))
-                                .foregroundColor(Color.orange)
-                            Text("Complete Your Profile")
-                                .font(.urbanistSemiBold(16))
-                                .foregroundColor(.cakeGrey)
-                            Text("Add your specialties to see matching cake requests from customers")
-                                .font(.urbanistRegular(13))
-                                .foregroundColor(.cakeGrey.opacity(0.7))
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 20)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        emptyState(
+                            icon: "person.crop.circle.badge.plus",
+                            title: "Complete your profile",
+                            message: "Add specialties to see matching cake requests from customers.",
+                            iconColor: Color.cakeBrown.opacity(0.35)
+                        )
                     } else {
                         ScrollView(showsIndicators: false) {
                             VStack(spacing: 14) {
@@ -170,5 +154,29 @@ struct BakerMatchingRequestsView: View {
                 }
             }
         }
+    }
+
+    private func emptyState(
+        icon: String,
+        title: String,
+        message: String,
+        iconColor: Color
+    ) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 38))
+                .foregroundColor(iconColor)
+            Text(title)
+                .font(.urbanistSemiBold(14))
+                .foregroundColor(.cakeGrey)
+                .multilineTextAlignment(.center)
+            Text(message)
+                .font(.urbanistRegular(13))
+                .foregroundColor(.cakeGrey.opacity(0.7))
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
+                .padding(.horizontal, 28)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

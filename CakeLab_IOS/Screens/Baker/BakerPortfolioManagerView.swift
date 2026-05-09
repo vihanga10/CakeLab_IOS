@@ -339,12 +339,12 @@ struct BakerPortfolioManagerView: View {
                 summaryBadge(
                     title: "Saved Works",
                     value: "\(viewModel.works.count)",
-                    tint: Color(hex: "AFA499")
+                    tint: Color(hex: "F1EFEC")
                 )
                 summaryBadge(
                     title: "Published",
                     value: "\(viewModel.publishedWorkIDs.count)/6",
-                    tint: Color(hex: "B2C9A4")
+                    tint: Color(hex: "F1EFEC")
                 )
             }
 
@@ -361,8 +361,9 @@ struct BakerPortfolioManagerView: View {
             }
         }
         .padding(18)
-        .background(Color(hex: "F0EDEA"))
+        .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 22))
+        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
 
     private func summaryBadge(title: String, value: String, tint: Color) -> some View {
@@ -418,9 +419,9 @@ struct BakerPortfolioManagerView: View {
             }
         }
         .padding(18)
-        .background(Color(hex: "B2C9A4").opacity(0.55))
+        .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 3)
+        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
 
     private var worksSection: some View {

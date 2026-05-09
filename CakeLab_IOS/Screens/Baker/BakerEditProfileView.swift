@@ -587,6 +587,7 @@ struct BakerEditProfileView: View {
                 "updatedAt": Timestamp(date: Date())
             ], merge: true)
             print("Profile updated successfully!")
+            NotificationCenter.default.post(name: Notification.Name("bakerProfileDidChange"), object: nil)
             showSuccessMessage = true
         } catch {
             errorMessage = "Failed to save profile: \(error.localizedDescription)"
