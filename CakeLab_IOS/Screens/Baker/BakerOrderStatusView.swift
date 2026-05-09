@@ -76,7 +76,7 @@ final class BakerOrderStatusViewModel: ObservableObject {
         }
     }
 
-    func updateStatus(orderID: String) async {
+    func updateStatus(orderID: String, notificationManager: NotificationManager) async {
         guard !isSaving else { return }
         guard let stepInfo = steps.first(where: { $0.step == selectedStep }) else { return }
 
@@ -100,6 +100,14 @@ final class BakerOrderStatusViewModel: ObservableObject {
             NotificationCenter.default.post(name: .orderDidChange, object: nil)
             WidgetDataSyncManager.shared.refreshFromCurrentSession()
             successMessage = "Order status updated to \(stepInfo.title)."
+            notificationManager.notifyBakerOrderStatusUpdated(
+                cakeName: order?.cakeName ?? "Order",
+                stageTitle: stepInfo.title,
+                statusKey: stepInfo.statusKey,
+                orderID: orderID,
+                customerID: order?.customerId ?? "",
+                bakerID: order?.artisanId ?? ""
+            )
         } catch {
             errorMessage = "Failed to update order status. \(error.localizedDescription)"
         }
@@ -171,6 +179,7 @@ struct BakerOrderStatusView: View {
 
     @StateObject private var viewModel = BakerOrderStatusViewModel()
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var notificationManager: NotificationManager
     @State private var calendarAlert: BakerCalendarAlert?
 
     private let surface = Color.white
@@ -475,7 +484,7 @@ struct BakerOrderStatusView: View {
 
             // ── Update button (baker-specific backend action) ───────────
             Button {
-                Task { await viewModel.updateStatus(orderID: order.id) }
+                Task { await viewModel.updateStatus(orderID: order.id, notificationManager: notificationManager) }
             } label: {
                 if viewModel.isSaving {
                     HStack(spacing: 8) {
@@ -764,4 +773,5 @@ private enum BakerCalendarAlert: Identifiable {
     NavigationStack {
         BakerOrderStatusView(orderID: "order_001")
     }
+    .environmentObject(NotificationManager())
 }

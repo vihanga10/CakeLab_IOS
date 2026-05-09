@@ -239,6 +239,7 @@ struct CustomerOrdersView: View {
 
     @State private var selectedTab = 0   // 0 = Active, 1 = Completed
     @StateObject private var viewModel = CustomerOrdersViewModel()
+    @EnvironmentObject var notificationManager: NotificationManager
 
     private let stepLabels = ["Confirmed", "Baking", "Decorating", "Quality\nChecking", "Delivered"]
 
@@ -321,10 +322,12 @@ struct CustomerOrdersView: View {
             }
         }
         .task {
+            await notificationManager.syncCustomerOrderStatusNotifications(customerID: user.id)
             await viewModel.loadOrders(customerID: user.id)
         }
         .onReceive(NotificationCenter.default.publisher(for: .orderDidChange)) { _ in
             Task {
+                await notificationManager.syncCustomerOrderStatusNotifications(customerID: user.id)
                 await viewModel.loadOrders(customerID: user.id)
             }
         }
@@ -792,4 +795,5 @@ struct OrderProgressTracker: View {
 
 #Preview {
     CustomerOrdersView(user: AppUser.mock)
+        .environmentObject(NotificationManager())
 }

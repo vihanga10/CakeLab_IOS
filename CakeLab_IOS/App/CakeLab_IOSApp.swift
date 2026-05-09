@@ -7,14 +7,23 @@
 import SwiftUI
 import FirebaseCore
 import CoreData
+import UserNotifications
 
 
-class AppDelegate: NSObject, UIApplicationDelegate {
+class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
   func application(_ application: UIApplication,
                    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
     FirebaseApp.configure()
+    UNUserNotificationCenter.current().delegate = self
 
     return true
+  }
+
+  func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification
+  ) async -> UNNotificationPresentationOptions {
+    [.banner, .list, .sound]
   }
 }
 
@@ -40,7 +49,6 @@ struct CakeLab_IOSApp: App {
         .contrast(highContrastEnabled ? 1.2 : 1.0)
         .environment(\.managedObjectContext, CoreDataStack.shared.viewContext)
         .environmentObject(notificationManager)
-        .notificationOverlay(notificationManager)
         .onChange(of: scenePhase) { _, phase in
           if phase == .active {
             WidgetDataSyncManager.shared.refreshFromCurrentSession()

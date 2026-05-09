@@ -8,6 +8,7 @@ enum NotificationType: String, Codable {
     case newBidReceived = "newBidReceived"
     case bidAccepted = "bidAccepted"
     case orderConfirmed = "orderConfirmed"
+    case orderStatusUpdated = "orderStatusUpdated"
     
     // Customer: Delivery & Completion
     case deliveryReminder = "deliveryReminder"
@@ -49,6 +50,8 @@ enum NotificationType: String, Codable {
             return "Bid Accepted"
         case .orderConfirmed:
             return "Order Confirmed"
+        case .orderStatusUpdated:
+            return "Order Status Updated"
         case .deliveryReminder:
             return "Delivery Reminder"
         case .bakerOnTheWay:
@@ -86,7 +89,7 @@ enum NotificationType: String, Codable {
     
     var category: String {
         switch self {
-        case .requestPostedSuccess, .draftSavedSuccess, .newBidReceived, .bidAccepted, .orderConfirmed:
+        case .requestPostedSuccess, .draftSavedSuccess, .newBidReceived, .bidAccepted, .orderConfirmed, .orderStatusUpdated:
             return "Order Lifecycle"
         case .deliveryReminder, .bakerOnTheWay, .deliveryCompleted, .orderCancelled:
             return "Delivery & Completion"
@@ -115,6 +118,8 @@ enum NotificationType: String, Codable {
             return "hand.thumbsup.fill"
         case .orderConfirmed:
             return "doc.text.fill"
+        case .orderStatusUpdated:
+            return "checkmark.circle.fill"
         case .deliveryReminder:
             return "clock.fill"
         case .bakerOnTheWay:

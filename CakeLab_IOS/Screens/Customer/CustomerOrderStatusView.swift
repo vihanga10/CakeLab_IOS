@@ -238,8 +238,10 @@ struct CustomerOrderStatusView: View {
 
     @StateObject private var viewModel = CustomerOrderStatusViewModel()
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var notificationManager: NotificationManager
     @State private var calendarAlert: CalendarAlert?
     @State private var showReviewModal = false
+    @State private var observedStatusForNotification: String?
 
     private let steps: [(step: Int, statusKey: String, title: String)] = [
         (1, "confirmed", "Confirmed"),
@@ -355,6 +357,9 @@ struct CustomerOrderStatusView: View {
         .task {
             viewModel.startListening(orderID: orderID)
         }
+        .onChange(of: viewModel.order?.status) { _, newStatus in
+            handleLiveStatusNotification(newStatus: newStatus)
+        }
         .alert(item: $calendarAlert) { alert in
             switch alert {
             case .success(let message):
@@ -379,6 +384,30 @@ struct CustomerOrderStatusView: View {
             }
         }
         .asCustomerSubScreen()
+    }
+
+    private func handleLiveStatusNotification(newStatus: String?) {
+        guard let newStatus = newStatus?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !newStatus.isEmpty else { return }
+
+        if observedStatusForNotification == nil {
+            observedStatusForNotification = newStatus
+            return
+        }
+
+        guard observedStatusForNotification != newStatus else { return }
+        observedStatusForNotification = newStatus
+        guard newStatus != "confirmed", let order = viewModel.order else { return }
+
+        notificationManager.notifyCustomerOrderStatusUpdated(
+            bakerName: resolvedBakerName(order, profile: viewModel.bakerProfile),
+            cakeName: order.cakeName,
+            stageTitle: order.statusLabel,
+            statusKey: newStatus,
+            orderID: order.id,
+            customerID: order.customerId,
+            bakerID: order.artisanId
+        )
     }
 
     private var headerBar: some View {
@@ -1155,4 +1184,5 @@ private enum CalendarAlert: Identifiable {
             )
         )
     }
+    .environmentObject(NotificationManager())
 }

@@ -7,7 +7,6 @@ struct SignUpView: View {
     @StateObject private var vm = SignUpViewModel()
     @State private var showPassword        = false
     @State private var showConfirmPassword = false
-    @State private var showSignUpSuccessAlert = false
     @State private var showSignIn = false
     @Environment(\.dismiss) private var dismiss
 
@@ -66,18 +65,22 @@ struct SignUpView: View {
             }
             .onChange(of: vm.navigateToFaceID) { _, newVal in
                 if newVal {
-                    showSignUpSuccessAlert = true
                     vm.navigateToFaceID = false
+                    Task {
+                        await scheduleAccountCreatedNotification()
+                        dismiss()
+                    }
                 }
-            }
-            .alert("Registration Successful", isPresented: $showSignUpSuccessAlert) {
-                Button("OK") {
-                    dismiss()
-                }
-            } message: {
-                Text("Your account has been created successfully. Please sign in to continue.")
             }
         }
+    }
+
+    private func scheduleAccountCreatedNotification() async {
+        await NotificationManager.scheduleLocalNotification(
+            title: "Registration Successful",
+            body: "Your account has been created successfully. Please sign in to continue.",
+            identifier: "account-created-\(UUID().uuidString)"
+        )
     }
 
     // MARK: - Card content (fixed layout — no ScrollView)

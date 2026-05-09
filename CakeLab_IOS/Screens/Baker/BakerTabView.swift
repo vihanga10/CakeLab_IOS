@@ -180,6 +180,7 @@ struct BakerTabView: View {
         .task {
             // Show baker saved notifications (bid accepted, order confirmed, etc.) only once on login
             if !notificationsShown {
+                await notificationManager.syncBakerOrderAndPaymentNotifications(bakerID: user.id)
                 notificationManager.reloadNotifications(for: "baker", userID: user.id)
                 notificationsShown = true
                 print(" Baker notifications loaded and displayed once on login")
@@ -210,6 +211,12 @@ struct BakerTabView: View {
         let db = Firestore.firestore()
         
         do {
+            let bakerSpecialties = try await loadBakerSpecialties(db: db)
+            guard !bakerSpecialties.isEmpty else {
+                matchingRequestsLoaded = true
+                return
+            }
+
             let bidsSnapshot = try await db.collection("bids")
                 .whereField("bakerID", isEqualTo: user.id)
                 .getDocuments()
@@ -219,17 +226,18 @@ struct BakerTabView: View {
                 }
             )
 
-            // Fetch open requests from Firestore
+            // Fetch open requests from Firestore. Only category-matched requests
+            // should trigger "New Matching Request" notifications.
             let snapshot = try await db.collection("cakeRequests")
                 .whereField("status", isEqualTo: "open")
-                .limit(to: 10)
+                .limit(to: 50)
                 .getDocuments()
             
             var requests: [CakeRequestRecord] = []
             for document in snapshot.documents {
                 if let request = CakeRequestRecord(document: document) {
                     guard !placedBidRequestIDs.contains(request.id) else { continue }
-                    // Filter for matching categories if baker has specialties
+                    guard requestMatchesBakerSpecialties(request, specialties: bakerSpecialties) else { continue }
                     requests.append(request)
                 }
             }
@@ -241,7 +249,7 @@ struct BakerTabView: View {
                         DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.5) {
                             notificationManager.notifyNewMatchingRequest(
                                 requestTitle: request.title,
-                                category: request.category,
+                                category: request.displayCategory,
                                 budget: request.budgetMax,
                                 customerID: request.customerID,
                                 bakerID: user.id,
@@ -258,6 +266,40 @@ struct BakerTabView: View {
             print(" Error loading matching requests: \(error.localizedDescription)")
             matchingRequestsLoaded = true
         }
+    }
+
+    private func loadBakerSpecialties(db: Firestore) async throws -> [String] {
+        let snapshot = try await db.collection("artisans").document(user.id).getDocument()
+        return snapshot.data()?["specialties"] as? [String] ?? []
+    }
+
+    private func requestMatchesBakerSpecialties(_ request: CakeRequestRecord, specialties: [String]) -> Bool {
+        if request.isDirectRequest {
+            return request.targetArtisanId == user.id
+        }
+
+        let normalizedSpecialties = Set(specialties.map(normalizedCakeCategory).filter { !$0.isEmpty })
+        guard !normalizedSpecialties.isEmpty else { return false }
+
+        let requestCategories = request.categories.isEmpty ? [request.category] : request.categories
+        let categories = requestCategories.isEmpty ? [request.displayCategory] : requestCategories
+        let normalizedRequestCategories = Set(categories.map(normalizedCakeCategory).filter { !$0.isEmpty })
+
+        return !normalizedRequestCategories.isDisjoint(with: normalizedSpecialties)
+    }
+
+    private func normalizedCakeCategory(_ raw: String) -> String {
+        let cleaned = raw
+            .lowercased()
+            .replacingOccurrences(of: "&", with: " and ")
+            .replacingOccurrences(of: "cakes", with: "")
+            .replacingOccurrences(of: "cake", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return cleaned
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
     }
     
     // MARK: - Baker Custom Tab Bar

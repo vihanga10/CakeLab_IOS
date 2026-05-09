@@ -88,7 +88,10 @@ struct CakeOrder: Identifiable, Sendable {
 
         self.id             = document.documentID
         self.customerId     = customerId
-        self.artisanId      = data["artisanId"] as? String ?? ""
+        self.artisanId      = data["artisanId"] as? String
+            ?? data["bakerID"] as? String
+            ?? data["bakerId"] as? String
+            ?? ""
         self.cakeName       = cakeName
         self.status         = status
         self.currentStep    = currentStep

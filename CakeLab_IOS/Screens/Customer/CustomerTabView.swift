@@ -188,6 +188,7 @@ struct CustomerTabView: View {
         .task {
             if !notificationsShown {
                 await notificationManager.syncNewBidReceivedNotifications(customerID: user.id)
+                await notificationManager.syncCustomerOrderStatusNotifications(customerID: user.id)
                 notificationManager.reloadNotifications(for: "customer", userID: user.id)
                 notificationsShown = true
                 print("Customer notifications loaded and displayed once on login")
