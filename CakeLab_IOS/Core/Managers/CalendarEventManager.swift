@@ -1,18 +1,21 @@
 import Foundation
 import EventKit
 
+// Manages creating, updating, and persisting delivery-related calendar events for each user
 final class CalendarEventManager {
+    // Singleton so calendar access and event store are shared across the app
     static let shared = CalendarEventManager()
 
-    private let eventStore = EKEventStore()
-    private let defaults = UserDefaults.standard
+    private let eventStore = EKEventStore()   // EventKit store used for all calendar read/write operations
+    private let defaults = UserDefaults.standard   // Stores calendar and event identifiers for reuse across sessions
 
     private init() {}
 
+    // Typed errors thrown during calendar permission checks and event save operations
     enum CalendarError: LocalizedError, Equatable {
-        case accessDenied
-        case calendarSourceUnavailable
-        case saveFailed
+        case accessDenied             // User has denied or restricted calendar permission
+        case calendarSourceUnavailable // No writable calendar source (iCloud, local, Exchange) found
+        case saveFailed               // EventKit failed to persist the event
 
         var errorDescription: String? {
             switch self {
@@ -26,6 +29,8 @@ final class CalendarEventManager {
         }
     }
 
+    // Creates a new delivery event or updates the existing one for the given order
+    // Returns the EventKit event identifier so callers can reference it later
     @discardableResult
     func addOrUpdateDeliveryEvent(
         appUserID: String,
@@ -42,6 +47,7 @@ final class CalendarEventManager {
         let calendar = try ensureCalendar(for: appUserID, appUserName: appUserName)
         let eventKey = eventIdentifierKey(appUserID: appUserID, orderID: orderID)
 
+        // Reuse the existing event if one was previously saved for this order; otherwise create a new one
         let event: EKEvent
         if let existingID = defaults.string(forKey: eventKey),
            let existingEvent = eventStore.event(withIdentifier: existingID) {
@@ -53,9 +59,10 @@ final class CalendarEventManager {
         event.calendar = calendar
         event.title = eventTitle
         event.startDate = startDate
-        event.endDate = endDate ?? startDate.addingTimeInterval(60 * 60)
+        event.endDate = endDate ?? startDate.addingTimeInterval(60 * 60)   // Defaults to 1-hour duration
         event.location = location
         event.notes = notes
+        // Adds two reminders: 1 hour before and 24 hours before the delivery
         event.alarms = [
             EKAlarm(relativeOffset: -60 * 60),
             EKAlarm(relativeOffset: -24 * 60 * 60)
@@ -63,6 +70,7 @@ final class CalendarEventManager {
 
         do {
             try eventStore.save(event, span: .thisEvent, commit: true)
+            // Persist the event identifier so it can be looked up and updated on future calls
             if let identifier = event.eventIdentifier {
                 defaults.set(identifier, forKey: eventKey)
                 return identifier
@@ -73,13 +81,15 @@ final class CalendarEventManager {
         }
     }
 
+    // Checks current calendar permission and requests access if not yet determined
+    // Uses the iOS 17+ full-access API when available; falls back to the legacy callback API
     private func ensureAccessGranted() async throws {
         let status = EKEventStore.authorizationStatus(for: .event)
 
         if #available(iOS 17.0, *) {
             switch status {
             case .fullAccess, .writeOnly:
-                return
+                return   // Already authorized — proceed
             case .notDetermined:
                 let granted = try await eventStore.requestFullAccessToEvents()
                 guard granted else { throw CalendarError.accessDenied }
@@ -89,6 +99,7 @@ final class CalendarEventManager {
                 throw CalendarError.accessDenied
             }
         } else {
+            // iOS 16 and below — uses callback-based requestAccess wrapped in async continuation
             switch status {
             case .authorized:
                 return
