@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Reusable Auth Text Field
 struct AuthTextField: View {
@@ -94,16 +95,23 @@ struct ORDivider: View {
 
 // MARK: - Social Buttons (Google + Apple)
 struct SocialButtons: View {
+    var onGoogleTap: (() -> Void)? = nil
+
     var body: some View {
         HStack(spacing: 24) {
             Spacer()
             // Google — use image asset
-            socialCircle {
-                Image("google")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
+            Button {
+                onGoogleTap?()
+            } label: {
+                socialCircle {
+                    Image("google")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 24, height: 24)
+                }
             }
+            .buttonStyle(.plain)
             // Apple
             socialCircle {
                 Image(systemName: "apple.logo")
@@ -143,5 +151,33 @@ struct TopRoundedRectangle2: Shape {
         path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
         path.closeSubpath()
         return path
+    }
+}
+
+extension UIApplication {
+    var authTopViewController: UIViewController? {
+        connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first { $0.isKeyWindow }?
+            .rootViewController?
+            .topPresentedViewController
+    }
+}
+
+private extension UIViewController {
+    var topPresentedViewController: UIViewController {
+        if let presentedViewController {
+            return presentedViewController.topPresentedViewController
+        }
+        if let navigationController = self as? UINavigationController,
+           let visibleViewController = navigationController.visibleViewController {
+            return visibleViewController.topPresentedViewController
+        }
+        if let tabBarController = self as? UITabBarController,
+           let selectedViewController = tabBarController.selectedViewController {
+            return selectedViewController.topPresentedViewController
+        }
+        return self
     }
 }

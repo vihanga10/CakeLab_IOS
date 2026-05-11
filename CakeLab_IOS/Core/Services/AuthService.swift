@@ -1,6 +1,9 @@
 import Foundation
 import FirebaseAuth
+import FirebaseCore
 import FirebaseFirestore
+import GoogleSignIn
+import UIKit
 
 // MARK: - Auth Service (Firebase implementation)
 final class AuthService: AuthServiceProtocol {
@@ -57,6 +60,69 @@ final class AuthService: AuthServiceProtocol {
             print("ERROR Code: \(error.code)")
             print("ERROR Message: \(error.localizedDescription)")
             print("FULL ERROR: \(error)")
+            throw AuthError.networkError(error.localizedDescription)
+        }
+    }
+
+    // MARK: Google Sign Up
+    func signUpWithGoogle(role: UserRole, presentingViewController: UIViewController) async throws -> AppUser {
+        do {
+            print("DEBUG: Starting Google sign-up")
+            let result = try await signInToFirebaseWithGoogle(presentingViewController: presentingViewController)
+            let uid = result.user.uid
+
+            if result.additionalUserInfo?.isNewUser == false,
+               (try? await fetchUser(uid: uid)) != nil {
+                try? auth.signOut()
+                GIDSignIn.sharedInstance.signOut()
+                throw AuthError.unknown("Account already exists. Please sign in.")
+            }
+
+            let email = result.user.email ?? ""
+            guard !email.isEmpty else {
+                throw AuthError.unknown("Google account did not provide an email address.")
+            }
+
+            let user = AppUser(
+                id: uid,
+                email: email,
+                name: result.user.displayName ?? "",
+                role: role,
+                avatarURL: result.user.photoURL?.absoluteString,
+                fcmToken: nil,
+                createdAt: Date(),
+                phoneNumber: nil,
+                address: nil,
+                city: nil,
+                postalCode: nil,
+                dateOfBirth: nil
+            )
+
+            try await saveUser(user)
+            print("DEBUG: Google user profile saved successfully")
+            return user
+        } catch let error as AuthError {
+            throw error
+        } catch let error as NSError {
+            print("GOOGLE SIGN-UP ERROR Domain: \(error.domain)")
+            print("GOOGLE SIGN-UP ERROR Code: \(error.code)")
+            print("GOOGLE SIGN-UP ERROR Message: \(error.localizedDescription)")
+            throw AuthError.networkError(error.localizedDescription)
+        }
+    }
+
+    // MARK: Google Sign In
+    func signInWithGoogle(presentingViewController: UIViewController) async throws -> AppUser {
+        do {
+            print("DEBUG: Starting Google sign-in")
+            let result = try await signInToFirebaseWithGoogle(presentingViewController: presentingViewController)
+            return try await fetchUser(uid: result.user.uid)
+        } catch let error as AuthError {
+            throw error
+        } catch let error as NSError {
+            print("GOOGLE SIGN-IN ERROR Domain: \(error.domain)")
+            print("GOOGLE SIGN-IN ERROR Code: \(error.code)")
+            print("GOOGLE SIGN-IN ERROR Message: \(error.localizedDescription)")
             throw AuthError.networkError(error.localizedDescription)
         }
     }
@@ -221,6 +287,30 @@ final class AuthService: AuthServiceProtocol {
             throw AuthError.unknown("User profile not found.")
         }
         return try decodeUser(from: data, uid: uid)
+    }
+
+    @MainActor
+    private func signInToFirebaseWithGoogle(presentingViewController: UIViewController) async throws -> AuthDataResult {
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            throw AuthError.unknown("Missing Google client ID.")
+        }
+
+        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+        GIDSignIn.sharedInstance.signOut()
+
+        let signInResult = try await GIDSignIn.sharedInstance.signIn(withPresenting: presentingViewController)
+        let user = signInResult.user
+
+        guard let idToken = user.idToken?.tokenString else {
+            throw AuthError.unknown("Missing Google ID token.")
+        }
+
+        let credential = GoogleAuthProvider.credential(
+            withIDToken: idToken,
+            accessToken: user.accessToken.tokenString
+        )
+
+        return try await auth.signIn(with: credential)
     }
 
     private func saveUser(_ user: AppUser) async throws {

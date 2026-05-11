@@ -7,6 +7,7 @@
 import SwiftUI
 import FirebaseCore
 import CoreData
+import GoogleSignIn
 import UserNotifications
 
 
@@ -17,6 +18,12 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     UNUserNotificationCenter.current().delegate = self
 
     return true
+  }
+
+  func application(_ app: UIApplication,
+                   open url: URL,
+                   options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+    GIDSignIn.sharedInstance.handle(url)
   }
 
   func userNotificationCenter(

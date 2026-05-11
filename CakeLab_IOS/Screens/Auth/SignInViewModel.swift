@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import UIKit
 
 // MARK: - Sign In ViewModel
 @MainActor
@@ -64,6 +65,42 @@ final class SignInViewModel: ObservableObject {
                 
                 print("DEBUG: Role validation passed - User is: \(user.role.rawValue)")
                 signedInUser    = user
+                AppSessionManager.shared.registerAuthenticatedSession(for: user)
+                navigateToFaceID = true
+                WidgetDataSyncManager.shared.refreshFromCurrentSession()
+            } catch {
+                signedInUser = nil
+                errorMessage = error.localizedDescription
+            }
+            isLoading = false
+        }
+    }
+
+    func signInWithGoogle(presentingViewController: UIViewController) {
+        guard let selectedRole else {
+            errorMessage = AuthError.roleNotSelected.errorDescription
+            return
+        }
+
+        Task {
+            signedInUser = nil
+            navigateToFaceID = false
+            isLoading = true
+            errorMessage = nil
+            do {
+                let user = try await authService.signInWithGoogle(
+                    presentingViewController: presentingViewController
+                )
+
+                if user.role != selectedRole {
+                    print("ERROR: Google role mismatch - Selected: \(selectedRole.rawValue), Database: \(user.role.rawValue)")
+                    AppSessionManager.shared.discardAuthenticatedSession()
+                    errorMessage = "Role mismatch. Please select '\(user.role.rawValue.capitalized)' to continue."
+                    isLoading = false
+                    return
+                }
+
+                signedInUser = user
                 AppSessionManager.shared.registerAuthenticatedSession(for: user)
                 navigateToFaceID = true
                 WidgetDataSyncManager.shared.refreshFromCurrentSession()

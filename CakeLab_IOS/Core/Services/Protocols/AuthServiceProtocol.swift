@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 // MARK: - Auth Errors
 enum AuthError: LocalizedError {
@@ -29,6 +30,10 @@ protocol AuthServiceProtocol {
     func signIn(email: String, password: String) async throws -> AppUser
     /// Create a new account with given role. Returns the created AppUser.
     func signUp(email: String, password: String, role: UserRole) async throws -> AppUser
+    /// Create a new account using Google Sign-In with given role.
+    func signUpWithGoogle(role: UserRole, presentingViewController: UIViewController) async throws -> AppUser
+    /// Sign in using Google Sign-In.
+    func signInWithGoogle(presentingViewController: UIViewController) async throws -> AppUser
     /// Send a password reset email.
     func sendPasswordReset(email: String) async throws
     /// Save OTP for password reset to Firestore.

@@ -12,6 +12,7 @@
 		B28ECF532F7F8597002345B5 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = B28ECF522F7F8597002345B5 /* FirebaseMessaging */; };
 		B28ECF552F7F8597002345B5 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = B28ECF542F7F8597002345B5 /* FirebaseStorage */; };
 		C10000102F900001002345B5 /* CakeLabWidgetsExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = C10000012F900001002345B5 /* CakeLabWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		C20000012F920001002345B5 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = C20000032F920001002345B5 /* GoogleSignIn */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -74,6 +75,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C20000012F920001002345B5 /* GoogleSignIn in Frameworks */,
 				B28ECF532F7F8597002345B5 /* FirebaseMessaging in Frameworks */,
 				B28ECF552F7F8597002345B5 /* FirebaseStorage in Frameworks */,
 				B28ECF4F2F7F8597002345B5 /* FirebaseAuth in Frameworks */,
@@ -144,6 +146,7 @@
 				B28ECF502F7F8597002345B5 /* FirebaseFirestore */,
 				B28ECF522F7F8597002345B5 /* FirebaseMessaging */,
 				B28ECF542F7F8597002345B5 /* FirebaseStorage */,
+				C20000032F920001002345B5 /* GoogleSignIn */,
 			);
 			productName = CakeLab_IOS;
 			productReference = B28ECF3B2F7F77BA002345B5 /* CakeLab_IOS.app */;
@@ -227,6 +230,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				B28ECF4D2F7F8597002345B5 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				C20000022F920001002345B5 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B28ECF3C2F7F77BA002345B5 /* Products */;
@@ -434,7 +438,12 @@
 				DEVELOPMENT_TEAM = QSRK26H9NJ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleURLTypes = "[{CFBundleURLName=com.vihanga.CakeLab-IOS;CFBundleURLSchemes=(cakelab);} ]";
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleURLTypes = (
+					"{CFBundleURLName=com.vihanga.CakeLab-IOS;CFBundleURLSchemes=(cakelab);}",
+					"{CFBundleURLName=com.googleusercontent.apps.87076472407-us364g1b5des2qmp0jqug00m93peoiq2;CFBundleURLSchemes=(com.googleusercontent.apps.87076472407-us364g1b5des2qmp0jqug00m93peoiq2);}",
+				);
+				INFOPLIST_KEY_GIDClientID = "87076472407-us364g1b5des2qmp0jqug00m93peoiq2.apps.googleusercontent.com";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "CakeLab needs calendar access to add and update delivery reminders for your orders.";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "CakeLab needs calendar access to add delivery reminders for your orders.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We need your location to show nearby bakers";
@@ -473,7 +482,12 @@
 				DEVELOPMENT_TEAM = QSRK26H9NJ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleURLTypes = "[{CFBundleURLName=com.vihanga.CakeLab-IOS;CFBundleURLSchemes=(cakelab);} ]";
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleURLTypes = (
+					"{CFBundleURLName=com.vihanga.CakeLab-IOS;CFBundleURLSchemes=(cakelab);}",
+					"{CFBundleURLName=com.googleusercontent.apps.87076472407-us364g1b5des2qmp0jqug00m93peoiq2;CFBundleURLSchemes=(com.googleusercontent.apps.87076472407-us364g1b5des2qmp0jqug00m93peoiq2);}",
+				);
+				INFOPLIST_KEY_GIDClientID = "87076472407-us364g1b5des2qmp0jqug00m93peoiq2.apps.googleusercontent.com";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "CakeLab needs calendar access to add and update delivery reminders for your orders.";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "CakeLab needs calendar access to add delivery reminders for your orders.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "We need your location to show nearby bakers";
@@ -635,6 +649,14 @@
 				minimumVersion = 12.11.0;
 			};
 		};
+		C20000022F920001002345B5 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -657,6 +679,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B28ECF4D2F7F8597002345B5 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		C20000032F920001002345B5 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C20000022F920001002345B5 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import UIKit
 
 // MARK: - Sign Up ViewModel
 @MainActor
@@ -36,6 +37,29 @@ final class SignUpViewModel: ObservableObject {
                     role: selectedRole!
                 )
                 createdUser     = user
+                navigateToFaceID = true
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isLoading = false
+        }
+    }
+
+    func signUpWithGoogle(presentingViewController: UIViewController) {
+        guard let selectedRole else {
+            errorMessage = AuthError.roleNotSelected.errorDescription
+            return
+        }
+
+        Task {
+            isLoading = true
+            errorMessage = nil
+            do {
+                let user = try await authService.signUpWithGoogle(
+                    role: selectedRole,
+                    presentingViewController: presentingViewController
+                )
+                createdUser = user
                 navigateToFaceID = true
             } catch {
                 errorMessage = error.localizedDescription

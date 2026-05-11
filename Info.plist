@@ -2,6 +2,27 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.vihanga.CakeLab-IOS</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>cakelab</string>
+            </array>
+        </dict>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.googleusercontent.apps.87076472407-us364g1b5des2qmp0jqug00m93peoiq2</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>com.googleusercontent.apps.87076472407-us364g1b5des2qmp0jqug00m93peoiq2</string>
+            </array>
+        </dict>
+    </array>
+    <key>GIDClientID</key>
+    <string>87076472407-us364g1b5des2qmp0jqug00m93peoiq2.apps.googleusercontent.com</string>
     <key>NSCalendarsUsageDescription</key>
     <string>CakeLab needs calendar access to add delivery reminders for your orders.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>

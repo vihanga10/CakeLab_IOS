@@ -1,5 +1,6 @@
 import Foundation
 import LocalAuthentication
+import UIKit
 @testable import CakeLab_IOS
 
 // MARK: - Mock Auth Service
@@ -16,6 +17,8 @@ final class MockAuthService: AuthServiceProtocol {
     // MARK: - Call tracking (verify ViewModel calls the right methods)
     private(set) var signInCalled         = false
     private(set) var signUpCalled         = false
+    private(set) var googleSignInCalled   = false
+    private(set) var googleSignUpCalled   = false
     private(set) var resetCalled          = false
     private(set) var signOutCalled        = false
     private(set) var saveOTPCalled        = false
@@ -36,6 +39,20 @@ final class MockAuthService: AuthServiceProtocol {
         if shouldFail { throw errorToThrow }
         mockUser = AppUser(id: "new-uid", email: email, name: "", role: role,
                            avatarURL: nil, fcmToken: nil, createdAt: Date())
+        return mockUser
+    }
+
+    func signUpWithGoogle(role: UserRole, presentingViewController: UIViewController) async throws -> AppUser {
+        googleSignUpCalled = true
+        if shouldFail { throw errorToThrow }
+        mockUser = AppUser(id: "google-new-uid", email: "google@cakelab.com", name: "Google User", role: role,
+                           avatarURL: nil, fcmToken: nil, createdAt: Date())
+        return mockUser
+    }
+
+    func signInWithGoogle(presentingViewController: UIViewController) async throws -> AppUser {
+        googleSignInCalled = true
+        if shouldFail { throw errorToThrow }
         return mockUser
     }
 

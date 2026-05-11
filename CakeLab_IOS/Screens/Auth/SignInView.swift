@@ -194,7 +194,13 @@ struct SignInView: View {
             Spacer().frame(height: 18)
 
             //  Social buttons 
-            SocialButtons()
+            SocialButtons(onGoogleTap: {
+                guard let presentingViewController = UIApplication.shared.authTopViewController else {
+                    vm.errorMessage = "Unable to open Google Sign-In."
+                    return
+                }
+                vm.signInWithGoogle(presentingViewController: presentingViewController)
+            })
 
             Spacer().frame(height: 18)
 
