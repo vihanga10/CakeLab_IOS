@@ -1,4 +1,5 @@
 import Foundation
+import AuthenticationServices //apple
 import Combine
 import UIKit
 
@@ -58,6 +59,29 @@ final class SignUpViewModel: ObservableObject {
                 let user = try await authService.signUpWithGoogle(
                     role: selectedRole,
                     presentingViewController: presentingViewController
+                )
+                createdUser = user
+                navigateToFaceID = true
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            isLoading = false
+        }
+    }
+
+    func signUpWithApple(presentationAnchor: ASPresentationAnchor) { //apple
+        guard let selectedRole else {
+            errorMessage = AuthError.roleNotSelected.errorDescription
+            return
+        }
+
+        Task {
+            isLoading = true
+            errorMessage = nil
+            do {
+                let user = try await authService.signUpWithApple(
+                    role: selectedRole,
+                    presentationAnchor: presentationAnchor
                 )
                 createdUser = user
                 navigateToFaceID = true

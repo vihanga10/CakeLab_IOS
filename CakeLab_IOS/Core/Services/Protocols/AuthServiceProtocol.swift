@@ -1,4 +1,5 @@
 import Foundation
+import AuthenticationServices //apple
 import UIKit
 
 // MARK: - Auth Errors
@@ -34,6 +35,10 @@ protocol AuthServiceProtocol {
     func signUpWithGoogle(role: UserRole, presentingViewController: UIViewController) async throws -> AppUser
     /// Sign in using Google Sign-In.
     func signInWithGoogle(presentingViewController: UIViewController) async throws -> AppUser
+    /// Create a new account using Sign in with Apple with given role.
+    func signUpWithApple(role: UserRole, presentationAnchor: ASPresentationAnchor) async throws -> AppUser
+    /// Sign in using Sign in with Apple.
+    func signInWithApple(presentationAnchor: ASPresentationAnchor) async throws -> AppUser
     /// Send a password reset email.
     func sendPasswordReset(email: String) async throws
     /// Save OTP for password reset to Firestore.

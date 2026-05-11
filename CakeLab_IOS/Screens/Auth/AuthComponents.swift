@@ -96,6 +96,7 @@ struct ORDivider: View {
 // MARK: - Social Buttons (Google + Apple)
 struct SocialButtons: View {
     var onGoogleTap: (() -> Void)? = nil
+    var onAppleTap: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 24) {
@@ -113,11 +114,16 @@ struct SocialButtons: View {
             }
             .buttonStyle(.plain)
             // Apple
-            socialCircle {
-                Image(systemName: "apple.logo")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(.black)
+            Button {
+                onAppleTap?()
+            } label: {
+                socialCircle {
+                    Image(systemName: "apple.logo")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(.black)
+                }
             }
+            .buttonStyle(.plain)
             Spacer()
         }
     }
@@ -162,6 +168,13 @@ extension UIApplication {
             .first { $0.isKeyWindow }?
             .rootViewController?
             .topPresentedViewController
+    }
+
+    var authPresentationAnchor: UIWindow? { //apple
+        connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first { $0.isKeyWindow }
     }
 }
 

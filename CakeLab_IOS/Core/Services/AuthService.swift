@@ -1,8 +1,11 @@
 import Foundation
+import AuthenticationServices //apple
+import CryptoKit //apple
 import FirebaseAuth
 import FirebaseCore
 import FirebaseFirestore
 import GoogleSignIn
+import Security  //apple
 import UIKit
 
 // MARK: - Auth Service (Firebase implementation)
@@ -123,6 +126,73 @@ final class AuthService: AuthServiceProtocol {
             print("GOOGLE SIGN-IN ERROR Domain: \(error.domain)")
             print("GOOGLE SIGN-IN ERROR Code: \(error.code)")
             print("GOOGLE SIGN-IN ERROR Message: \(error.localizedDescription)")
+            throw AuthError.networkError(error.localizedDescription)
+        }
+    }
+
+    // MARK: Apple Sign Up
+    func signUpWithApple(role: UserRole, presentationAnchor: ASPresentationAnchor) async throws -> AppUser {
+        do {
+            print("DEBUG: Starting Apple sign-up")
+            let appleResult = try await signInToFirebaseWithApple(presentationAnchor: presentationAnchor)
+            let result = appleResult.authResult
+            let uid = result.user.uid
+
+            if result.additionalUserInfo?.isNewUser == false,
+               (try? await fetchUser(uid: uid)) != nil {
+                try? auth.signOut()
+                throw AuthError.unknown("Account already exists. Please sign in.")
+            }
+
+            let email = appleResult.appleEmail ?? result.user.email ?? ""
+            guard !email.isEmpty else {
+                throw AuthError.unknown("Apple account did not provide an email address.")
+            }
+
+            let fullName = appleResult.appleFullName
+            let displayName = result.user.displayName
+                ?? PersonNameComponentsFormatter().string(from: fullName ?? PersonNameComponents())
+
+            let user = AppUser(
+                id: uid,
+                email: email,
+                name: displayName,
+                role: role,
+                avatarURL: nil,
+                fcmToken: nil,
+                createdAt: Date(),
+                phoneNumber: nil,
+                address: nil,
+                city: nil,
+                postalCode: nil,
+                dateOfBirth: nil
+            )
+
+            try await saveUser(user)
+            print("DEBUG: Apple user profile saved successfully")
+            return user
+        } catch let error as AuthError {
+            throw error
+        } catch let error as NSError {
+            print("APPLE SIGN-UP ERROR Domain: \(error.domain)")
+            print("APPLE SIGN-UP ERROR Code: \(error.code)")
+            print("APPLE SIGN-UP ERROR Message: \(error.localizedDescription)")
+            throw AuthError.networkError(error.localizedDescription)
+        }
+    }
+
+    // MARK: Apple Sign In
+    func signInWithApple(presentationAnchor: ASPresentationAnchor) async throws -> AppUser {
+        do {
+            print("DEBUG: Starting Apple sign-in")
+            let appleResult = try await signInToFirebaseWithApple(presentationAnchor: presentationAnchor)
+            return try await fetchUser(uid: appleResult.authResult.user.uid)
+        } catch let error as AuthError {
+            throw error
+        } catch let error as NSError {
+            print("APPLE SIGN-IN ERROR Domain: \(error.domain)")
+            print("APPLE SIGN-IN ERROR Code: \(error.code)")
+            print("APPLE SIGN-IN ERROR Message: \(error.localizedDescription)")
             throw AuthError.networkError(error.localizedDescription)
         }
     }
@@ -312,6 +382,65 @@ final class AuthService: AuthServiceProtocol {
 
         return try await auth.signIn(with: credential)
     }
+//apple
+    @MainActor
+    private func signInToFirebaseWithApple(presentationAnchor: ASPresentationAnchor) async throws -> AppleFirebaseAuthResult {
+        let rawNonce = try randomNonceString()
+        let coordinator = AppleSignInCoordinator(presentationAnchor: presentationAnchor)
+        let appleCredential = try await coordinator.signIn(hashedNonce: sha256(rawNonce))
+
+        guard let identityToken = appleCredential.identityToken,
+              let idTokenString = String(data: identityToken, encoding: .utf8) else {
+            throw AuthError.unknown("Missing Apple identity token.")
+        }
+
+        let credential = OAuthProvider.appleCredential(
+            withIDToken: idTokenString,
+            rawNonce: rawNonce,
+            fullName: appleCredential.fullName
+        )
+        let authResult = try await auth.signIn(with: credential)
+
+        return AppleFirebaseAuthResult(
+            authResult: authResult,
+            appleEmail: appleCredential.email,
+            appleFullName: appleCredential.fullName
+        )
+    }
+
+    private func randomNonceString(length: Int = 32) throws -> String {
+        precondition(length > 0)
+        let charset = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        var result = ""
+        var remainingLength = length
+
+        while remainingLength > 0 {
+            var randomBytes = [UInt8](repeating: 0, count: 16)
+            let errorCode = SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes)
+            if errorCode != errSecSuccess {
+                throw AuthError.unknown("Unable to generate secure Apple sign-in nonce.")
+            }
+
+            randomBytes.forEach { randomByte in
+                if remainingLength == 0 {
+                    return
+                }
+
+                if randomByte < charset.count {
+                    result.append(charset[Int(randomByte)])
+                    remainingLength -= 1
+                }
+            }
+        }
+
+        return result
+    }
+
+    private func sha256(_ input: String) -> String {
+        let inputData = Data(input.utf8)
+        let hashedData = SHA256.hash(data: inputData)
+        return hashedData.map { String(format: "%02x", $0) }.joined()
+    } //apple
 
     private func saveUser(_ user: AppUser) async throws {
         do {
@@ -355,5 +484,59 @@ final class AuthService: AuthServiceProtocol {
             postalCode: postalCode,
             dateOfBirth: dateOfBirth
         )
+    }
+}
+
+private struct AppleFirebaseAuthResult {
+    let authResult: AuthDataResult
+    let appleEmail: String?
+    let appleFullName: PersonNameComponents?
+}
+
+private final class AppleSignInCoordinator: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+    private let presentationAnchor: ASPresentationAnchor
+    private var continuation: CheckedContinuation<ASAuthorizationAppleIDCredential, Error>?
+    private var controller: ASAuthorizationController?
+
+    init(presentationAnchor: ASPresentationAnchor) {
+        self.presentationAnchor = presentationAnchor
+    }
+
+    func signIn(hashedNonce: String) async throws -> ASAuthorizationAppleIDCredential {
+        try await withCheckedThrowingContinuation { continuation in
+            self.continuation = continuation
+
+            let request = ASAuthorizationAppleIDProvider().createRequest()
+            request.requestedScopes = [.fullName, .email]
+            request.nonce = hashedNonce
+
+            self.controller = ASAuthorizationController(authorizationRequests: [request])
+            self.controller?.delegate = self
+            self.controller?.presentationContextProvider = self
+            self.controller?.performRequests()
+        }
+    }
+
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        presentationAnchor
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+            continuation?.resume(throwing: AuthError.unknown("Invalid Apple authorization response."))
+            continuation = nil
+            self.controller = nil
+            return
+        }
+
+        continuation?.resume(returning: credential)
+        continuation = nil
+        self.controller = nil
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        continuation?.resume(throwing: error)
+        continuation = nil
+        self.controller = nil
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import AuthenticationServices //apple
 import Combine
 import UIKit
 
@@ -94,6 +95,40 @@ final class SignInViewModel: ObservableObject {
 
                 if user.role != selectedRole {
                     print("ERROR: Google role mismatch - Selected: \(selectedRole.rawValue), Database: \(user.role.rawValue)")
+                    AppSessionManager.shared.discardAuthenticatedSession()
+                    errorMessage = "Role mismatch. Please select '\(user.role.rawValue.capitalized)' to continue."
+                    isLoading = false
+                    return
+                }
+
+                signedInUser = user
+                AppSessionManager.shared.registerAuthenticatedSession(for: user)
+                navigateToFaceID = true
+                WidgetDataSyncManager.shared.refreshFromCurrentSession()
+            } catch {
+                signedInUser = nil
+                errorMessage = error.localizedDescription
+            }
+            isLoading = false
+        }
+    }
+
+    func signInWithApple(presentationAnchor: ASPresentationAnchor) { //apple
+        guard let selectedRole else {
+            errorMessage = AuthError.roleNotSelected.errorDescription
+            return
+        }
+
+        Task {
+            signedInUser = nil
+            navigateToFaceID = false
+            isLoading = true
+            errorMessage = nil
+            do {
+                let user = try await authService.signInWithApple(presentationAnchor: presentationAnchor)
+
+                if user.role != selectedRole {
+                    print("ERROR: Apple role mismatch - Selected: \(selectedRole.rawValue), Database: \(user.role.rawValue)")
                     AppSessionManager.shared.discardAuthenticatedSession()
                     errorMessage = "Role mismatch. Please select '\(user.role.rawValue.capitalized)' to continue."
                     isLoading = false

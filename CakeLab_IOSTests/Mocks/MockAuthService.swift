@@ -1,4 +1,5 @@
 import Foundation
+import AuthenticationServices //apple
 import LocalAuthentication
 import UIKit
 @testable import CakeLab_IOS
@@ -19,6 +20,8 @@ final class MockAuthService: AuthServiceProtocol {
     private(set) var signUpCalled         = false
     private(set) var googleSignInCalled   = false
     private(set) var googleSignUpCalled   = false
+    private(set) var appleSignInCalled    = false
+    private(set) var appleSignUpCalled    = false
     private(set) var resetCalled          = false
     private(set) var signOutCalled        = false
     private(set) var saveOTPCalled        = false
@@ -52,6 +55,20 @@ final class MockAuthService: AuthServiceProtocol {
 
     func signInWithGoogle(presentingViewController: UIViewController) async throws -> AppUser {
         googleSignInCalled = true
+        if shouldFail { throw errorToThrow }
+        return mockUser
+    }
+
+    func signUpWithApple(role: UserRole, presentationAnchor: ASPresentationAnchor) async throws -> AppUser {
+        appleSignUpCalled = true
+        if shouldFail { throw errorToThrow }
+        mockUser = AppUser(id: "apple-new-uid", email: "apple@cakelab.com", name: "Apple User", role: role,
+                           avatarURL: nil, fcmToken: nil, createdAt: Date())
+        return mockUser
+    }
+
+    func signInWithApple(presentationAnchor: ASPresentationAnchor) async throws -> AppUser {
+        appleSignInCalled = true
         if shouldFail { throw errorToThrow }
         return mockUser
     }

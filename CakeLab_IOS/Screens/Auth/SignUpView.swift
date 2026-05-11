@@ -173,14 +173,23 @@ struct SignUpView: View {
 
             Spacer().frame(height: 12)
 
-            //  Social buttons 
-            SocialButtons(onGoogleTap: {
-                guard let presentingViewController = UIApplication.shared.authTopViewController else {
-                    vm.errorMessage = "Unable to open Google Sign-In."
-                    return
+            //  Social buttons apple
+            SocialButtons(
+                onGoogleTap: {
+                    guard let presentingViewController = UIApplication.shared.authTopViewController else {
+                        vm.errorMessage = "Unable to open Google Sign-In."
+                        return
+                    }
+                    vm.signUpWithGoogle(presentingViewController: presentingViewController)
+                },
+                onAppleTap: {
+                    guard let presentationAnchor = UIApplication.shared.authPresentationAnchor else {
+                        vm.errorMessage = "Unable to open Apple Sign-In."
+                        return
+                    }
+                    vm.signUpWithApple(presentationAnchor: presentationAnchor)
                 }
-                vm.signUpWithGoogle(presentingViewController: presentingViewController)
-            })
+            )
 
             Spacer().frame(height: 12)
 
