@@ -226,7 +226,7 @@ struct PaymentHistoryView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     // MARK: - Summary Card
@@ -322,7 +322,7 @@ struct PaymentHistoryView: View {
             }
             Text("No Payments Yet")
                 .font(.urbanistBold(19))
-                .foregroundColor(Color(red: 0.18, green: 0.18, blue: 0.18))
+                .foregroundColor(.cakePrimaryText)
             Text("Your payment history will appear here\nonce you complete a cake order.")
                 .font(.urbanistRegular(14))
                 .foregroundColor(.cakeGrey)
@@ -358,7 +358,7 @@ struct PaymentRecordCard: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(record.cakeName)
                         .font(.urbanistBold(15))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                         .lineLimit(1)
 
                     Text("Baker: \(record.bakerName)")
@@ -375,7 +375,7 @@ struct PaymentRecordCard: View {
                 VStack(alignment: .trailing, spacing: 6) {
                     Text("LKR \(currencyFmt.string(for: record.total) ?? "0")")
                         .font(.urbanistBold(15))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
 
                     VStack(alignment: .trailing, spacing: 4) {
                         Text(record.isSuccess ? "Paid" : record.status.capitalized)
@@ -438,7 +438,7 @@ struct PaymentRecordCard: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 11)
         }
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.055), radius: 10, x: 0, y: 3)
         .contextMenu {

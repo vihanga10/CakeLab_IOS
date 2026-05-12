@@ -17,7 +17,7 @@ struct NotificationCenterView: View {
     private var notificationContent: some View {
         NavigationStack {
             ZStack {
-                Color.white.ignoresSafeArea()
+                Color.cakeBackground.ignoresSafeArea()
                 
                 VStack(spacing: 0) {
                     // MARK: - Header (PublishRequestView pattern)
@@ -57,7 +57,7 @@ struct NotificationCenterView: View {
                     }
                     .padding(.horizontal, 20)
                     .frame(height: 56)
-                    .background(Color.white)
+                    .background(Color.cakeSurface)
                     
                     // MARK: - "All" Tab (No filter section)
                     VStack(spacing: 0) {
@@ -73,7 +73,7 @@ struct NotificationCenterView: View {
                         
                         // No line under "All"
                     }
-                    .background(Color.white)
+                    .background(Color.cakeSurface)
                     
                     // MARK: - Notifications List
                     if filteredNotifications.isEmpty {
@@ -166,7 +166,7 @@ private struct NotificationItemView: View {
                     HStack(spacing: 4) {
                         Text(notification.title)
                             .font(.urbanistBold(14))
-                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                            .foregroundColor(.cakePrimaryText)
                             .lineLimit(1)
                         
                         Spacer()

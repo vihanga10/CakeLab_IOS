@@ -233,7 +233,7 @@ struct OTPDigitBox: View {
                 .textContentType(.oneTimeCode)
                 .multilineTextAlignment(.center)
                 .font(.urbanistBold(24))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
                 .focused($isFocused)
                 .onChange(of: text) { oldVal, newVal in
                     // Only allow single digit

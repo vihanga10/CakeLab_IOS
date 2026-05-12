@@ -77,7 +77,7 @@ struct DraftIdeasView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     private var emptyState: some View {
@@ -103,7 +103,7 @@ struct DraftIdeasView: View {
     }
 
     private var backgroundLayer: some View {
-        Color.white.ignoresSafeArea()
+        Color.cakeBackground.ignoresSafeArea()
     }
     
     private func fetchDrafts() async {
@@ -135,7 +135,7 @@ private struct DraftRequestCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(draft.displayTitle)
                         .font(.urbanistSemiBold(15))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                         .lineLimit(2)
                     Text(draft.displayCategory)
                         .font(.urbanistMedium(11))
@@ -206,7 +206,7 @@ private struct DraftRequestCard: View {
             }
         }
         .padding(16)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(12)
         .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
     }

@@ -68,7 +68,7 @@ struct BakerEditProfileView: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar
@@ -168,7 +168,7 @@ struct BakerEditProfileView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
     
     // MARK: - Header Section
@@ -255,7 +255,7 @@ struct BakerEditProfileView: View {
             Spacer()
         }
         .padding(14)
-        .background(Color(red: 0.97, green: 0.96, blue: 0.94))
+        .background(Color.cakeInsetSurface)
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
     
@@ -265,7 +265,7 @@ struct BakerEditProfileView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Status")
                     .font(.urbanistBold(14))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                 Text("Mark yourself as active or inactive")
                     .font(.urbanistRegular(12))
                     .foregroundColor(.cakeGrey)
@@ -305,7 +305,7 @@ struct BakerEditProfileView: View {
             .frame(width: 160)
         }
         .padding(14)
-        .background(Color(red: 0.97, green: 0.96, blue: 0.94))
+        .background(Color.cakeInsetSurface)
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
     
@@ -326,13 +326,13 @@ struct BakerEditProfileView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(label)
                 .font(.urbanistBold(14))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
 
             TextField(placeholder, text: text)
                 .font(.urbanistRegular(14))
                 .padding(.horizontal, 14)
                 .frame(height: 46)
-                .background(Color.white)
+                .background(Color.cakeSurface)
                 .clipShape(Capsule())
                 .overlay(
                     Capsule()
@@ -345,7 +345,7 @@ struct BakerEditProfileView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(label)
                 .font(.urbanistBold(14))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
 
             Text(value)
                 .font(.urbanistRegular(14))
@@ -353,7 +353,7 @@ struct BakerEditProfileView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 14)
                 .frame(height: 46)
-                .background(Color.white)
+                .background(Color.cakeSurface)
                 .clipShape(Capsule())
                 .overlay(
                     Capsule()
@@ -366,7 +366,7 @@ struct BakerEditProfileView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(label)
                 .font(.urbanistBold(14))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
 
             Button {
                 showDistrictPicker = true
@@ -382,7 +382,7 @@ struct BakerEditProfileView: View {
                 }
                 .padding(.horizontal, 14)
                 .frame(height: 46)
-                .background(Color.white)
+                .background(Color.cakeSurface)
                 .clipShape(Capsule())
                 .overlay(
                     Capsule()
@@ -396,13 +396,13 @@ struct BakerEditProfileView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Bio")
                 .font(.urbanistBold(14))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
             
             TextEditor(text: $bio)
                 .font(.urbanistRegular(14))
                 .frame(height: 100)
                 .padding(8)
-                .background(Color.white)
+                .background(Color.cakeSurface)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
                         .stroke(Color.black.opacity(0.35), lineWidth: 1)
@@ -416,7 +416,7 @@ struct BakerEditProfileView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("My Categories")
                 .font(.urbanistBold(14))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
             
             let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
             

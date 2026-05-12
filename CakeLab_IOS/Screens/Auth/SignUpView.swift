@@ -35,7 +35,7 @@ struct SignUpView: View {
                         cardContent
                             .frame(maxWidth: .infinity)
                             .frame(height: geo.size.height * 0.78)
-                            .background(Color.white)
+                            .background(Color.cakeSurface)
                             .clipShape(TopRoundedRectangle2(cornerRadius: 36))
 
                         Color.white.frame(height: geo.safeAreaInsets.bottom)
@@ -198,7 +198,7 @@ struct SignUpView: View {
                 Spacer()
                 Text("Already have an account?")
                     .font(.urbanistRegular(13))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                 Button { showSignIn = true } label: {
                     Text("Sign In")
                         .font(.urbanistSemiBold(13))
@@ -216,7 +216,7 @@ struct SignUpView: View {
         HStack(spacing: 2) {
             Text(text)
                 .font(.urbanistSemiBold(14))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
             Text("*")
                 .font(.urbanistBold(14))
                 .foregroundColor(.red)

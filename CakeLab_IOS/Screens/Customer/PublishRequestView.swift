@@ -69,7 +69,7 @@ struct PublishRequestView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar
@@ -130,7 +130,7 @@ struct PublishRequestView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         
     }
 
@@ -138,7 +138,7 @@ struct PublishRequestView: View {
         VStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(Color.white)
+                    .fill(Color.cakeSurface)
                     .frame(width: 70, height: 70)
                 Image(systemName: "doc.text")
                     .font(.system(size: 28, weight: .semibold))
@@ -157,7 +157,7 @@ struct PublishRequestView: View {
     }
 
     private var backgroundLayer: some View {
-        Color.white.ignoresSafeArea()
+        Color.cakeBackground.ignoresSafeArea()
     }
     
     private func fetchPublishedRequests() async {
@@ -358,7 +358,7 @@ private struct PublishedRequestCard: View {
 
     private var innerShadow: some View {
         RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .stroke(Color.black.opacity(0.03), lineWidth: 1)
+            .stroke(Color.cakeStroke, lineWidth: 1)
             .shadow(color: Color.black.opacity(0.07), radius: 6, x: 0, y: 2)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .mask(

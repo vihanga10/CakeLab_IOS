@@ -45,7 +45,7 @@ struct BakerBidDetailView: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar
@@ -99,7 +99,7 @@ struct BakerBidDetailView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(request.title)
                         .font(.urbanistBold(18))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                         .lineLimit(nil)
                 }
                 Spacer(minLength: 0)
@@ -147,7 +147,7 @@ struct BakerBidDetailView: View {
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
     }
@@ -183,7 +183,7 @@ struct BakerBidDetailView: View {
                 .foregroundColor(.cakeGrey)
             Text(value)
                 .font(.urbanistSemiBold(12))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -202,7 +202,7 @@ struct BakerBidDetailView: View {
 
             Text(value)
                 .font(.urbanistSemiBold(12))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
                 .multilineTextAlignment(.leading)
 
             Spacer()
@@ -215,7 +215,7 @@ struct BakerBidDetailView: View {
             HStack {
                 Text("Cake Specifications")
                     .font(.urbanistBold(16))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
 
                 Spacer()
 
@@ -281,7 +281,7 @@ struct BakerBidDetailView: View {
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
     }
@@ -302,7 +302,7 @@ struct BakerBidDetailView: View {
                     .foregroundColor(.cakeGrey)
                 Text(value)
                     .font(.urbanistSemiBold(12))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
@@ -318,7 +318,7 @@ struct BakerBidDetailView: View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Place Your Bid")
                 .font(.urbanistBold(16))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
 
             // Bid Amount
             VStack(alignment: .leading, spacing: 8) {
@@ -342,7 +342,7 @@ struct BakerBidDetailView: View {
                             }
                         }
                 }
-                .background(Color.white)
+                .background(Color.cakeSurface)
                 .cornerRadius(14)
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
@@ -374,13 +374,13 @@ struct BakerBidDetailView: View {
                                 .foregroundColor(.cakeBrown)
                             Text(formattedAlternativeDate)
                                 .font(.urbanistMedium(14))
-                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                .foregroundColor(.cakePrimaryText)
                             Spacer()
                             Image(systemName: showDatePicker ? "chevron.up" : "chevron.down")
                                 .foregroundColor(.cakeGrey)
                         }
                         .padding(14)
-                        .background(Color.white)
+                        .background(Color.cakeSurface)
                         .cornerRadius(14)
                         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.cakeBrown, lineWidth: 1.5))
                     }
@@ -390,7 +390,7 @@ struct BakerBidDetailView: View {
                             .datePickerStyle(.graphical)
                             .tint(.cakeBrown)
                             .padding(10)
-                            .background(Color.white)
+                            .background(Color.cakeSurface)
                             .cornerRadius(14)
                     }
                 }
@@ -416,7 +416,7 @@ struct BakerBidDetailView: View {
                             .allowsHitTesting(false)
                     }
                 }
-                .background(Color.white)
+                .background(Color.cakeSurface)
                 .cornerRadius(14)
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
@@ -432,7 +432,7 @@ struct BakerBidDetailView: View {
             submitArea
         }
         .padding(18)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
     }
@@ -514,7 +514,7 @@ struct BakerBidDetailView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     private func expandedSpecRow(label: String, value: String, multiline: Bool = false) -> some View {
@@ -525,7 +525,7 @@ struct BakerBidDetailView: View {
 
             Text(value)
                 .font(.urbanistSemiBold(13))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
                 .fixedSize(horizontal: false, vertical: multiline)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -636,7 +636,7 @@ struct BakerBidDetailView: View {
 
                 Text("Confirm Your Bid")
                     .font(.urbanistBold(20))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
 
                 VStack(spacing: 8) {
                     confirmRow(label: "Cake Request", value: request.title)
@@ -680,7 +680,7 @@ struct BakerBidDetailView: View {
                 }
             }
             .padding(24)
-            .background(Color.white)
+            .background(Color.cakeSurface)
             .cornerRadius(24)
             .shadow(color: Color.black.opacity(0.15), radius: 20, x: 0, y: 8)
             .padding(.horizontal, 28)
@@ -697,7 +697,7 @@ struct BakerBidDetailView: View {
             Spacer()
             Text(value)
                 .font(.urbanistSemiBold(13))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
         }
         .padding(.vertical, 6)
         .overlay(Divider().padding(.top, 28), alignment: .bottom)

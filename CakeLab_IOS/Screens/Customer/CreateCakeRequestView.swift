@@ -83,7 +83,7 @@ struct CreateCakeRequestView: View {
     
     var body: some View {
         ZStack(alignment: .top) {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // MARK: - Header (PublishRequestView pattern)
@@ -108,7 +108,7 @@ struct CreateCakeRequestView: View {
                 }
                 .padding(.horizontal, 20)
                 .frame(height: 56)
-                .background(Color.white)
+                .background(Color.cakeSurface)
                 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
@@ -196,7 +196,7 @@ struct CreateCakeRequestView: View {
                             }
                         }
                         .padding(16)
-                        .background(Color.white)
+                        .background(Color.cakeSurface)
                         .cornerRadius(12)
                         .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
                         .padding(.horizontal, 16)
@@ -284,7 +284,7 @@ struct CreateCakeRequestView: View {
                             }
                         }
                         .padding(16)
-                        .background(Color.white)
+                        .background(Color.cakeSurface)
                         .cornerRadius(12)
                         .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
                         .padding(.horizontal, 16)
@@ -505,7 +505,7 @@ struct CreateCakeRequestView: View {
                             }
                         }
                         .padding(16)
-                        .background(Color.white)
+                        .background(Color.cakeSurface)
                         .cornerRadius(12)
                         .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
                         .padding(.horizontal, 16)
@@ -565,7 +565,7 @@ struct CreateCakeRequestView: View {
                             .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
-                            .background(Color.white)
+                            .background(Color.cakeSurface)
                             .clipShape(Capsule())
                             .contentShape(Capsule())
                             .overlay(
@@ -574,7 +574,7 @@ struct CreateCakeRequestView: View {
                             )
                         }
                         .padding(16)
-                        .background(Color.white)
+                        .background(Color.cakeSurface)
                         .cornerRadius(12)
                         .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
                         .padding(.horizontal, 16)

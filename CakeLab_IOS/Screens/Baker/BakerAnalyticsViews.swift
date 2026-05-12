@@ -8,7 +8,7 @@ struct BakerPerformanceAnalyticsView: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar(title: "Performance Charts")
@@ -45,7 +45,7 @@ struct BakerPerformanceAnalyticsView: View {
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .clipShape(RoundedRectangle(cornerRadius: 22))
         .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
@@ -156,7 +156,7 @@ struct BakerPerformanceAnalyticsView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(Color(red: 0.98, green: 0.96, blue: 0.94))
+        .background(Color.cakeInsetSurface)
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -180,7 +180,7 @@ struct BakerPerformanceAnalyticsView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 }
 
@@ -190,7 +190,7 @@ struct BakerEarningsAnalyticsView: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar(title: "Earnings Summary")
@@ -230,7 +230,7 @@ struct BakerEarningsAnalyticsView: View {
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .clipShape(RoundedRectangle(cornerRadius: 22))
         .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
@@ -329,7 +329,7 @@ struct BakerEarningsAnalyticsView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 }
 
@@ -347,7 +347,7 @@ private func analyticsCard<Content: View>(title: String, subtitle: String, @View
         content()
     }
     .padding(18)
-    .background(Color.white)
+    .background(Color.cakeSurface)
     .clipShape(RoundedRectangle(cornerRadius: 20))
     .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 3)
 }
@@ -364,7 +364,7 @@ private func analyticsEmptyState(message: String) -> some View {
     }
     .frame(maxWidth: .infinity)
     .frame(height: 180)
-    .background(Color(red: 0.98, green: 0.96, blue: 0.94))
+    .background(Color.cakeInsetSurface)
     .clipShape(RoundedRectangle(cornerRadius: 18))
 }
 

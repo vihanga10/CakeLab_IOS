@@ -23,7 +23,7 @@ struct BakerOrdersView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.white.ignoresSafeArea()
+                Color.cakeBackground.ignoresSafeArea()
                 VStack(spacing: 0) {
                     // MARK: Custom Header (matches BakerMatchingRequestsView)
                     HStack {
@@ -35,7 +35,7 @@ struct BakerOrdersView: View {
                     }
                     .padding(.horizontal, 20)
                     .frame(height: 56)
-                    .background(Color.white)
+                    .background(Color.cakeSurface)
 
                     // MARK: Segmented Tabs
                     HStack(spacing: 0) {
@@ -60,7 +60,7 @@ struct BakerOrdersView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
-                    .background(Color.white)
+                    .background(Color.cakeSurface)
                     .overlay(
                         Rectangle().fill(Color(red: 0.88, green: 0.88, blue: 0.88)).frame(height: 1),
                         alignment: .bottom
@@ -309,7 +309,7 @@ struct BakerOrdersView: View {
                     }
                 }
                 .padding(18)
-                .background(Color.white)
+                .background(Color.cakeSurface)
                 .cornerRadius(18)
                 .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
                 .padding(.horizontal, 20)
@@ -331,7 +331,7 @@ struct BakerOrdersView: View {
                             .foregroundColor(.cakeBrown.opacity(0.3))
                         Text("No Completed Orders Yet")
                             .font(.urbanistBold(16))
-                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                            .foregroundColor(.cakePrimaryText)
                         Text("Complete orders to see them here")
                             .font(.urbanistRegular(13))
                             .foregroundColor(.cakeGrey)
@@ -362,7 +362,7 @@ struct BakerOrderFullCard: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(order.cakeName)
                         .font(.urbanistBold(16))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                     HStack(spacing: 5) {
                         Image(systemName: "person.circle.fill")
                             .font(.system(size: 13))
@@ -431,7 +431,7 @@ struct BakerOrderFullCard: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
         }
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
     }
@@ -454,7 +454,7 @@ struct BakerCompletedOrderCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(order.cakeName)
                     .font(.urbanistSemiBold(14))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                 Text(order.customerName)
                     .font(.urbanistRegular(12))
                     .foregroundColor(.cakeGrey)
@@ -480,7 +480,7 @@ struct BakerCompletedOrderCard: View {
             }
         }
         .padding(14)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.04), radius: 5, x: 0, y: 2)
     }
@@ -545,7 +545,7 @@ struct BakerOrderDetailView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(order.cakeName)
                                     .font(.urbanistBold(20))
-                                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                    .foregroundColor(.cakePrimaryText)
                                 Text("Order #\(order.id.uuidString.prefix(8).uppercased())")
                                     .font(.urbanistRegular(12))
                                     .foregroundColor(.cakeGrey)
@@ -565,7 +565,7 @@ struct BakerOrderDetailView: View {
                         .foregroundColor(.cakeGrey)
                     }
                     .padding(18)
-                    .background(Color.white)
+                    .background(Color.cakeSurface)
                     .cornerRadius(18)
                     .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
                     .padding(.horizontal, 20)
@@ -574,7 +574,7 @@ struct BakerOrderDetailView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Update Order Status")
                             .font(.urbanistBold(16))
-                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                            .foregroundColor(.cakePrimaryText)
                         
                         ForEach(0..<steps.count, id: \.self) { idx in
                             HStack(spacing: 14) {
@@ -633,7 +633,7 @@ struct BakerOrderDetailView: View {
                         .padding(.top, 8)
                     }
                     .padding(18)
-                    .background(Color.white)
+                    .background(Color.cakeSurface)
                     .cornerRadius(18)
                     .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
                     .padding(.horizontal, 20)
@@ -642,14 +642,14 @@ struct BakerOrderDetailView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Customer Details")
                             .font(.urbanistBold(16))
-                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                            .foregroundColor(.cakePrimaryText)
                         detailRow(icon: "person.fill", label: "Name", value: order.customerName)
                         detailRow(icon: "location.fill", label: "Delivery Address", value: order.location)
                         detailRow(icon: "phone.fill", label: "Phone", value: "+94 77 123 4567")
                         detailRow(icon: "bubble.left.fill", label: "Special Notes", value: order.notes)
                     }
                     .padding(18)
-                    .background(Color.white)
+                    .background(Color.cakeSurface)
                     .cornerRadius(18)
                     .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
                     .padding(.horizontal, 20)
@@ -674,7 +674,7 @@ struct BakerOrderDetailView: View {
                     .foregroundColor(.cakeGrey)
                 Text(value)
                     .font(.urbanistMedium(13))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
             }
         }
     }
@@ -723,7 +723,7 @@ struct BakerCompletedOrderCardFromCakeOrder: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(order.cakeName)
                     .font(.urbanistSemiBold(14))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                 Text(order.artisanName)
                     .font(.urbanistRegular(12))
                     .foregroundColor(.cakeGrey)
@@ -745,7 +745,7 @@ struct BakerCompletedOrderCardFromCakeOrder: View {
             }
         }
         .padding(14)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.04), radius: 5, x: 0, y: 2)
     }
@@ -810,7 +810,7 @@ struct BakerActiveOrderCardFromCakeOrder: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(order.cakeName)
                         .font(.urbanistBold(15))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                         .lineLimit(2)
 
                     HStack(alignment: .top, spacing: 10) {
@@ -858,7 +858,7 @@ struct BakerActiveOrderCardFromCakeOrder: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(customer.name)
                         .font(.urbanistBold(14))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
 
                     HStack(alignment: .top, spacing: 4) {
                         Image(systemName: "mappin.circle.fill")
@@ -876,7 +876,7 @@ struct BakerActiveOrderCardFromCakeOrder: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
         }
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 3)
     }

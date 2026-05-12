@@ -42,7 +42,7 @@ struct BiometricAuthView: View {
                             cardContent
                                 .frame(maxWidth: .infinity)
                                 .frame(height: cardHeight)
-                                .background(Color.white)
+                                .background(Color.cakeSurface)
                                 .clipShape(TopRoundedRectangle2(cornerRadius: 40))
                             
                             Color.white.frame(height: geo.safeAreaInsets.bottom)
@@ -108,7 +108,7 @@ struct BiometricAuthView: View {
                 HStack(spacing: 2) {
                     Text("Email Address")
                         .font(.urbanistSemiBold(14))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                     Text("*")
                         .font(.urbanistBold(14))
                         .foregroundColor(.red)
@@ -206,7 +206,7 @@ struct BiometricAuthView: View {
                 HStack(spacing: 2) {
                     Text("Login with")
                         .font(.urbanistRegular(13))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                     Text("Email & Password")
                         .font(.urbanistSemiBold(13))
                         .foregroundColor(.cakeBrown)
@@ -219,7 +219,7 @@ struct BiometricAuthView: View {
             HStack(spacing: 2) {
                 Text("Don't have an account ?")
                     .font(.urbanistRegular(15))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                 
                 Button {
                     navigateToSignUp = true

@@ -41,6 +41,7 @@ struct CakeLab_IOSApp: App {
   @Environment(\.scenePhase) private var scenePhase
   @StateObject private var notificationManager = NotificationManager()
   @AppStorage("accessibilityHighContrastEnabled") private var highContrastEnabled = false
+  @AppStorage("accessibilityDarkModeEnabled") private var darkModeEnabled = false
   @AppStorage("accessibilityFontScale") private var fontScaleRawValue = AccessibilityFontScale.standard.rawValue
 
   private var accessibilityFontScale: AccessibilityFontScale {
@@ -51,7 +52,7 @@ struct CakeLab_IOSApp: App {
   var body: some Scene {
     WindowGroup {
       ContentView()
-        .preferredColorScheme(.light)
+        .preferredColorScheme(darkModeEnabled ? .dark : .light)
         .dynamicTypeSize(accessibilityFontScale.dynamicTypeSize)
         .contrast(highContrastEnabled ? 1.2 : 1.0)
         .environment(\.managedObjectContext, CoreDataStack.shared.viewContext)

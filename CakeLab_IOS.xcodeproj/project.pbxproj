@@ -209,6 +209,14 @@
 				TargetAttributes = {
 					B28ECF3A2F7F77B9002345B5 = {
 						CreatedOnToolsVersion = 26.2;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+							com.apple.SignInWithApple = {
+								enabled = 1;
+							};
+						};
 					};
 					B28ED02D2F80C908002345B5 = {
 						CreatedOnToolsVersion = 26.2;
@@ -216,6 +224,11 @@
 					};
 					C10000032F900001002345B5 = {
 						CreatedOnToolsVersion = 26.2;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+						};
 					};
 				};
 			};

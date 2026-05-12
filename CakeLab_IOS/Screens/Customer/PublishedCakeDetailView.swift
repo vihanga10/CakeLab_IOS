@@ -8,7 +8,7 @@ struct PublishedCakeDetailView: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Header matching PublishRequestView pattern
@@ -23,7 +23,7 @@ struct PublishedCakeDetailView: View {
                                 .foregroundColor(.cakeGrey)
                             Text(request.displayTitle)
                                 .font(.urbanistSemiBold(16))
-                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                .foregroundColor(.cakePrimaryText)
                                 .lineLimit(nil)
                         }
 
@@ -133,7 +133,7 @@ struct PublishedCakeDetailView: View {
                                 
                                 Text(formattedDate(request.expectedDate))
                                     .font(.urbanistRegular(14))
-                                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                    .foregroundColor(.cakePrimaryText)
                                 
                                 Spacer()
                             }
@@ -156,7 +156,7 @@ struct PublishedCakeDetailView: View {
 
                                 Text(formattedTime(request.expectedTime))
                                     .font(.urbanistRegular(14))
-                                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                    .foregroundColor(.cakePrimaryText)
 
                                 Spacer()
                             }
@@ -184,7 +184,7 @@ struct PublishedCakeDetailView: View {
                                     }
                                     Text(bakerName)
                                         .font(.urbanistSemiBold(14))
-                                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                        .foregroundColor(.cakePrimaryText)
                                     Spacer()
                                 }
                                 .padding(.horizontal, 14)
@@ -223,7 +223,7 @@ struct PublishedCakeDetailView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     private func infoRow(label: String, value: String) -> some View {
@@ -233,7 +233,7 @@ struct PublishedCakeDetailView: View {
                 .foregroundColor(.cakeGrey)
             Text(value)
                 .font(.urbanistRegular(14))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
                 .lineLimit(nil)
         }
     }

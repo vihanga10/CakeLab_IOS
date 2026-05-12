@@ -199,7 +199,7 @@ struct BakerPortfolioManagerView: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar
@@ -317,7 +317,7 @@ struct BakerPortfolioManagerView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     private var portfolioSummaryCard: some View {
@@ -361,7 +361,7 @@ struct BakerPortfolioManagerView: View {
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .clipShape(RoundedRectangle(cornerRadius: 22))
         .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
@@ -419,7 +419,7 @@ struct BakerPortfolioManagerView: View {
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
@@ -481,7 +481,7 @@ struct BakerPortfolioManagerView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(24)
-        .background(Color(red: 0.98, green: 0.96, blue: 0.94))
+        .background(Color.cakeInsetSurface)
         .clipShape(RoundedRectangle(cornerRadius: 18))
     }
 
@@ -562,7 +562,7 @@ struct PortfolioWorkCard: View {
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.cakeBrown)
                             .frame(width: 40, height: 40)
-                            .background(Color(red: 0.98, green: 0.96, blue: 0.94))
+                            .background(Color.cakeInsetSurface)
                             .clipShape(Circle())
                     }
 
@@ -578,7 +578,7 @@ struct PortfolioWorkCard: View {
             }
         }
         .padding(14)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
     }
@@ -594,7 +594,7 @@ private struct PortfolioWorkEditorSheet: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar
@@ -640,7 +640,7 @@ private struct PortfolioWorkEditorSheet: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     private var photoSection: some View {
@@ -676,7 +676,7 @@ private struct PortfolioWorkEditorSheet: View {
                     .font(.urbanistRegular(14))
                     .frame(height: 120)
                     .padding(8)
-                    .background(Color.white)
+                    .background(Color.cakeSurface)
                     .overlay(
                         RoundedRectangle(cornerRadius: 14)
                             .stroke(Color.black.opacity(0.14), lineWidth: 1)
@@ -714,7 +714,7 @@ private struct PortfolioWorkEditorSheet: View {
                                 .font(.urbanistRegular(14))
                                 .padding(.horizontal, 14)
                                 .frame(height: 44)
-                                .background(Color.white)
+                                .background(Color.cakeSurface)
                                 .clipShape(Capsule())
                                 .overlay(
                                     Capsule()
@@ -781,7 +781,7 @@ private struct PortfolioWorkEditorSheet: View {
                 .font(.urbanistRegular(14))
                 .padding(.horizontal, 14)
                 .frame(height: 46)
-                .background(Color.white)
+                .background(Color.cakeSurface)
                 .clipShape(Capsule())
                 .overlay(
                     Capsule()

@@ -32,7 +32,7 @@ struct BakerMatchingRequestsView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.white.ignoresSafeArea()
+                Color.cakeBackground.ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     // MARK: - Custom Header
@@ -45,7 +45,7 @@ struct BakerMatchingRequestsView: View {
                     }
                     .padding(.horizontal, 20)
                     .frame(height: 56)
-                    .background(Color.white)
+                    .background(Color.cakeSurface)
 
                     // MARK: - Search Bar
                     HStack(spacing: 10) {

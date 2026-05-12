@@ -23,7 +23,7 @@ struct AuthTextField: View {
                 }
             }
             .font(.urbanistRegular(15))
-            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+            .foregroundColor(.cakePrimaryText)
 
             if let icon = trailingIcon {
                 Button(action: { onTrailingTap?() }) {
@@ -35,7 +35,7 @@ struct AuthTextField: View {
         }
         .padding(.horizontal, 18)
         .frame(height: 54)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .overlay(
             Capsule()
                 .stroke(Color(red: 0.75, green: 0.75, blue: 0.75), lineWidth: 1.2)
@@ -132,7 +132,7 @@ struct SocialButtons: View {
     private func socialCircle<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
             .frame(width: 52, height: 52)
-            .background(Color.white)
+            .background(Color.cakeSurface)
             .overlay(
                 Circle().stroke(Color(red: 0.8, green: 0.8, blue: 0.8), lineWidth: 1.2)
             )

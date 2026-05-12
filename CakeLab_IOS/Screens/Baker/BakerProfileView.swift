@@ -53,7 +53,7 @@ struct BakerProfileView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.white.ignoresSafeArea()
+                Color.cakeBackground.ignoresSafeArea()
                 VStack(spacing: 0) {
                     Text("My Profile")
                         .font(.urbanistBold(18))
@@ -171,7 +171,7 @@ struct BakerProfileView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(profileData.shopName)
                     .font(.urbanistSemiBold(30))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
 
                 HStack(spacing: 6) {
                     Image(systemName: "mappin.and.ellipse")
@@ -226,7 +226,7 @@ struct BakerProfileView: View {
     private var profileAvatar: some View {
         ZStack {
             Circle()
-                .fill(Color.white)
+                .fill(Color.cakeSurface)
                 .frame(width: 110, height: 110)
                 .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 3)
 
@@ -296,7 +296,7 @@ struct BakerProfileView: View {
             profileStatItem(value: "98%", label: "On-Time")
         }
         .padding(.vertical, 16)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 3)
     }
@@ -318,7 +318,7 @@ struct BakerProfileView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("About Me")
                 .font(.urbanistBold(16))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
 
             Text(profileData.about)
                 .font(.urbanistRegular(14))
@@ -335,7 +335,7 @@ struct BakerProfileView: View {
             .foregroundColor(.cakeGrey)
         }
         .padding(18)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
     }
@@ -346,7 +346,7 @@ struct BakerProfileView: View {
             HStack {
                 Text("My Specialities")
                     .font(.urbanistBold(16))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                 Spacer()
             }
 
@@ -359,7 +359,7 @@ struct BakerProfileView: View {
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 3)
     }
@@ -370,7 +370,7 @@ struct BakerProfileView: View {
             HStack {
                 Text("My Portfolio")
                     .font(.urbanistBold(16))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                 Spacer()
                 Text("\(profileData.portfolioWorks.count)/6 selected")
                     .font(.urbanistRegular(12))
@@ -393,7 +393,7 @@ struct BakerProfileView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 22)
                 .padding(.horizontal, 8)
-                .background(Color(red: 0.98, green: 0.96, blue: 0.94))
+                .background(Color.cakeInsetSurface)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
             } else {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
@@ -409,7 +409,7 @@ struct BakerProfileView: View {
             }
         }
         .padding(16)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 3)
     }
@@ -672,7 +672,7 @@ struct BakerProfileView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Performance")
                             .font(.urbanistBold(16))
-                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                            .foregroundColor(.cakePrimaryText)
                         Text("Completed orders, review trends, and category mix")
                             .font(.urbanistRegular(12))
                             .foregroundColor(.cakeGrey)
@@ -711,7 +711,7 @@ struct BakerProfileView: View {
                 }
             }
             .padding(18)
-            .background(Color.white)
+            .background(Color.cakeSurface)
             .cornerRadius(18)
             .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
         }
@@ -726,7 +726,7 @@ struct BakerProfileView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Earnings Summary")
                             .font(.urbanistBold(16))
-                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                            .foregroundColor(.cakePrimaryText)
                         Text("Revenue by month, category, and payment method")
                             .font(.urbanistRegular(12))
                             .foregroundColor(.cakeGrey)
@@ -777,7 +777,7 @@ struct BakerProfileView: View {
                 }
             }
             .padding(18)
-            .background(Color.white)
+            .background(Color.cakeSurface)
             .cornerRadius(18)
             .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
         }
@@ -800,14 +800,14 @@ struct BakerProfileView: View {
                     .foregroundColor(.cakeGrey)
                 Text(value)
                     .font(.urbanistBold(13))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                     .minimumScaleFactor(0.75)
                     .lineLimit(1)
             }
             Spacer()
         }
         .padding(12)
-        .background(Color(red: 0.97, green: 0.96, blue: 0.94))
+        .background(Color.cakeInsetSurface)
         .cornerRadius(14)
         .frame(maxWidth: .infinity)
     }
@@ -838,7 +838,7 @@ struct BakerProfileView: View {
                 menuRow(icon: "photo.stack.fill", label: "Edit Portfolio", color: Color.cakeBrown)
             }
         }
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
     }
@@ -855,7 +855,7 @@ struct BakerProfileView: View {
             }
             Text(label)
                 .font(.urbanistMedium(15))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.system(size: 14, weight: .semibold))
@@ -871,7 +871,7 @@ struct BakerProfileView: View {
                 .foregroundColor(.cakeBrown.opacity(0.5))
             Text(title)
                 .font(.urbanistBold(14))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
             Text(message)
                 .font(.urbanistRegular(12))
                 .foregroundColor(.cakeGrey)
@@ -879,7 +879,7 @@ struct BakerProfileView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(22)
-        .background(Color(red: 0.97, green: 0.96, blue: 0.94))
+        .background(Color.cakeInsetSurface)
         .cornerRadius(12)
     }
 
@@ -894,7 +894,7 @@ struct BakerProfileView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(Color(red: 0.97, green: 0.96, blue: 0.94))
+        .background(Color.cakeInsetSurface)
         .cornerRadius(12)
     }
 
@@ -941,7 +941,7 @@ struct BakerProfileView: View {
                 .padding(14)
             }
         }
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
     }
@@ -966,7 +966,7 @@ struct BakerProfileView: View {
             }
             Text(label)
                 .font(.urbanistMedium(15))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.system(size: 12))
@@ -1016,7 +1016,7 @@ struct BakerProfileDetailView: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar
@@ -1087,7 +1087,7 @@ struct BakerProfileDetailView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     private func saveSettings() {
@@ -1120,7 +1120,7 @@ struct BakerLanguageDetailContent: View {
 
                             Text(language.0)
                                 .font(.urbanistMedium(16))
-                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                .foregroundColor(.cakePrimaryText)
 
                             Spacer()
 
@@ -1149,10 +1149,10 @@ struct BakerLanguageDetailContent: View {
                     }
                 }
             }
-            .background(Color.white.opacity(0.95))
+            .background(Color.cakeSurface.opacity(0.96))
             .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.black.opacity(0.03), lineWidth: 1))
-            .shadow(color: Color.black.opacity(0.03), radius: 8, y: 4)
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.cakeStroke, lineWidth: 1))
+            .shadow(color: Color.cakeStroke, radius: 8, y: 4)
             .padding(.horizontal, 20)
             .padding(.top, 20)
 
@@ -1168,7 +1168,7 @@ struct BakerLanguageDetailContent: View {
 
                 Text("Your selected language will be used for baker profile, orders, bids, and support screens.")
                     .font(.urbanistRegular(13))
-                    .foregroundColor(Color(hex: "676767"))
+                    .foregroundColor(.cakeSecondaryText)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
@@ -1207,14 +1207,14 @@ struct BakerPrivacySecurityDetailContent: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Security")
                     .font(.urbanistMedium(14))
-                    .foregroundColor(Color(hex: "676767"))
+                    .foregroundColor(.cakeSecondaryText)
                     .padding(.horizontal, 20)
 
                 toggleRow(title: "Biometric Authentication", subtitle: "Use Face ID or Touch ID to login", isOn: $biometricAuth)
-                    .background(Color.white.opacity(0.95))
+                    .background(Color.cakeSurface.opacity(0.96))
                     .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.black.opacity(0.03), lineWidth: 1))
-                    .shadow(color: Color.black.opacity(0.03), radius: 8, y: 4)
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.cakeStroke, lineWidth: 1))
+                    .shadow(color: Color.cakeStroke, radius: 8, y: 4)
                     .padding(.horizontal, 20)
             }
 
@@ -1252,10 +1252,10 @@ struct BakerPrivacySecurityDetailContent: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Profile Visibility")
                     .font(.urbanistMedium(14))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                 Text("Control who can see your baker profile")
                     .font(.urbanistRegular(12))
-                    .foregroundColor(Color(hex: "7B7B7B"))
+                    .foregroundColor(.cakeTertiaryText)
             }
 
             Spacer()
@@ -1276,10 +1276,10 @@ struct BakerPrivacySecurityDetailContent: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.urbanistMedium(14))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                 Text(subtitle)
                     .font(.urbanistRegular(12))
-                    .foregroundColor(Color(hex: "7B7B7B"))
+                    .foregroundColor(.cakeTertiaryText)
                     .lineLimit(2)
             }
 
@@ -1296,16 +1296,16 @@ struct BakerPrivacySecurityDetailContent: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
                 .font(.urbanistMedium(14))
-                .foregroundColor(Color(hex: "676767"))
+                .foregroundColor(.cakeSecondaryText)
                 .padding(.horizontal, 20)
 
             VStack(spacing: 0) {
                 content()
             }
-            .background(Color.white.opacity(0.95))
+            .background(Color.cakeSurface.opacity(0.96))
             .clipShape(RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.black.opacity(0.03), lineWidth: 1))
-            .shadow(color: Color.black.opacity(0.03), radius: 8, y: 4)
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.cakeStroke, lineWidth: 1))
+            .shadow(color: Color.cakeStroke, radius: 8, y: 4)
             .padding(.horizontal, 20)
         }
     }
@@ -1342,23 +1342,23 @@ struct BakerHelpSupportDetailContent: View {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(Color(hex: "7B7B7B"))
+                    .foregroundColor(.cakeTertiaryText)
 
                 TextField("Search FAQs...", text: $searchText)
                     .font(.urbanistRegular(14))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
 
                 if !searchText.isEmpty {
                     Button { searchText = "" } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(Color(hex: "7B7B7B"))
+                            .foregroundColor(.cakeTertiaryText)
                     }
                 }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
-            .background(Color(hex: "F5F5F5"))
+            .background(Color.cakeInsetSurface)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .padding(.horizontal, 20)
             .padding(.top, 20)
@@ -1366,7 +1366,7 @@ struct BakerHelpSupportDetailContent: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Frequently Asked Questions")
                     .font(.urbanistMedium(14))
-                    .foregroundColor(Color(hex: "676767"))
+                    .foregroundColor(.cakeSecondaryText)
                     .padding(.horizontal, 20)
 
                 if filteredFAQs.isEmpty {
@@ -1376,7 +1376,7 @@ struct BakerHelpSupportDetailContent: View {
                             .foregroundColor(Color(hex: "C17C3D").opacity(0.5))
                         Text("No FAQs found")
                             .font(.urbanistMedium(16))
-                            .foregroundColor(Color(hex: "676767"))
+                            .foregroundColor(.cakeSecondaryText)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 32)
@@ -1404,10 +1404,10 @@ struct BakerHelpSupportDetailContent: View {
                             }
                         }
                     }
-                    .background(Color.white.opacity(0.95))
+                    .background(Color.cakeSurface.opacity(0.96))
                     .clipShape(RoundedRectangle(cornerRadius: 14))
-                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.black.opacity(0.03), lineWidth: 1))
-                    .shadow(color: Color.black.opacity(0.03), radius: 8, y: 4)
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.cakeStroke, lineWidth: 1))
+                    .shadow(color: Color.cakeStroke, radius: 8, y: 4)
                     .padding(.horizontal, 20)
                 }
             }
@@ -1427,14 +1427,14 @@ struct BakerFAQItemView: View {
                 HStack(spacing: 12) {
                     Text(question)
                         .font(.urbanistSemiBold(14))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                         .lineLimit(2)
 
                     Spacer()
 
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(Color(hex: "7B7B7B"))
+                        .foregroundColor(.cakeTertiaryText)
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
                 .padding(.horizontal, 16)
@@ -1448,7 +1448,7 @@ struct BakerFAQItemView: View {
 
                     Text(answer)
                         .font(.urbanistRegular(13))
-                        .foregroundColor(Color(hex: "676767"))
+                        .foregroundColor(.cakeSecondaryText)
                         .lineLimit(nil)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
@@ -1581,7 +1581,7 @@ private struct PortfolioPreviewDetailSheet: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar
@@ -1611,7 +1611,7 @@ private struct PortfolioPreviewDetailSheet: View {
                         }
                     }
                     .padding(18)
-                    .background(Color.white)
+                    .background(Color.cakeSurface)
                     .clipShape(RoundedRectangle(cornerRadius: 18))
                     .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
                     .padding(20)
@@ -1640,7 +1640,7 @@ private struct PortfolioPreviewDetailSheet: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 }
 
@@ -1808,7 +1808,7 @@ struct BakerEditProfileSheet: View {
                                 .font(.urbanistRegular(14))
                                 .frame(height: 100)
                                 .padding(10)
-                                .background(Color(red: 0.97, green: 0.96, blue: 0.94))
+                                .background(Color.cakeInsetSurface)
                                 .cornerRadius(12)
                                 .scrollContentBackground(.hidden)
                         }
@@ -1833,7 +1833,7 @@ struct BakerEditProfileSheet: View {
                                                 .foregroundColor(selectedTags.contains(cat) ? .cakeBrown : .cakeGrey)
                                             Text(cat)
                                                 .font(.urbanistMedium(12))
-                                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                                .foregroundColor(.cakePrimaryText)
                                                 .lineLimit(1)
                                                 .minimumScaleFactor(0.8)
                                             Spacer()
@@ -1883,7 +1883,7 @@ struct BakerEditProfileSheet: View {
                 .font(.urbanistRegular(14))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 13)
-                .background(Color(red: 0.97, green: 0.96, blue: 0.94))
+                .background(Color.cakeInsetSurface)
                 .cornerRadius(12)
         }
     }
@@ -2054,7 +2054,7 @@ struct BakerPaymentDetailsView: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar
@@ -2135,7 +2135,7 @@ struct BakerPaymentDetailsView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     private var summaryCard: some View {
@@ -2218,7 +2218,7 @@ struct BakerPaymentDetailsView: View {
 
             Text("No Payments Yet")
                 .font(.urbanistBold(19))
-                .foregroundColor(Color(red: 0.18, green: 0.18, blue: 0.18))
+                .foregroundColor(.cakePrimaryText)
 
             Text("Customer payments for your accepted bids will appear here.")
                 .font(.urbanistRegular(14))
@@ -2270,7 +2270,7 @@ struct BakerPaymentDetailsCard: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(record.cakeName)
                         .font(.urbanistBold(15))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                         .lineLimit(1)
 
                     Text("Customer: \(record.customerName)")
@@ -2285,7 +2285,7 @@ struct BakerPaymentDetailsCard: View {
                 VStack(alignment: .trailing, spacing: 6) {
                     Text("LKR \(currencyFormatter.string(for: record.amount) ?? "0")")
                         .font(.urbanistBold(15))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
 
                     VStack(alignment: .trailing, spacing: 4) {
                         Text(record.isSuccess ? "Received" : record.status.capitalized)
@@ -2329,7 +2329,7 @@ struct BakerPaymentDetailsCard: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 11)
         }
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.055), radius: 10, x: 0, y: 3)
         .contextMenu {

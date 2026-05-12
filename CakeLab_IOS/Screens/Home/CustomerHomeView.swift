@@ -78,7 +78,7 @@ struct CustomerHomeView: View {
                                 // Show name if available, otherwise show email
                                 Text(user.name.isEmpty ? user.email : user.name)
                                     .font(.urbanistSemiBold(15))
-                                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                    .foregroundColor(.cakePrimaryText)
                                     .lineLimit(1)
                             }
                             Spacer()
@@ -95,7 +95,7 @@ struct CustomerHomeView: View {
                                 .foregroundColor(.cakeGrey)
                             TextField("Search cakes or artisans...", text: $searchText)
                                 .font(.urbanistRegular(14))
-                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                .foregroundColor(.cakePrimaryText)
                                 .tint(.cakeBrown)
 
                             if isSearching {
@@ -170,7 +170,7 @@ struct CustomerHomeView: View {
                             VStack(alignment: .leading, spacing: 16) {
                             Text("What are you craving today?")
                                 .font(.urbanistBold(15))
-                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                .foregroundColor(.cakePrimaryText)
                                 .padding(.horizontal, 20)
 
                             ScrollView(.horizontal, showsIndicators: false) {
@@ -220,7 +220,7 @@ struct CustomerHomeView: View {
                             HStack {
                                 Text("Active Orders")
                                     .font(.urbanistBold(15))
-                                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                    .foregroundColor(.cakePrimaryText)
                                 Spacer()
                                 Button { selectedTab = 2 } label: {
                                     Text("See all")
@@ -319,7 +319,7 @@ struct CustomerHomeView: View {
                             HStack {
                                 Text("Artisans Near You")
                                     .font(.urbanistBold(15))
-                                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                    .foregroundColor(.cakePrimaryText)
                                 Spacer()
                                 NavigationLink(destination: ArtisansNearYouView(user: user)) {
                                     Text("See all")
@@ -435,7 +435,7 @@ struct CustomerHomeView: View {
             HStack {
                 Text("Search Results")
                     .font(.urbanistBold(15))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
 
                 Spacer()
 
@@ -534,7 +534,7 @@ struct CustomerHomeView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(category.name)
                     .font(.urbanistSemiBold(14))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                     .lineLimit(1)
                 Text("Cake category")
                     .font(.urbanistRegular(11))
@@ -548,7 +548,7 @@ struct CustomerHomeView: View {
                 .foregroundColor(.cakeGrey.opacity(0.75))
         }
         .padding(12)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(14)
         .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
     }
@@ -560,7 +560,7 @@ struct CustomerHomeView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(order.cakeName)
                     .font(.urbanistSemiBold(14))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                     .lineLimit(1)
 
                 HStack(spacing: 6) {
@@ -585,7 +585,7 @@ struct CustomerHomeView: View {
                 .foregroundColor(.cakeGrey.opacity(0.75))
         }
         .padding(12)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(14)
         .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
     }
@@ -597,7 +597,7 @@ struct CustomerHomeView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(artisan.name)
                     .font(.urbanistSemiBold(14))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                     .lineLimit(1)
 
                 HStack(spacing: 4) {
@@ -623,7 +623,7 @@ struct CustomerHomeView: View {
                 .frame(width: 10, height: 10)
         }
         .padding(12)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(14)
         .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
     }
@@ -714,7 +714,7 @@ struct CustomerHomeView: View {
             VStack(spacing: 0) {
                 Text("Send Cake Request?")
                     .font(.urbanistBold(18))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                     .padding(.top, 24)
                     .padding(.bottom, 16)
 
@@ -725,7 +725,7 @@ struct CustomerHomeView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(artisan.name)
                                 .font(.urbanistBold(14))
-                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                .foregroundColor(.cakePrimaryText)
 
                             HStack(spacing: 4) {
                                 Image(systemName: "star.fill")
@@ -754,7 +754,7 @@ struct CustomerHomeView: View {
                             .frame(width: 10, height: 10)
                     }
                     .padding(12)
-                    .background(Color.white)
+                    .background(Color.cakeSurface)
                     .cornerRadius(12)
                 }
                 .padding(.horizontal, 20)
@@ -785,7 +785,7 @@ struct CustomerHomeView: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
             }
-            .background(Color.white)
+            .background(Color.cakeSurface)
             .cornerRadius(16)
             .padding(.horizontal, 24)
             .shadow(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 4)
@@ -891,14 +891,14 @@ struct ArtisanCard: View {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(name)
                         .font(.urbanistBold(14))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                     HStack(spacing: 4) {
                         Image(systemName: "star.fill")
                             .font(.system(size: 11))
                             .foregroundColor(Color(red: 1.0, green: 0.78, blue: 0.1))
                         Text(rating)
                             .font(.urbanistSemiBold(12))
-                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                            .foregroundColor(.cakePrimaryText)
                         Text(reviews)
                             .font(.urbanistRegular(11))
                             .foregroundColor(.cakeGrey)
@@ -933,7 +933,7 @@ struct ArtisanCard: View {
             }
         }
         .padding(12)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(14)
         .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 2)
     }

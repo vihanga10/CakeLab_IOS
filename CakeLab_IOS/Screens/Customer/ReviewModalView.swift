@@ -31,14 +31,14 @@ struct ReviewModalView: View {
                 headerBar
 
                 ZStack {
-                    Color.white.ignoresSafeArea()
+                    Color.cakeBackground.ignoresSafeArea()
 
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 20) {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("How is your order?")
                                     .font(.urbanistBold(28))
-                                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                    .foregroundColor(.cakePrimaryText)
 
                                 Text("Share your experience with \(bakerName)")
                                     .font(.urbanistRegular(15))
@@ -49,7 +49,7 @@ struct ReviewModalView: View {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Your overall rating")
                                     .font(.urbanistSemiBold(16))
-                                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                    .foregroundColor(.cakePrimaryText)
 
                                 HStack(spacing: 16) {
                                     ForEach(1...5, id: \.self) { star in
@@ -69,11 +69,11 @@ struct ReviewModalView: View {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Write your review")
                                     .font(.urbanistSemiBold(16))
-                                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                    .foregroundColor(.cakePrimaryText)
 
                                 ZStack(alignment: .topLeading) {
                                     RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color.white)
+                                        .fill(Color.cakeSurface)
                                         .frame(minHeight: 120)
 
                                     if reviewText.isEmpty {
@@ -85,7 +85,7 @@ struct ReviewModalView: View {
 
                                     TextEditor(text: $reviewText)
                                         .font(.urbanistRegular(16))
-                                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                        .foregroundColor(.cakePrimaryText)
                                         .padding(12)
                                         .scrollContentBackground(.hidden)
                                 }
@@ -127,13 +127,13 @@ struct ReviewModalView: View {
                                 .foregroundColor(.green)
                             Text("Thank you!")
                                 .font(.urbanistSemiBold(18))
-                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                .foregroundColor(.cakePrimaryText)
                             Text("Your review has been posted")
                                 .font(.urbanistRegular(14))
                                 .foregroundColor(.cakeGrey)
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color.white.opacity(0.95))
+                        .background(Color.cakeSurface.opacity(0.96))
                     }
                 }
             }
@@ -172,7 +172,7 @@ struct ReviewModalView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     private var submitButton: some View {
@@ -205,7 +205,7 @@ struct ReviewModalView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Add a photo (optional)")
                 .font(.urbanistSemiBold(16))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
 
             if !selectedImages.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -267,7 +267,7 @@ struct ReviewModalView: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: 100)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)

@@ -30,6 +30,7 @@ enum AccessibilityFontScale: String, CaseIterable, Identifiable {
 struct AccessibilitySettingsSection: View {
     // Persisted user preferences stored in AppStorage so they survive app restarts
     @AppStorage("accessibilityHighContrastEnabled") private var highContrastEnabled = false
+    @AppStorage("accessibilityDarkModeEnabled") private var darkModeEnabled = false
     @AppStorage("accessibilityFontScale") private var fontScaleRawValue = AccessibilityFontScale.standard.rawValue
     @AppStorage("inAppVoiceEnabled") private var inAppVoiceEnabled = false
 
@@ -49,12 +50,20 @@ struct AccessibilitySettingsSection: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Accessibility")
                 .font(.urbanistMedium(16))
-                .foregroundColor(Color(hex: "676767"))
+                .foregroundColor(.cakeSecondaryText)
                 .padding(.horizontal, 4)
 
             VStack(spacing: 12) {
-                // Card 1: Contrast — contains high contrast toggle and font scale picker
-                accessibilityCard(title: "Contrast", icon: "circle.lefthalf.filled") {
+                // Card 1: Appearance — contains dark mode, contrast, and font scale controls
+                accessibilityCard(title: "Appearance", icon: "moon.stars.fill") {
+                    toggleRow(
+                        title: "Dark Mode",
+                        subtitle: "Use a darker app appearance.",
+                        isOn: $darkModeEnabled
+                    )
+
+                    Divider().padding(.leading, 52)
+
                     toggleRow(
                         title: "High Contrast Mode",
                         subtitle: "Increase contrast across app screens.",
@@ -66,7 +75,7 @@ struct AccessibilitySettingsSection: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Font Scaling")
                             .font(.urbanistMedium(14))
-                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                            .foregroundColor(.cakePrimaryText)
 
                         Picker("Font Scaling", selection: fontScaleBinding) {
                             ForEach(AccessibilityFontScale.allCases) { scale in
@@ -103,12 +112,12 @@ struct AccessibilitySettingsSection: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(Color(hex: "5D3714"))
                     .frame(width: 32, height: 32)
-                    .background(Color(hex: "EFEAE2"))
+                    .background(Color.cakeIconTile)
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                 Text(title)
                     .font(.urbanistSemiBold(15))
-                    .foregroundColor(Color(hex: "1A1A1A"))
+                    .foregroundColor(.cakePrimaryText)
             }
             .padding(.horizontal, 14)
             .padding(.top, 14)
@@ -116,11 +125,11 @@ struct AccessibilitySettingsSection: View {
 
             content()
         }
-        .background(Color.white.opacity(0.95))
+        .background(Color.cakeSurface.opacity(0.96))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.black.opacity(0.04), lineWidth: 1)
+                .stroke(Color.cakeStroke, lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.04), radius: 10, y: 5)
     }
@@ -131,11 +140,11 @@ struct AccessibilitySettingsSection: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.urbanistMedium(14))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
 
                 Text(subtitle)
                     .font(.urbanistRegular(12))
-                    .foregroundColor(Color(hex: "7B7B7B"))
+                    .foregroundColor(.cakeTertiaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
 

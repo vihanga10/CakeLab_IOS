@@ -21,7 +21,7 @@ struct CrafterHomeView: View {
                             
                             Text(user.name.isEmpty ? "Baker" : "Baker \(user.name)")
                                 .font(.urbanistSemiBold(18))
-                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                .foregroundColor(.cakePrimaryText)
                             
                             
                         }
@@ -93,7 +93,7 @@ struct CrafterHomeView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Quick Actions")
                                 .font(.urbanistBold(16))
-                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                .foregroundColor(.cakePrimaryText)
                                 .padding(.horizontal, 20)
                             
                             VStack(spacing: 10) {
@@ -130,7 +130,7 @@ struct CrafterHomeView: View {
                             HStack {
                                 Text("Recent Orders")
                                     .font(.urbanistBold(16))
-                                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                    .foregroundColor(.cakePrimaryText)
                                 
                                 Spacer()
                                 
@@ -183,7 +183,7 @@ struct ActionButton: View {
                 
                 Text(title)
                     .font(.urbanistSemiBold(14))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                 
                 Spacer()
                 
@@ -225,7 +225,7 @@ struct RecentOrderCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(orderID)
                         .font(.urbanistBold(14))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                     
                     Text(customer)
                         .font(.urbanistRegular(12))

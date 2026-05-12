@@ -42,7 +42,7 @@ struct ArtisansNearYouView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar
@@ -100,7 +100,7 @@ struct ArtisansNearYouView: View {
                                     .foregroundColor(.cakeGrey)
                                 TextField("Search bakers or specialties...", text: $searchText)
                                     .font(.urbanistRegular(14))
-                                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                    .foregroundColor(.cakePrimaryText)
                                     .tint(.cakeBrown)
                             }
                             .padding(.horizontal, 14)
@@ -194,7 +194,7 @@ struct ArtisansNearYouView: View {
                     VStack(spacing: 0) {
                         Text("Send Cake Request?")
                             .font(.urbanistBold(18))
-                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                            .foregroundColor(.cakePrimaryText)
                             .padding(.top, 24)
                             .padding(.bottom, 16)
 
@@ -205,7 +205,7 @@ struct ArtisansNearYouView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(artisan.name)
                                         .font(.urbanistBold(14))
-                                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                        .foregroundColor(.cakePrimaryText)
 
                                     HStack(spacing: 4) {
                                         Image(systemName: "star.fill")
@@ -234,7 +234,7 @@ struct ArtisansNearYouView: View {
                                     .frame(width: 10, height: 10)
                             }
                             .padding(12)
-                            .background(Color.white)
+                            .background(Color.cakeSurface)
                             .cornerRadius(12)
                         }
                         .padding(.horizontal, 20)
@@ -268,7 +268,7 @@ struct ArtisansNearYouView: View {
                         .padding(.horizontal, 20)
                         .padding(.vertical, 16)
                     }
-                    .background(Color.white)
+                    .background(Color.cakeSurface)
                     .cornerRadius(16)
                     .padding(.horizontal, 24)
                     .shadow(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 4)
@@ -341,7 +341,7 @@ struct ArtisansNearYouView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     @ViewBuilder
@@ -409,7 +409,7 @@ struct ArtisansNearYouView: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text(artisan.name)
                     .font(.urbanistSemiBold(12))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                 HStack(spacing: 4) {
                     Image(systemName: "star.fill")
                         .font(.system(size: 10))
@@ -421,7 +421,7 @@ struct ArtisansNearYouView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
-            .background(Color.white)
+            .background(Color.cakeSurface)
             .cornerRadius(10)
             .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 3)
 
@@ -798,11 +798,11 @@ struct ArtisanNearCard: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
-            .background(Color.white)
+            .background(Color.cakeSurface)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.black.opacity(0.04), lineWidth: 1)
+                    .stroke(Color.cakeStroke, lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(0.10), radius: 10, x: 0, y: 4)
         }

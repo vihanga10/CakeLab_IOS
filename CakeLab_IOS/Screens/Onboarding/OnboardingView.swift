@@ -161,7 +161,7 @@ struct OnboardingPageView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: cardHeight)
-                    .background(Color.white)
+                    .background(Color.cakeSurface)
                     .clipShape(TopRoundedRectangle(cornerRadius: 40))
 
                     // Extend white below home indicator
@@ -172,7 +172,6 @@ struct OnboardingPageView: View {
             .ignoresSafeArea()
         }
         .ignoresSafeArea()
-        .preferredColorScheme(.light)
     }
 }
 

@@ -40,7 +40,7 @@ struct BakerHomeView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                Color.white.ignoresSafeArea()
+                Color.cakeBackground.ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
@@ -172,7 +172,7 @@ struct BakerHomeView: View {
                     .foregroundColor(.cakeGrey)
                 Text(user.name.isEmpty ? user.email : user.name)
                     .font(.urbanistSemiBold(15))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                     .lineLimit(1)
             }
 
@@ -190,7 +190,7 @@ struct BakerHomeView: View {
         VStack(alignment: .center, spacing: 0) {
             Text("Matching Cake Requests")
                 .font(.urbanistBold(17))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .multilineTextAlignment(.center)
 
@@ -298,7 +298,7 @@ struct BakerHomeView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.urbanistBold(18))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 Text(subtitle)
@@ -319,7 +319,7 @@ struct BakerHomeView: View {
         HStack {
             Text(title)
                 .font(.urbanistBold(15))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
             Spacer()
             Button(action: action) {
                 Text("See all")
@@ -677,7 +677,7 @@ struct LocationPickerSheet: View {
                 VStack(alignment: .leading, spacing: 20) {
                     Text("Select City to Filter")
                         .font(.urbanistSemiBold(15))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
 
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                         // None option — shows all matching requests
@@ -904,7 +904,7 @@ struct OtherRequestCard: View {
                 HStack {
                     Text(request.title)
                         .font(.urbanistSemiBold(15))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                     Spacer()
                     Text(request.budgetRange)
                         .font(.urbanistBold(13))
@@ -937,7 +937,7 @@ struct OtherRequestCard: View {
             }
         }
         .padding(14)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
     }
@@ -961,7 +961,7 @@ struct BakerActiveOrderCard: View {
                 HStack {
                     Text(order.cakeName)
                         .font(.urbanistSemiBold(15))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                     Spacer()
                     Text(order.statusLabel)
                         .font(.urbanistMedium(11))
@@ -988,7 +988,7 @@ struct BakerActiveOrderCard: View {
             }
         }
         .padding(14)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
     }

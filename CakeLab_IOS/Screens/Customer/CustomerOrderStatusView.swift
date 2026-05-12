@@ -274,7 +274,7 @@ struct CustomerOrderStatusView: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar
@@ -426,7 +426,7 @@ struct CustomerOrderStatusView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     private func orderDetailsCard(
@@ -495,7 +495,7 @@ struct CustomerOrderStatusView: View {
 
                     Text(formattedHeaderDate(deliveryDate))
                         .font(.urbanistMedium(11))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .padding(.top, 2)
@@ -512,7 +512,7 @@ struct CustomerOrderStatusView: View {
 
                     Text("Rs \(Int(budgetMin).formatted()) - \(Int(budgetMax).formatted())")
                         .font(.urbanistMedium(10.5))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
                 }
@@ -548,12 +548,12 @@ struct CustomerOrderStatusView: View {
             .padding(.bottom, 10)
         }
         .frame(width: 363, height: 156)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(24)
         .shadow(color: Color.black.opacity(0.07), radius: 12, x: 0, y: 4)
         .overlay(
             RoundedRectangle(cornerRadius: 24)
-                .stroke(Color.black.opacity(0.04), lineWidth: 1)
+                .stroke(Color.cakeStroke, lineWidth: 1)
         )
         .frame(maxWidth: .infinity)
     }
@@ -589,7 +589,7 @@ struct CustomerOrderStatusView: View {
                         HStack(alignment: .firstTextBaseline) {
                             Text(item.title)
                                 .font(item.step == currentStep ? .urbanistBold(15) : .urbanistMedium(15))
-                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                .foregroundColor(.cakePrimaryText)
 
                             Spacer()
 
@@ -703,7 +703,7 @@ struct CustomerOrderStatusView: View {
         return VStack(alignment: .leading, spacing: 10) {
             Text("Baker Details")
                 .font(.urbanistBold(16))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
 
             HStack(alignment: .top, spacing: 12) {
                 bakerProfileImage(base64: profileImageBase64, imageURL: imageURL)
@@ -711,7 +711,7 @@ struct CustomerOrderStatusView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(name)
                         .font(.urbanistBold(14))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                         .lineLimit(2)
 
                     HStack(spacing: 4) {

@@ -343,7 +343,7 @@ struct CustomerBidsView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.white.ignoresSafeArea()
+                Color.cakeBackground.ignoresSafeArea()
 
                 if viewModel.isLoading {
                     ProgressView("Loading your request bids...")
@@ -457,7 +457,7 @@ struct CustomerBidRequestCard: View {
                         .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
                         .padding(.vertical, 10)
                         .frame(width: 148)
-                        .background(Color.white)
+                        .background(Color.cakeSurface)
                         .clipShape(Capsule())
                         .overlay(
                             Capsule()
@@ -472,7 +472,7 @@ struct CustomerBidRequestCard: View {
         .padding(.horizontal, 12)
         .frame(maxWidth: 358, alignment: .leading)
         .frame(height: 150)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -689,7 +689,7 @@ struct BidsReceivedView: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar
@@ -802,7 +802,7 @@ struct BidsReceivedView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     private func processAcceptedBid(bid: CustomerBidOffer, payment: PaymentPayload) async {
@@ -1000,7 +1000,7 @@ struct BidsReceivedView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(request.title)
                 .font(.urbanistBold(16))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
 
             HStack(spacing: 10) {
                 Label(Self.dateFormatter.string(from: request.expectedDate), systemImage: "calendar")
@@ -1020,7 +1020,7 @@ struct BidsReceivedView: View {
                 .lineLimit(3)
         }
         .padding(16)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(20)
         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 3)
     }
@@ -1051,7 +1051,7 @@ struct BakerBidOfferCard: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(bid.bakerName)
                         .font(.urbanistBold(16))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
 
                     Text("Bid placed on \(Self.dateFormatter.string(from: bid.submittedAt)) at \(Self.timeFormatter.string(from: bid.submittedAt).lowercased())")
                         .font(.urbanistRegular(11))
@@ -1099,7 +1099,7 @@ struct BakerBidOfferCard: View {
                         .foregroundColor(.cakeGrey)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .background(Color.white)
+                        .background(Color.cakeSurface)
                         .clipShape(Capsule())
                         .overlay(
                             Capsule()
@@ -1109,7 +1109,7 @@ struct BakerBidOfferCard: View {
             }
         }
         .padding(14)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(20)
         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 3)
     }
@@ -1223,7 +1223,7 @@ struct PaymentCheckoutView: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar
@@ -1300,7 +1300,7 @@ struct PaymentCheckoutView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     private var isValidPayment: Bool {
@@ -1323,7 +1323,7 @@ struct PaymentCheckoutView: View {
                             .foregroundColor(.cakeBrown)
                         Text("Delivery Location")
                             .font(.urbanistSemiBold(13))
-                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                            .foregroundColor(.cakePrimaryText)
                     }
                     Text(displayAddress)
                         .font(.urbanistRegular(12))
@@ -1359,7 +1359,7 @@ struct PaymentCheckoutView: View {
             }
         }
         .padding(16)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
     }
@@ -1368,7 +1368,7 @@ struct PaymentCheckoutView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Payment Method")
                 .font(.urbanistBold(15))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
 
             VStack(spacing: 10) {
                 HStack(spacing: 10) {
@@ -1382,7 +1382,7 @@ struct PaymentCheckoutView: View {
             }
         }
         .padding(16)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
     }
@@ -1391,7 +1391,7 @@ struct PaymentCheckoutView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Card Details")
                 .font(.urbanistBold(15))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
 
             formField(title: "Card Number", placeholder: "4000 1234 5678 9010", text: $cardNumber)
             formField(title: "Cardholder Name", placeholder: "Your name", text: $cardholderName)
@@ -1402,7 +1402,7 @@ struct PaymentCheckoutView: View {
             }
         }
         .padding(16)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
     }
@@ -1481,7 +1481,7 @@ struct EditDeliveryLocationSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.white.ignoresSafeArea()
+                Color.cakeBackground.ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     headerBar
@@ -1603,7 +1603,7 @@ struct EditDeliveryLocationSheet: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     private func saveLocation() async {
@@ -1646,7 +1646,7 @@ private struct DistrictPickerSheet: View {
                         HStack {
                             Text(district)
                                 .font(.urbanistMedium(15))
-                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                .foregroundColor(.cakePrimaryText)
                             Spacer()
                             if selectedDistrict == district {
                                 Image(systemName: "checkmark")
@@ -1682,7 +1682,7 @@ struct BidFullDetailsSheet: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
             
             VStack(spacing: 0) {
                 headerBar
@@ -1750,7 +1750,7 @@ struct BidFullDetailsSheet: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     private var heroCard: some View {
@@ -1761,7 +1761,7 @@ struct BidFullDetailsSheet: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(bid.bakerName)
                         .font(.urbanistBold(15))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                     Text("Bid placed on \(Self.dateFormatter.string(from: bid.submittedAt)) at \(Self.timeFormatter.string(from: bid.submittedAt).lowercased())")
                         .font(.urbanistRegular(12))
                         .foregroundColor(.cakeGrey)
@@ -1785,7 +1785,7 @@ struct BidFullDetailsSheet: View {
             }
         }
         .padding(14)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 3)
     }
@@ -1852,7 +1852,7 @@ struct BidFullDetailsSheet: View {
                 .foregroundColor(.cakeGrey)
             Text(value)
                 .font(.urbanistSemiBold(13))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
@@ -1879,11 +1879,11 @@ struct BidFullDetailsSheet: View {
             
             Text(value)
                 .font(.urbanistRegular(14))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
                 .lineLimit(4)
         }
         .padding(12)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(14)
         .shadow(color: Color.black.opacity(0.04), radius: 8, x: 0, y: 2)
     }

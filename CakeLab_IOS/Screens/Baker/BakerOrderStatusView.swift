@@ -194,7 +194,7 @@ struct BakerOrderStatusView: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar
@@ -285,7 +285,7 @@ struct BakerOrderStatusView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     // MARK: - Order Details Card (matches CustomerOrderStatusView.orderDetailsCard)
@@ -342,7 +342,7 @@ struct BakerOrderStatusView: View {
                     .foregroundColor(.cakeGrey)
                     Text(formattedHeaderDate(deliveryDateText))
                         .font(.urbanistMedium(11))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .padding(.top, 2).padding(.bottom, 4)
@@ -358,7 +358,7 @@ struct BakerOrderStatusView: View {
                          ? "Rs \(Int(order.budgetMin).formatted()) – \(Int(order.budgetMax).formatted())"
                          : "N/A")
                         .font(.urbanistMedium(10.5))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
                 }
@@ -390,10 +390,10 @@ struct BakerOrderStatusView: View {
             .padding(.bottom, 10)
         }
         .frame(width: 363, height: 156)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(24)
         .shadow(color: Color.black.opacity(0.07), radius: 12, x: 0, y: 4)
-        .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.black.opacity(0.04), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.cakeStroke, lineWidth: 1))
         .frame(maxWidth: .infinity)
     }
 
@@ -430,7 +430,7 @@ struct BakerOrderStatusView: View {
                         HStack(alignment: .firstTextBaseline) {
                             Text(item.title)
                                 .font(item.step == viewModel.selectedStep ? .urbanistBold(15) : .urbanistMedium(15))
-                                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                .foregroundColor(.cakePrimaryText)
                             Spacer()
                             if item.step == viewModel.selectedStep {
                                 Text("Current")
@@ -634,7 +634,7 @@ struct BakerOrderStatusView: View {
                 .frame(width: 16)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.urbanistRegular(11)).foregroundColor(.cakeGrey)
-                Text(value).font(.urbanistMedium(14)).foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                Text(value).font(.urbanistMedium(14)).foregroundColor(.cakePrimaryText)
             }
         }
     }

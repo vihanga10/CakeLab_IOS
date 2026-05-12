@@ -246,7 +246,7 @@ struct CustomerOrdersView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.white.ignoresSafeArea()
+                Color.cakeBackground.ignoresSafeArea()
 
                 VStack(spacing: 0) {
 
@@ -401,7 +401,7 @@ struct OrderCard: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(order.cakeName)
                         .font(.urbanistBold(15))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                         .lineLimit(2)
 
                     HStack(alignment: .top, spacing: 10) {
@@ -442,7 +442,7 @@ struct OrderCard: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(order.bakerName)
                         .font(.urbanistBold(14))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                     HStack(spacing: 3) {
                         Image(systemName: "star.fill")
                             .font(.system(size: 11))
@@ -466,7 +466,7 @@ struct OrderCard: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
         }
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 3)
     }
@@ -608,7 +608,7 @@ struct CompletedOrderCard: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white)
+                .fill(Color.cakeSurface)
                 .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 3)
         )
         .overlay(

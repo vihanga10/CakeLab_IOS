@@ -37,7 +37,7 @@ struct SignInView: View {
                         cardContent
                             .frame(maxWidth: .infinity)
                             .frame(height: geo.size.height * 0.75)
-                            .background(Color.white)
+                            .background(Color.cakeSurface)
                             .clipShape(TopRoundedRectangle2(cornerRadius: 36))
 
                         Color.white.frame(height: geo.safeAreaInsets.bottom)
@@ -218,7 +218,7 @@ struct SignInView: View {
                 Spacer()
                 Text("Don't have an account ?")
                     .font(.urbanistRegular(13))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                 Button { showSignUp = true } label: {
                     Text("Create Account")
                         .font(.urbanistSemiBold(13))
@@ -235,7 +235,7 @@ struct SignInView: View {
     private func fieldLabel(_ text: String) -> some View {
         Text(text)
             .font(.urbanistSemiBold(14))
-            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+            .foregroundColor(.cakePrimaryText)
             .padding(.bottom, 7)
     }
 }

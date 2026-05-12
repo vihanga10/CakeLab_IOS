@@ -26,7 +26,7 @@ struct BakerOtherRequestsView: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // MARK: - Header
@@ -45,7 +45,7 @@ struct BakerOtherRequestsView: View {
                 }
                 .padding(.horizontal, 20)
                 .frame(height: 56)
-                .background(Color.white)
+                .background(Color.cakeSurface)
 
                 // MARK: - Search Bar
                 HStack(spacing: 10) {

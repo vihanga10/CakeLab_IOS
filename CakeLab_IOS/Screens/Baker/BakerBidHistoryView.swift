@@ -14,7 +14,7 @@ struct BakerBidHistoryView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.white.ignoresSafeArea()
+                Color.cakeBackground.ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     headerBar
@@ -93,7 +93,7 @@ struct BakerBidHistoryView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     private func emptyState(icon: String, title: String, message: String) -> some View {
@@ -726,7 +726,7 @@ private struct BakerBidHistoryCard: View {
                 VStack(alignment: .leading, spacing: 7) {
                     Text(request.displayTitle)
                         .font(.urbanistBold(15))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                        .foregroundColor(.cakePrimaryText)
                         .lineLimit(2)
 
                     HStack(spacing: 6) {
@@ -806,7 +806,7 @@ private struct BakerBidHistoryCard: View {
                 .foregroundColor(.cakeGrey)
             Text(value)
                 .font(.urbanistBold(12))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
@@ -829,7 +829,7 @@ private struct BakerBidHistoryDetailView: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar
@@ -870,14 +870,14 @@ private struct BakerBidHistoryDetailView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     private var summarySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(request.displayTitle)
                 .font(.urbanistBold(20))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
 
             Text(request.description.isEmpty ? "No description provided." : request.description)
                 .font(.urbanistRegular(14))
@@ -890,7 +890,7 @@ private struct BakerBidHistoryDetailView: View {
             }
         }
         .padding(18)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
     }
@@ -932,12 +932,12 @@ private struct BakerBidHistoryDetailView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
                 .font(.urbanistBold(16))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
 
             content()
         }
         .padding(18)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
     }
@@ -949,12 +949,12 @@ private struct BakerBidHistoryDetailView: View {
                 .foregroundColor(.cakeGrey)
             Text(value)
                 .font(.urbanistSemiBold(13))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                .foregroundColor(.cakePrimaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(Color(red: 0.97, green: 0.96, blue: 0.94))
+        .background(Color.cakeInsetSurface)
         .cornerRadius(12)
     }
 

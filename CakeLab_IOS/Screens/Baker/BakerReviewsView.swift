@@ -18,7 +18,7 @@ struct BakerReviewsView: View {
     
     var body: some View {
         ZStack(alignment: .top) {
-            Color.white.ignoresSafeArea()
+            Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 headerBar
@@ -54,7 +54,7 @@ struct BakerReviewsView: View {
         }
         .padding(.horizontal, 20)
         .frame(height: 56)
-        .background(Color.white)
+        .background(Color.cakeSurface)
     }
 
     @ViewBuilder
@@ -75,7 +75,7 @@ struct BakerReviewsView: View {
                     .foregroundColor(.cakeBrown.opacity(0.3))
                 Text("No Reviews Yet")
                     .font(.urbanistBold(18))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                 Text("You haven't received any reviews yet. Complete orders to get reviews from customers.")
                     .font(.urbanistRegular(14))
                     .foregroundColor(.cakeGrey)
@@ -132,7 +132,7 @@ struct BakerReviewsView: View {
 
                 Text(customer.name)
                     .font(.urbanistSemiBold(14))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                    .foregroundColor(.cakePrimaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
@@ -166,7 +166,7 @@ struct BakerReviewsView: View {
             }
         }
         .padding(16)
-        .background(Color.white)
+        .background(Color.cakeSurface)
         .cornerRadius(14)
         .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 4)
     }

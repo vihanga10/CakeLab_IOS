@@ -63,7 +63,7 @@ struct ForgotPasswordView: View {
                                 HStack(spacing: 2) {
                                     Text("Email Address")
                                         .font(.urbanistSemiBold(14))
-                                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
+                                        .foregroundColor(.cakePrimaryText)
                                     Text("*")
                                         .font(.urbanistBold(14))
                                         .foregroundColor(.red)
