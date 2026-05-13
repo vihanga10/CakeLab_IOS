@@ -64,14 +64,14 @@ struct OnboardingPageView: View {
         GeometryReader { geo in
             ZStack(alignment: .bottom) {
 
-                // ── Full-screen photo ────────────────────────────────────
+                //  Full-screen photo 
                 Image(page.imageName)
                     .resizable()
                     .scaledToFill()
                     .frame(width: geo.size.width, height: geo.size.height)
                     .clipped()
 
-                // ── Gradient fade: photo into card ───────────────────────
+                //  Gradient fade: photo into card 
                 LinearGradient(
                     gradient: Gradient(colors: [.clear, Color.white.opacity(0.18), Color.white]),
                     startPoint: .top,
@@ -80,14 +80,14 @@ struct OnboardingPageView: View {
                 .frame(height: cardHeight + 80)
                 .frame(maxWidth: .infinity)
 
-                // ── White card + safe-area filler ────────────────────────
+                //  White card + safe-area filler 
                 VStack(spacing: 0) {
 
                     VStack(spacing: 0) {
 
                         Spacer().frame(height: 32)
 
-                        // ── Progress bar (pill segments) ─────────────────
+                        //  Progress bar (pill segments) 
                         HStack(spacing: 6) {
                             ForEach(0..<totalPages, id: \.self) { index in
                                 Capsule()
@@ -101,7 +101,7 @@ struct OnboardingPageView: View {
 
                         Spacer().frame(height: 48)
 
-                        // ── Title ─────────────────────────────────────────
+                        //  Title 
                         page.titleText
                             .font(.urbanistBold(18))
                             .multilineTextAlignment(.leading)
@@ -113,7 +113,7 @@ struct OnboardingPageView: View {
 
                         Spacer().frame(height: 11)
 
-                        // ── Subtitle ──────────────────────────────────────
+                        //  Subtitle 
                         Text(page.subtitle)
                             .font(.urbanistRegular(15))
                             .foregroundColor(.cakeGrey)
@@ -125,7 +125,7 @@ struct OnboardingPageView: View {
 
                         Spacer()
 
-                        // ── Action row ────────────────────────────────────
+                        //  Action row 
                         HStack(alignment: .center) {
 
                             // Back button
