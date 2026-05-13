@@ -19,8 +19,9 @@ final class AuthService: AuthServiceProtocol {
     // MARK: Sign In
     func signIn(email: String, password: String) async throws -> AppUser {
         do {
-            print("DEBUG: Starting sign-in for \(email)")
-            let result = try await auth.signIn(withEmail: email, password: password)
+            let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            print("DEBUG: Starting sign-in for \(normalizedEmail)")
+            let result = try await auth.signIn(withEmail: normalizedEmail, password: password)
             print("DEBUG: Firebase Auth sign-in successful: \(result.user.uid)")
             return try await fetchUser(uid: result.user.uid)
         } catch let error as NSError {
@@ -34,14 +35,15 @@ final class AuthService: AuthServiceProtocol {
     // MARK: Sign Up
     func signUp(email: String, password: String, role: UserRole) async throws -> AppUser {
         do {
-            print("DEBUG: Starting sign-up for \(email)")
-            let result = try await auth.createUser(withEmail: email, password: password)
+            let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            print("DEBUG: Starting sign-up for \(normalizedEmail)")
+            let result = try await auth.createUser(withEmail: normalizedEmail, password: password)
             print("DEBUG: Firebase Auth user created: \(result.user.uid)")
             
             let uid = result.user.uid
             let user = AppUser(
                 id: uid,
-                email: email,
+                email: normalizedEmail,
                 name: "",
                 role: role,
                 avatarURL: nil,
@@ -55,7 +57,7 @@ final class AuthService: AuthServiceProtocol {
             )
             
             print("DEBUG: Saving user profile to Firestore...")
-            try await saveUser(user)
+            try await saveUser(user, authProvider: "password")
             print("DEBUG: User profile saved successfully")
             return user
         } catch let error as NSError {
@@ -81,7 +83,7 @@ final class AuthService: AuthServiceProtocol {
                 throw AuthError.unknown("Account already exists. Please sign in.")
             }
 
-            let email = result.user.email ?? ""
+            let email = (result.user.email ?? "").lowercased()
             guard !email.isEmpty else {
                 throw AuthError.unknown("Google account did not provide an email address.")
             }
@@ -101,7 +103,7 @@ final class AuthService: AuthServiceProtocol {
                 dateOfBirth: nil
             )
 
-            try await saveUser(user)
+            try await saveUser(user, authProvider: "google.com")
             print("DEBUG: Google user profile saved successfully")
             return user
         } catch let error as AuthError {
@@ -144,7 +146,7 @@ final class AuthService: AuthServiceProtocol {
                 throw AuthError.unknown("Account already exists. Please sign in.")
             }
 
-            let email = appleResult.appleEmail ?? result.user.email ?? ""
+            let email = (appleResult.appleEmail ?? result.user.email ?? "").lowercased()
             guard !email.isEmpty else {
                 throw AuthError.unknown("Apple account did not provide an email address.")
             }
@@ -168,7 +170,7 @@ final class AuthService: AuthServiceProtocol {
                 dateOfBirth: nil
             )
 
-            try await saveUser(user)
+            try await saveUser(user, authProvider: "apple.com")
             print("DEBUG: Apple user profile saved successfully")
             return user
         } catch let error as AuthError {
@@ -200,7 +202,8 @@ final class AuthService: AuthServiceProtocol {
     // MARK: Password Reset
     func sendPasswordReset(email: String) async throws {
         do {
-            try await auth.sendPasswordReset(withEmail: email)
+            let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            try await auth.sendPasswordReset(withEmail: normalizedEmail)
         } catch let error as NSError {
             throw AuthError.networkError(error.localizedDescription)
         }
@@ -209,18 +212,23 @@ final class AuthService: AuthServiceProtocol {
     // MARK: OTP Management
     func saveOTP(email: String, otp: String) async throws {
         do {
-            print("DEBUG: Saving OTP to Firestore for \(email)")
+            let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            print("DEBUG: Saving OTP to Firestore for \(normalizedEmail)")
             let otpData: [String: Any] = [
-                "email": email,
+                "email": normalizedEmail,
                 "otp": otp,
                 "createdAt": Timestamp(date: Date()),
                 "expiresAt": Timestamp(date: Date().addingTimeInterval(600))  // 10 minutes expiry
             ]
             
             // Save to otps collection with email as document ID
-            try await db.collection("otps").document(email).setData(otpData, merge: true)
-            print("DEBUG: OTP saved successfully for \(email)")
+            try await db.collection("otps").document(normalizedEmail).setData(otpData, merge: true)
+            print("DEBUG: OTP saved successfully for \(normalizedEmail)")
         } catch let error as NSError {
+            if error.code == 7 {
+                throw AuthError.networkError("OTP could not be saved in the database. Please update Firestore rules for the otps collection.")
+            }
+
             print("OTP SAVE ERROR Domain: \(error.domain)")
             print("OTP SAVE ERROR Code: \(error.code)")
             print("OTP SAVE ERROR Message: \(error.localizedDescription)")
@@ -230,11 +238,12 @@ final class AuthService: AuthServiceProtocol {
 
     func verifyOTP(email: String, userOTP: String) async throws -> Bool {
         do {
-            print("🔍 DEBUG: Verifying OTP for \(email)")
-            let doc = try await db.collection("otps").document(email).getDocument()
+            let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            print("🔍 DEBUG: Verifying OTP for \(normalizedEmail)")
+            let doc = try await db.collection("otps").document(normalizedEmail).getDocument()
             
             guard let data = doc.data() else {
-                print("DEBUG: No OTP record found for \(email)")
+                print("DEBUG: No OTP record found for \(normalizedEmail)")
                 throw AuthError.unknown("OTP not found. Please request a new one.")
             }
             
@@ -243,16 +252,15 @@ final class AuthService: AuthServiceProtocol {
             
             // Check if OTP is expired
             if Date() > expiresAt {
-                print("DEBUG: OTP expired for \(email)")
+                print("DEBUG: OTP expired for \(normalizedEmail)")
                 throw AuthError.unknown("OTP has expired. Please request a new one.")
             }
             
             // Check if OTP matches
             let isValid = savedOTP == userOTP
             if isValid {
-                print("DEBUG: OTP verification successful for \(email)")
-                // Delete the OTP after successful verification
-                try await db.collection("otps").document(email).delete()
+                print("DEBUG: OTP verification successful for \(normalizedEmail)")
+                try await db.collection("otps").document(normalizedEmail).delete()
             } else {
                 print("DEBUG: OTP mismatch - saved: \(savedOTP), provided: \(userOTP)")
             }
@@ -263,6 +271,45 @@ final class AuthService: AuthServiceProtocol {
             print("OTP VERIFY ERROR Code: \(error.code)")
             print("OTP VERIFY ERROR Message: \(error.localizedDescription)")
             throw error
+        }
+    }
+
+    // MARK: - Password Reset Eligibility
+    func validatePasswordResetEligibility(email: String) async throws -> AppUser {
+        let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let snapshot = try await db.collection("users")
+            .whereField("email", isEqualTo: normalizedEmail)
+            .getDocuments()
+
+        guard let document = snapshot.documents.first else {
+            throw AuthError.unknown("Email not found. Please check your email or sign up.")
+        }
+
+        let data = document.data()
+        let storedProvider = (data["authProvider"] as? String)?.lowercased()
+
+        if let storedProvider,
+           storedProvider != "password" {
+            throw AuthError.unknown("This email uses Google or Apple sign in. Please continue with that sign in method.")
+        }
+
+        do {
+            let fetchedMethods = try await auth.fetchSignInMethods(forEmail: normalizedEmail)
+            let signInMethods = fetchedMethods.map { $0.lowercased() }
+
+            if signInMethods.contains("password") || signInMethods.isEmpty {
+                return try decodeUser(from: data, uid: document.documentID)
+            }
+
+            if signInMethods.contains("google.com") || signInMethods.contains("apple.com") {
+                throw AuthError.unknown("This email uses Google or Apple sign in. Please continue with that sign in method.")
+            }
+
+            throw AuthError.unknown("This account cannot reset a password from the app.")
+        } catch let error as AuthError {
+            throw error
+        } catch let error as NSError {
+            throw AuthError.networkError(error.localizedDescription)
         }
     }
 
@@ -295,16 +342,23 @@ final class AuthService: AuthServiceProtocol {
     // MARK: - Update Password
     func updatePassword(newPassword: String, currentEmail: String, currentPassword: String) async throws {
         do {
-            guard let user = auth.currentUser else {
-                throw AuthError.unknown("No user is currently signed in.")
+            let normalizedEmail = currentEmail.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            let user: User
+
+            if let signedInUser = auth.currentUser {
+                user = signedInUser
+            } else {
+                print("🔐 DEBUG: No active session. Signing in before password update for \(normalizedEmail)")
+                let result = try await auth.signIn(withEmail: normalizedEmail, password: currentPassword)
+                user = result.user
             }
             
             print("🔐 DEBUG: Current user email: \(user.email ?? "nil")")
-            print("🔐 DEBUG: Provided email for re-auth: \(currentEmail)")
+            print("🔐 DEBUG: Provided email for re-auth: \(normalizedEmail)")
             print("🔐 DEBUG: Re-authenticating before password update for user: \(user.uid)")
             
             // First, re-authenticate the user
-            try await reauthenticate(email: currentEmail, password: currentPassword)
+            try await reauthenticate(email: normalizedEmail, password: currentPassword)
             
             print("🔐 DEBUG: Re-auth completed, refreshing user session...")
             // Refresh the user to ensure the session is updated
@@ -313,6 +367,10 @@ final class AuthService: AuthServiceProtocol {
             print("🔐 DEBUG: Updating password for user: \(user.uid)")
             
             try await user.updatePassword(to: newPassword)
+            try await db.collection("users").document(user.uid).setData(
+                ["passwordUpdatedAt": Timestamp(date: Date())],
+                merge: true
+            )
             
             print("✅ DEBUG: Password updated successfully for user: \(user.uid)")
         } catch let error as NSError {
@@ -326,14 +384,15 @@ final class AuthService: AuthServiceProtocol {
     // MARK: - Fetch User by Email
     func fetchUserByEmail(_ email: String) async throws -> AppUser {
         do {
-            print("🔍 DEBUG: Fetching user by email: \(email)")
+            let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            print("🔍 DEBUG: Fetching user by email: \(normalizedEmail)")
             
             // Query users collection where email matches
-            let query = db.collection("users").whereField("email", isEqualTo: email)
+            let query = db.collection("users").whereField("email", isEqualTo: normalizedEmail)
             let snapshot = try await query.getDocuments()
             
             guard let document = snapshot.documents.first else {
-                print("DEBUG: No user found with email: \(email)")
+                print("DEBUG: No user found with email: \(normalizedEmail)")
                 throw AuthError.unknown("User not found. Please check your email or sign up.")
             }
             
@@ -442,10 +501,16 @@ final class AuthService: AuthServiceProtocol {
         return hashedData.map { String(format: "%02x", $0) }.joined()
     } //apple
 
-    private func saveUser(_ user: AppUser) async throws {
+    private func saveUser(_ user: AppUser, authProvider: String? = nil) async throws {
         do {
             // Use Codable to encode all user fields including profile fields
             try await db.collection("users").document(user.id).setData(from: user)
+            if let authProvider {
+                try await db.collection("users").document(user.id).setData(
+                    ["authProvider": authProvider],
+                    merge: true
+                )
+            }
             print("DEBUG: Firestore write successful for user \(user.id)")
         } catch let error as NSError {
             print("FIRESTORE ERROR Domain: \(error.domain)")

@@ -45,6 +45,8 @@ protocol AuthServiceProtocol {
     func saveOTP(email: String, otp: String) async throws
     /// Verify the OTP provided by user for password reset.
     func verifyOTP(email: String, userOTP: String) async throws -> Bool
+    /// Ensure the email belongs to an app password account that can use OTP reset.
+    func validatePasswordResetEligibility(email: String) async throws -> AppUser
     /// Fetch user profile by email from Firestore.
     func fetchUserByEmail(_ email: String) async throws -> AppUser
     /// Sign out the current user.

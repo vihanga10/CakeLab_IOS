@@ -10,7 +10,8 @@ struct OTPVerificationView: View {
     @State private var secondsRemaining: Int = 45
     @State private var isVerifying: Bool = false
     @State private var errorMessage: String?
-    @State private var navigateToReset: Bool = false
+    @State private var successMessage: String?
+    @State private var showResetPassword = false
     @Environment(\.dismiss) private var dismiss
     
     private let authService = AuthService()
@@ -22,7 +23,7 @@ struct OTPVerificationView: View {
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // ── Header with Close Button ──────────────────────────────
+                    //  Header with Close Button 
                     HStack {
                         Spacer()
                         Button(action: { dismiss() }) {
@@ -39,23 +40,23 @@ struct OTPVerificationView: View {
                         VStack(alignment: .leading, spacing: 0) {
                             Spacer().frame(height: 24)
                             
-                            // ── Title ─────────────────────────────────────────
+                            //  Title 
                             Text("VERIFICATION")
                                 .font(.urbanistBold(24))
                                 .foregroundColor(Color(red: 93/255, green: 55/255, blue: 20/255))
                                 .padding(.bottom, 5)
                                 .padding(.horizontal, 20)
                             
-                            // ── Subtitle ──────────────────────────────────────
+                            //  Subtitle 
                             Text("Keep your account safe and secure")
                                 .font(.urbanistRegular(13))
                                 .foregroundColor(.cakeGrey)
                                 .padding(.bottom, 20)
                                 .padding(.horizontal, 20)
                             
-                            // ── Message ───────────────────────────────────────
+                            //  Message 
                             VStack(alignment: .leading, spacing: 0) {
-                                Text("We've sent an OTP code to your email, \(email)")
+                                Text("Enter the OTP created for \(email)")
                                     .font(.urbanistRegular(13))
                                     .foregroundColor(.cakeGrey)
                                     .lineLimit(1)
@@ -64,7 +65,7 @@ struct OTPVerificationView: View {
                             .padding(.bottom, 28)
                             .padding(.horizontal, 20)
                             
-                            // ── OTP Input Boxes ───────────────────────────────────
+                            //  OTP Input Boxes 
                             HStack(spacing: 10) {
                                 ForEach(0..<5, id: \.self) { index in
                                     OTPDigitBox(
@@ -78,7 +79,7 @@ struct OTPVerificationView: View {
                             .padding(.horizontal, 20)
                             .padding(.bottom, 20)
                             
-                            // ── Error message ─────────────────────────────────────
+                            //  Error message 
                             if let error = errorMessage {
                                 Text(error)
                                     .font(.urbanistRegular(12))
@@ -86,9 +87,16 @@ struct OTPVerificationView: View {
                                     .padding(.horizontal, 20)
                                     .padding(.bottom, 12)
                                     .frame(maxWidth: .infinity, alignment: .leading)
+                            } else if let successMessage {
+                                Text(successMessage)
+                                    .font(.urbanistRegular(12))
+                                    .foregroundColor(Color(red: 0.2, green: 0.6, blue: 0.3))
+                                    .padding(.horizontal, 20)
+                                    .padding(.bottom, 12)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             
-                            // ── Resend OTP Timer ──────────────────────────────────
+                            //  Resend OTP Timer 
                             if secondsRemaining > 0 {
                                 Text("we will resend the code in \(secondsRemaining)s")
                                     .font(.urbanistRegular(12))
@@ -109,30 +117,25 @@ struct OTPVerificationView: View {
 
                             Spacer().frame(height: 20)
 
-                            // ── Verify button ─────────────────────────────────────────
-                            NavigationLink(destination: ResetPasswordView(email: email, onPasswordChanged: {
-                                onVerified()
-                                dismiss()
-                            }), isActive: $navigateToReset) {
-                                Button {
-                                    verifyOTP()
-                                } label: {
-                                    ZStack {
-                                        if isVerifying {
-                                            ProgressView().tint(.white)
-                                        } else {
-                                            Text("Verify")
-                                                .font(.urbanistSemiBold(17))
-                                                .foregroundColor(.white)
-                                        }
+                            //  Verify button
+                            Button {
+                                verifyOTP()
+                            } label: {
+                                ZStack {
+                                    if isVerifying {
+                                        ProgressView().tint(.white)
+                                    } else {
+                                        Text("Verify")
+                                            .font(.urbanistSemiBold(17))
+                                            .foregroundColor(.white)
                                     }
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 54)
-                                    .background(Color.cakeBrown)
-                                    .clipShape(Capsule())
                                 }
-                                .disabled(isVerifying || otpCode.isEmpty || otpCode.count != 5)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 54)
+                                .background(Color.cakeBrown)
+                                .clipShape(Capsule())
                             }
+                            .disabled(isVerifying || otpCode.isEmpty || otpCode.count != 5)
                             .padding(.horizontal, 20)
                             .padding(.bottom, 20)
                         }
@@ -143,6 +146,12 @@ struct OTPVerificationView: View {
         }
         .onAppear {
             startCountdown()
+        }
+        .fullScreenCover(isPresented: $showResetPassword) {
+            ResetPasswordView(email: email) {
+                onVerified()
+                dismiss()
+            }
         }
     }
     
@@ -161,22 +170,22 @@ struct OTPVerificationView: View {
     
     private func verifyOTP() {
         errorMessage = nil
+        successMessage = nil
         isVerifying = true
         
         Task {
             do {
-                print("🔐 Verifying OTP: \(otpCode)")
                 let isValid = try await authService.verifyOTP(email: email, userOTP: otpCode)
-                
-                if isValid {
-                    print("OTP verified successfully")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        navigateToReset = true
-                    }
-                } else {
+
+                guard isValid else {
                     errorMessage = "Invalid OTP. Please try again."
                     isVerifying = false
+                    return
                 }
+
+                successMessage = "OTP verified. Create your new password."
+                isVerifying = false
+                showResetPassword = true
             } catch {
                 errorMessage = error.localizedDescription
                 isVerifying = false
@@ -189,6 +198,7 @@ struct OTPVerificationView: View {
         otpDigits = ["", "", "", "", ""]
         secondsRemaining = 45
         errorMessage = nil
+        successMessage = nil
         startCountdown()
         
         Task {

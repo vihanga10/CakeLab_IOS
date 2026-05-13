@@ -33,7 +33,7 @@ final class SignUpViewModel: ObservableObject {
             errorMessage = nil
             do {
                 let user = try await authService.signUp(
-                    email: email.trimmingCharacters(in: .whitespaces),
+                    email: email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
                     password: password,
                     role: selectedRole!
                 )

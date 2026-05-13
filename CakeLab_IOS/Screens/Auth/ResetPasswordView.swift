@@ -9,6 +9,7 @@ final class ResetPasswordViewModel: ObservableObject {
     @Published var confirmPassword  = ""
     @Published var isLoading        = false
     @Published var errorMessage: String?
+    @Published var successMessage: String?
     @Published var didReset         = false
     @Published var email: String = ""
     
@@ -16,6 +17,7 @@ final class ResetPasswordViewModel: ObservableObject {
 
     func changePassword() {
         errorMessage = nil
+        successMessage = nil
         guard !currentPassword.isEmpty else { errorMessage = "Please enter your current password."; return }
         guard !newPassword.isEmpty else { errorMessage = "Please enter a new password."; return }
         guard newPassword.count >= 6 else { errorMessage = "Password must be at least 6 characters."; return }
@@ -36,6 +38,7 @@ final class ResetPasswordViewModel: ObservableObject {
                 
                 print("✅ DEBUG: Password updated successfully")
                 
+                successMessage = "Password changed. Please sign in again."
                 didReset = true
                 isLoading = false
             } catch {
@@ -57,29 +60,30 @@ struct ResetPasswordView: View {
     @State private var showCurrent   = false
     @State private var showNew       = false
     @State private var showConfirm   = false
-    @State private var showFullScreen = false
-    @State private var showSuccessAlert = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        Color.clear
-            .ignoresSafeArea()
-            .fullScreenCover(isPresented: $showFullScreen, onDismiss: {
-                dismiss()
-            }) {
-                resetPasswordContent
+        resetPasswordContent
+            .onAppear {
+                vm.email = email
             }
-        .onAppear {
-            vm.email = email
-            if !showFullScreen {
-                showFullScreen = true
+            .onChange(of: vm.didReset) { _, didReset in
+                guard didReset else { return }
+
+                Task {
+                    await NotificationManager.scheduleLocalNotification(
+                        title: "Password Changed",
+                        body: "Your CakeLab password was updated successfully.",
+                        identifier: "password-changed-\(email.lowercased())",
+                        replacePrevious: true
+                    )
+
+                    try? await Task.sleep(nanoseconds: 600_000_000)
+                    dismiss()
+                    try? await Task.sleep(nanoseconds: 250_000_000)
+                    onPasswordChanged()
+                }
             }
-        }
-        .onChange(of: vm.didReset) { _, didReset in
-            if didReset {
-                showSuccessAlert = true
-            }
-        }
     }
 
     private var resetPasswordContent: some View {
@@ -89,109 +93,111 @@ struct ResetPasswordView: View {
                     .ignoresSafeArea()
 
                 VStack(spacing: 0) {
-
                     HStack {
                         Button {
-                            showFullScreen = false
+                            dismiss()
                         } label: {
                             Image(systemName: "chevron.left")
                                 .font(.system(size: 20, weight: .semibold))
                                 .foregroundColor(.cakeBrown)
                         }
+                        .accessibilityLabel("Back")
                         Spacer()
                     }
                     .padding(.horizontal, 40)
-                    .padding(.top, geo.safeAreaInsets.top + 8)
-                    .padding(.bottom, 12)
+                    .padding(.top, 16)
+                    .padding(.bottom, 24)
 
-                    VStack(alignment: .center, spacing: 0) {
-                        Image("password")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: min(geo.size.height * 0.24, 180))
-                            .padding(.bottom, 20)
+                    ScrollView {
+                        VStack(alignment: .center, spacing: 0) {
+                            Image("password")
+                                .resizable()
+                                .scaledToFit()
+                                .padding(20)
+                                .frame(
+                                    width: min(geo.size.width - 40, 350),
+                                    height: min(max(geo.size.height * 0.30, 220), 300)
+                                )
+                                .padding(.bottom, 28)
 
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text("RESET PASSWORD")
-                                .font(.urbanistBold(24))
-                                .foregroundColor(.cakeBrown)
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text("RESET PASSWORD")
+                                    .font(.urbanistBold(24))
+                                    .foregroundColor(.cakeBrown)
 
-                            Spacer().frame(height: 4)
+                                Spacer().frame(height: 4)
 
-                            Text("Keep your account safe and secure")
-                                .font(.urbanistRegular(13))
-                                .foregroundColor(.cakeGrey)
+                                Text("Keep your account safe and secure")
+                                    .font(.urbanistRegular(13))
+                                    .foregroundColor(.cakeGrey)
 
-                            Spacer().frame(height: 20)
+                                Spacer().frame(height: 24)
 
-                            fieldLabel("Current Password")
-                            AuthTextField(placeholder: "••••••••••",
-                                          text: $vm.currentPassword,
-                                          isSecure: !showCurrent,
-                                          trailingIcon: showCurrent ? "eye" : "eye.slash") {
-                                showCurrent.toggle()
-                            }
-
-                            Spacer().frame(height: 12)
-
-                            fieldLabel("New Password")
-                            AuthTextField(placeholder: "••••••••••",
-                                          text: $vm.newPassword,
-                                          isSecure: !showNew,
-                                          trailingIcon: showNew ? "eye" : "eye.slash") {
-                                showNew.toggle()
-                            }
-
-                            Spacer().frame(height: 12)
-
-                            fieldLabel("Confirm Password")
-                            AuthTextField(placeholder: "••••••••••",
-                                          text: $vm.confirmPassword,
-                                          isSecure: !showConfirm,
-                                          trailingIcon: showConfirm ? "eye" : "eye.slash") {
-                                showConfirm.toggle()
-                            }
-
-                            if let err = vm.errorMessage {
-                                Text(err)
-                                    .font(.urbanistRegular(12))
-                                    .foregroundColor(.red)
-                                    .padding(.top, 10)
-                            }
-
-                            Spacer(minLength: 18)
-
-                            Button { vm.changePassword() } label: {
-                                ZStack {
-                                    if vm.isLoading { ProgressView().tint(.white) }
-                                    else {
-                                        Text("Change Password")
-                                            .font(.urbanistSemiBold(17))
-                                            .foregroundColor(.white)
-                                    }
+                                fieldLabel("Current Password")
+                                AuthTextField(placeholder: "••••••••••",
+                                              text: $vm.currentPassword,
+                                              isSecure: !showCurrent,
+                                              trailingIcon: showCurrent ? "eye" : "eye.slash") {
+                                    showCurrent.toggle()
                                 }
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 54)
-                                .background(Color.cakeBrown)
-                                .clipShape(Capsule())
+
+                                Spacer().frame(height: 14)
+
+                                fieldLabel("New Password")
+                                AuthTextField(placeholder: "••••••••••",
+                                              text: $vm.newPassword,
+                                              isSecure: !showNew,
+                                              trailingIcon: showNew ? "eye" : "eye.slash") {
+                                    showNew.toggle()
+                                }
+
+                                Spacer().frame(height: 14)
+
+                                fieldLabel("Confirm Password")
+                                AuthTextField(placeholder: "••••••••••",
+                                              text: $vm.confirmPassword,
+                                              isSecure: !showConfirm,
+                                              trailingIcon: showConfirm ? "eye" : "eye.slash") {
+                                    showConfirm.toggle()
+                                }
+
+                                if let err = vm.errorMessage {
+                                    Text(err)
+                                        .font(.urbanistRegular(12))
+                                        .foregroundColor(.red)
+                                        .padding(.top, 10)
+                                } else if let success = vm.successMessage {
+                                    Text(success)
+                                        .font(.urbanistRegular(12))
+                                        .foregroundColor(Color(red: 0.2, green: 0.6, blue: 0.3))
+                                        .padding(.top, 10)
+                                }
+
+                                Spacer().frame(height: 24)
+
+                                Button { vm.changePassword() } label: {
+                                    ZStack {
+                                        if vm.isLoading { ProgressView().tint(.white) }
+                                        else {
+                                            Text("Change Password")
+                                                .font(.urbanistSemiBold(17))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 54)
+                                    .background(Color.cakeBrown)
+                                    .clipShape(Capsule())
+                                }
+                                .disabled(vm.isLoading || vm.didReset)
                             }
-                            .disabled(vm.isLoading || vm.didReset)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 28)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 28)
+                        .padding(.bottom, max(geo.safeAreaInsets.bottom, 24))
                     }
-                    .frame(maxHeight: .infinity, alignment: .top)
-                    .padding(.bottom, max(geo.safeAreaInsets.bottom, 16))
                 }
             }
-        }
-        .alert("Password Changed Successfully", isPresented: $showSuccessAlert) {
-            Button("OK") {
-                onPasswordChanged()
-                showFullScreen = false
-            }
-        } message: {
-            Text("Successfully password changed. Please go to the sign in page to sign in.")
         }
     }
 

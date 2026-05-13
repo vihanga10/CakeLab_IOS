@@ -35,7 +35,8 @@ final class SignInViewModel: ObservableObject {
             isLoading = true
             errorMessage = nil
             do {
-                let user = try await authService.signIn(email: email.trimmingCharacters(in: .whitespaces),
+                let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                let user = try await authService.signIn(email: normalizedEmail,
                                                         password: password)
                 
                 // Validate that selected role matches database role
@@ -53,7 +54,6 @@ final class SignInViewModel: ObservableObject {
                     return
                 }
 
-                let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
                 if rememberMe {
                     do {
                         try credentialStore.save(email: normalizedEmail, password: password)

@@ -89,6 +89,12 @@ final class MockAuthService: AuthServiceProtocol {
         return mockOTPValid
     }
 
+    func validatePasswordResetEligibility(email: String) async throws -> AppUser {
+        fetchUserByCalled = true
+        if shouldFail { throw errorToThrow }
+        return mockUser
+    }
+
     func fetchUserByEmail(_ email: String) async throws -> AppUser {
         fetchUserByCalled = true
         if shouldFail { throw errorToThrow }
@@ -109,6 +115,7 @@ final class MockAuthService: AuthServiceProtocol {
         if shouldFail { throw errorToThrow }
         // Mock implementation - just track the call
     }
+
 }
 
 // MARK: - Mock Biometric Context

@@ -18,50 +18,47 @@ final class ForgotPasswordViewModel: ObservableObject {
     }
     
     // MARK: - Generate and Send OTP
-    func sendOTP() {
-        guard validateEmail() else { return }
+    func sendOTP() async -> Bool {
+        guard validateEmail() else { return false }
         
         isLoading = true
         errorMessage = nil
+        otpSent = false
         
-        Task {
-            do {
-                print("🔐 DEBUG: Checking if email exists in database - \(email)")
-                
-                // First, check if email exists in database
-                _ = try await authService.fetchUserByEmail(email.trimmingCharacters(in: .whitespaces))
-                
-                print("✅ DEBUG: Email found in database")
-                
-                // Generate 5-digit OTP
-                let otp = String(Int.random(in: 10000...99999))
-                self.generatedOTP = otp
-                
-                print("📱 DEBUG: Generated OTP: \(otp)")
-                
-                // Save OTP to database
-                try await authService.saveOTP(email: email, otp: otp)
-                
-                print("💾 DEBUG: OTP saved to Firebase")
-                
-                otpSent = true
-                isLoading = false
-            } catch {
-                errorMessage = "Email not found. Please check your email or sign up."
-                isLoading = false
-                print("❌ ERROR: Email not found or OTP send failed - \(error.localizedDescription)")
-            }
+        do {
+            let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            email = normalizedEmail
+            print(" DEBUG: Checking password reset eligibility - \(normalizedEmail)")
+            
+            _ = try await authService.validatePasswordResetEligibility(email: normalizedEmail)
+            print(" DEBUG: Email/password account found")
+            
+            let otp = String(Int.random(in: 10000...99999))
+            self.generatedOTP = otp
+            print("📱 DEBUG: Generated OTP: \(otp)")
+            
+            try await authService.saveOTP(email: normalizedEmail, otp: otp)
+            print(" DEBUG: OTP saved to Firebase")
+            
+            otpSent = true
+            isLoading = false
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
+            print(" ERROR: OTP send failed - \(error.localizedDescription)")
+            return false
         }
     }
     
     // MARK: - Verify OTP
     func verifyOTP(_ userOTP: String) async -> Bool {
         do {
-            print("🔐 DEBUG: Verifying OTP for \(email)")
+            print(" DEBUG: Verifying OTP for \(email)")
             let isValid = try await authService.verifyOTP(email: email, userOTP: userOTP)
             
             if isValid {
-                print("✅ DEBUG: OTP verification successful")
+                print(" DEBUG: OTP verification successful")
             } else {
                 print("DEBUG: OTP verification failed - invalid code")
             }
