@@ -3,8 +3,7 @@ import Combine
 import FirebaseFirestore
 import FirebaseAuth
 
-// MARK: - BakerProfileViewModel
-/// Loads and aggregates all data for the baker profile tab from Firestore.
+
 @MainActor
 final class BakerProfileViewModel: ObservableObject {
     @Published var profileData: BakerProfileData = .empty
@@ -15,16 +14,19 @@ final class BakerProfileViewModel: ObservableObject {
     @Published var reviews: [Review] = []
     @Published var paymentRecords: [BakerPaymentRecord] = []
 
+    // Builds a performance summary
     var performanceSnapshot: BakerPerformanceSnapshot {
         BakerPerformanceSnapshot.build(orders: completedOrders, reviews: reviews)
     }
 
+    // Builds an earnings breakdown.
     var earningsSnapshot: BakerEarningsSnapshot {
         BakerEarningsSnapshot.build(orders: completedOrders, payments: paymentRecords)
     }
 
     private let db = Firestore.firestore()
 
+    // Loads the baker's public-facing profile data
     func loadProfileData(user: AppUser) async {
         isLoading = true
         defer { isLoading = false }
@@ -69,6 +71,7 @@ final class BakerProfileViewModel: ObservableObject {
         }
     }
 
+    // Fetches completed orders, payments, and reviews concurrently, then assembles
     func loadAnalyticsData(user: AppUser) async {
         async let ordersTask = fetchCompletedOrders(userID: user.id)
         async let paymentsTask = fetchPayments(userID: user.id)

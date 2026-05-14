@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 
+// Card shown in the bid history list
 struct BakerBidHistoryCard: View {
     let item: BakerBidHistoryItem
 
@@ -26,6 +27,7 @@ struct BakerBidHistoryCard: View {
                     .font(.urbanistRegular(11))
                     .foregroundColor(.cakeGrey)
 
+                    // Bid status badge and submitted date
                     HStack(spacing: 8) {
                         statusChip
                         Spacer()
@@ -78,6 +80,7 @@ struct BakerBidHistoryCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
+    // Small pill showing the current bid status
     private var statusChip: some View {
         Text(bid.status.capitalized)
             .font(.urbanistMedium(11))
@@ -88,6 +91,7 @@ struct BakerBidHistoryCard: View {
             .cornerRadius(6)
     }
 
+    // Reusable label + value pair used in the bottom metrics row
     private func metric(label: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
@@ -102,6 +106,7 @@ struct BakerBidHistoryCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    // Date formatter for the submitted date
     private static let submittedFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM dd, yyyy"
@@ -109,6 +114,8 @@ struct BakerBidHistoryCard: View {
     }()
 }
 
+
+// Full detail screen that opens when the baker taps a bid history card
 struct BakerBidHistoryDetailView: View {
     let item: BakerBidHistoryItem
     @Environment(\.dismiss) private var dismiss
@@ -139,6 +146,7 @@ struct BakerBidHistoryDetailView: View {
         .toolbar(.hidden, for: .navigationBar)
     }
 
+    // Custom nav bar with a back button and centered title
     private var headerBar: some View {
         HStack {
             Button { dismiss() } label: {
@@ -162,6 +170,7 @@ struct BakerBidHistoryDetailView: View {
         .background(Color.cakeSurface)
     }
 
+    // Top card
     private var summarySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(request.displayTitle)
@@ -184,6 +193,7 @@ struct BakerBidHistoryDetailView: View {
         .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
     }
 
+    // All the cake specs the customer entered when creating the request
     private var cakeDetailsSection: some View {
         detailSection(title: "Cake Details") {
             detailRow(label: "Customer Location", value: request.customerCity.isEmpty ? "Customer Location" : request.customerCity)
@@ -201,6 +211,7 @@ struct BakerBidHistoryDetailView: View {
         }
     }
 
+    // The baker's own bid info 
     private var bidDetailsSection: some View {
         detailSection(title: "Bid Details") {
             detailRow(label: "Bid Amount", value: "LKR \(Int(bid.amount).formatted())")
@@ -270,7 +281,7 @@ struct BakerBidHistoryDetailView: View {
         let cleaned = values.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         return cleaned.isEmpty ? "Not specified" : cleaned.joined(separator: ", ")
     }
-
+ 
     private static let dateTimeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM dd, yyyy 'at' h:mm a"

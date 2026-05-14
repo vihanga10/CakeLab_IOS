@@ -3,28 +3,12 @@ import Combine
 import FirebaseAuth
 import FirebaseFirestore
 
-// MARK: - CustomerHomeViewModel
-//
-// Handles all data-fetching for the Customer Home Screen.
-//
-// ┌────────────────────────────────────────────────────────┐
-// │  Component            │  Data source                   │
-// ├────────────────────────────────────────────────────────┤
-// │  Search Bar           │  Searches loaded home data     │
-// │  Dream Cake Card      │  Static UI – no DB needed      │
-// │  What Are You         │  Static constants – same for   │
-// │    Craving?           │  every customer                │
-// │  Active Orders        │  Firestore "orders" collection │
-// │                       │  filtered by customerId == uid │
-// │                       │  → DIFFERENT per user          │
-// │  Artisans Near You    │  Firestore "artisans" collection│
-// │                       │  → SAME for every customer     │
-// └────────────────────────────────────────────────────────┘
+
 
 @MainActor
 final class CustomerHomeViewModel: ObservableObject {
 
-    // MARK: - Published state
+    
     @Published var activeOrders: [CakeOrder]  = []
     @Published var artisans: [ArtisanProfile] = []
 
@@ -34,11 +18,7 @@ final class CustomerHomeViewModel: ObservableObject {
 
     private let db = Firestore.firestore()
 
-    // MARK: - Fetch Active Orders  (user-specific)
-    /// Queries the "orders" collection for documents where
-    /// `customerId == userId` AND status is an active stage.
-    /// First-time users will receive an empty array — the view
-    /// handles this with an empty-state prompt.
+    
     func fetchActiveOrders(for userId: String) async {
         isLoadingOrders = true
         errorMessage    = nil
@@ -58,8 +38,8 @@ final class CustomerHomeViewModel: ObservableObject {
         isLoadingOrders = false
     }
 
-    // MARK: - Refresh User
-    /// Fetches the latest user data from Firestore to reflect any profile edits.
+    
+    // Fetches the latest user data from Firestore 
     func refreshUser(current user: AppUser) async -> AppUser {
         do {
             let currentUID = Auth.auth().currentUser?.uid ?? user.id
@@ -72,9 +52,7 @@ final class CustomerHomeViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Fetch Artisans
-    /// Mirrors ArtisansNearYouViewModel: queries "artisans" collection first,
-    /// falls back to "users" (baker role) if the artisans collection returns nothing.
+
     func fetchArtisans() async {
         isLoadingArtisans = true
         do {

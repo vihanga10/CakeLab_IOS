@@ -1,7 +1,7 @@
 import SwiftUI
 
 // MARK: - CustomerOrder
-/// A customer-facing order record combining CakeOrder data with baker profile info.
+
 struct CustomerOrder: Identifiable {
     let id: String
     let cakeName: String
@@ -91,7 +91,7 @@ struct CustomerOrder: Identifiable {
 }
 
 // MARK: - BakerOrderProfile
-/// Enriched baker profile data loaded when displaying a customer's active order.
+
 struct BakerOrderProfile {
     let name: String
     let ratingText: String

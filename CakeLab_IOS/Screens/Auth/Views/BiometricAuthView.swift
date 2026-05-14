@@ -1,7 +1,7 @@
 import SwiftUI
 import LocalAuthentication
 
-// MARK: - Biometric Auth View (Face ID)
+
 struct BiometricAuthView: View {
     
     @StateObject private var vm = BiometricAuthViewModel()
@@ -22,14 +22,14 @@ struct BiometricAuthView: View {
                     let cardHeight = geo.size.height * 0.70
                     ZStack(alignment: .bottom) {
                         
-                        // Background photo
+                        
                         Image(bgImage)
                             .resizable()
                             .scaledToFill()
                             .frame(width: geo.size.width, height: geo.size.height)
                             .clipped()
                         
-                        //  Gradient fade 
+                         
                         LinearGradient(
                             colors: [.clear, Color.white.opacity(0.2), .white],
                             startPoint: .top, endPoint: .bottom
@@ -37,7 +37,7 @@ struct BiometricAuthView: View {
                         .frame(height: cardHeight + 80)
                         .frame(maxWidth: .infinity)
                         
-                        //  White card 
+                         
                         VStack(spacing: 0) {
                             cardContent
                                 .frame(maxWidth: .infinity)
@@ -89,7 +89,7 @@ struct BiometricAuthView: View {
             
             Spacer().frame(height: 24)
             
-            //  Heading 
+             
             VStack(alignment: .leading, spacing: 4) {
                 Text("HI, WELCOME BACK")
                     .font(.urbanistBold(22))
@@ -103,7 +103,7 @@ struct BiometricAuthView: View {
             
             Spacer().frame(height: 20)
             
-            //  Email field 
+            
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 2) {
                     Text("Email Address")
@@ -136,9 +136,9 @@ struct BiometricAuthView: View {
             //  Face ID Preview Box 
             VStack(spacing: 16) {
                 VStack(spacing: 0) {
-                    // Face ID corner bracket frame
+                    
                     ZStack {
-                        // Corner brackets (custom shape)
+                        
                         FaceIDFrame()
                             .stroke(Color(red: 0.3, green: 0.65, blue: 0.35), lineWidth: 2.5)
                             .frame(width: 140, height: 140)
@@ -161,7 +161,7 @@ struct BiometricAuthView: View {
                 //  Authentication Button 
                 Button {
                     Task {
-                        // Step 1: Verify email and fetch user
+                        // Verify email and fetch user
                         await vm.checkUserExists()
                         
                         // Only proceed to Face ID if user was found
@@ -169,7 +169,7 @@ struct BiometricAuthView: View {
                             // Step 2: Authenticate with Face ID
                             await vm.authenticateWithFaceID()
                             
-                            // Step 3: Navigate if Face ID successful
+                            // Navigate if Face ID successful
                             if vm.errorMessage == nil && vm.authenticatedUser != nil {
                                 navigateToHome = true
                             }
@@ -193,13 +193,13 @@ struct BiometricAuthView: View {
                 .disabled(vm.isLoading || vm.email.isEmpty)
                 .padding(.horizontal, 28)
                 
-                //  OR Divider (close to button) 
+                 
                 ORDivider()
                     .padding(.horizontal, 28)
                     .padding(.top, 16)
             }
             
-            //  Login with Email & Password (Centered) 
+            //  Login with Email & Password 
             Button {
                 navigateToSignIn = true
             } label: {
@@ -215,7 +215,7 @@ struct BiometricAuthView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
             
-            //  Create Account Link (Centered) 
+            //  Create Account 
             HStack(spacing: 2) {
                 Text("Don't have an account ?")
                     .font(.urbanistRegular(15))
@@ -236,7 +236,7 @@ struct BiometricAuthView: View {
     }
 }
 
-// MARK: - Face ID Frame Shape (Corner Brackets)
+// MARK: - Face ID Frame Shape 
 private struct FaceIDFrame: Shape {
     func path(in rect: CGRect) -> Path {
         let cornerLength: CGFloat = 28
@@ -275,7 +275,7 @@ private struct FaceIDFrame: Shape {
     }
 }
 
-// MARK: - Preview
+
 #Preview {
     NavigationStack { BiometricAuthView() }
 }

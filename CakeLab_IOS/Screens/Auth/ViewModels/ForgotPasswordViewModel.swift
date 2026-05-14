@@ -1,7 +1,7 @@
 import Foundation
 import Combine
 
-// MARK: - Forgot Password ViewModel
+
 @MainActor
 final class ForgotPasswordViewModel: ObservableObject {
     
@@ -9,10 +9,9 @@ final class ForgotPasswordViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var otpSent: Bool = false
-    @Published var generatedOTP: String = ""  // 5-digit OTP
-    
+    @Published var generatedOTP: String = ""
     private let authService: AuthServiceProtocol
-    
+
     init(authService: AuthServiceProtocol = AuthService()) {
         self.authService = authService
     }

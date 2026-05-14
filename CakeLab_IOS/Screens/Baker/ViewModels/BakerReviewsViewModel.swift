@@ -2,8 +2,7 @@ import Foundation
 import Combine
 import FirebaseFirestore
 
-// MARK: - BakerReviewsViewModel
-/// Loads baker reviews and customer profiles from Firestore with CoreData caching.
+// Loads baker reviews and customer profiles.
 @MainActor
 final class BakerReviewsViewModel: ObservableObject {
     @Published var reviews: [Review] = []
@@ -15,6 +14,7 @@ final class BakerReviewsViewModel: ObservableObject {
         return Double(reviews.reduce(0) { $0 + $1.rating }) / Double(reviews.count)
     }
 
+    // Loads reviews from CoreData cache first for instant display, then fetches fresh data
     func loadReviews(for user: AppUser) async {
         let db = Firestore.firestore()
         isLoading = reviews.isEmpty
@@ -67,8 +67,6 @@ final class BakerReviewsViewModel: ObservableObject {
             imageReference: firstString(profile?.imageReference, review.customerImage)
         )
     }
-
-    // MARK: - Private Helpers
 
     private func loadCustomerProfiles(for reviews: [Review], db: Firestore) async -> [String: ReviewCustomerProfile] {
         var profiles: [String: ReviewCustomerProfile] = [:]
@@ -124,5 +122,5 @@ final class BakerReviewsViewModel: ObservableObject {
     }
 }
 
-// MARK: - ReviewLoadTimeout
+// MARK: - Review Load Timeout
 private struct ReviewLoadTimeout: Error {}

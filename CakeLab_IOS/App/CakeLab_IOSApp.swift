@@ -1,9 +1,9 @@
-//
+
 //  CakeLab_IOSApp.swift
 //  CakeLab_IOS
-//
+
 //  Created by Vihanga Madushamini on 2026-04-03.
-//
+
 import SwiftUI
 import FirebaseCore
 import CoreData
@@ -16,7 +16,6 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
     FirebaseApp.configure()
     UNUserNotificationCenter.current().delegate = self
-
     return true
   }
 
@@ -26,6 +25,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     GIDSignIn.sharedInstance.handle(url)
   }
 
+  // Shows notifications even when the user is inside the app
   func userNotificationCenter(
     _ center: UNUserNotificationCenter,
     willPresent notification: UNNotification
@@ -36,10 +36,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 
 @main
 struct CakeLab_IOSApp: App {
-  // register app delegate for Firebase setup
   @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
   @Environment(\.scenePhase) private var scenePhase
   @StateObject private var notificationManager = NotificationManager()
+  // Accessibility settings 
   @AppStorage("accessibilityHighContrastEnabled") private var highContrastEnabled = false
   @AppStorage("accessibilityDarkModeEnabled") private var darkModeEnabled = false
   @AppStorage("accessibilityFontScale") private var fontScaleRawValue = AccessibilityFontScale.standard.rawValue
@@ -47,7 +47,6 @@ struct CakeLab_IOSApp: App {
   private var accessibilityFontScale: AccessibilityFontScale {
     AccessibilityFontScale(rawValue: fontScaleRawValue) ?? .standard
   }
-
 
   var body: some Scene {
     WindowGroup {

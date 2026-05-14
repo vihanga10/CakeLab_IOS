@@ -71,6 +71,9 @@ final class BakerBidHistoryViewModel: ObservableObject {
         isLoading = false
     }
 
+    // MARK: - Private Loaders
+
+    // Returns open `cakeRequests` documents whose IDs are in `requestIDs`.
     private func loadAccessibleRequests(requestIDs: Set<String>) async -> [String: BakerBidHistoryRequest] {
         guard !requestIDs.isEmpty else { return [:] }
 
@@ -96,6 +99,7 @@ final class BakerBidHistoryViewModel: ObservableObject {
         return result
     }
 
+    // Directly fetches each request document by ID, covering closed/non-open statuses.
     private func loadDirectRequestDocuments(requestIDs: Set<String>) async -> [String: BakerBidHistoryRequest] {
         guard !requestIDs.isEmpty else { return [:] }
 
@@ -113,6 +117,7 @@ final class BakerBidHistoryViewModel: ObservableObject {
         return result
     }
 
+    // Returns placed orders that match any of the given request or bid IDs,
     private func loadAccessibleOrders(
         bakerID: String,
         requestIDs: Set<String>,
@@ -158,6 +163,7 @@ final class BakerBidHistoryViewModel: ObservableObject {
         return result
     }
 
+    // Fetches display names for a set of customer user IDs from Firestore.
     private func loadCustomerNames(customerIDs: Set<String>) async -> [String: String] {
         guard !customerIDs.isEmpty else { return [:] }
 

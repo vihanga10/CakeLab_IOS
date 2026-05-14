@@ -1,7 +1,7 @@
 import Foundation
 
-// MARK: - BakerPerformanceSnapshot
-/// Aggregated performance data computed from completed orders and reviews.
+// MARK: - Baker PerformanceSnapshot
+
 struct BakerPerformanceSnapshot {
     let completedOrders: Int
     let totalReviews: Int
@@ -68,8 +68,8 @@ struct BakerPerformanceSnapshot {
     }
 }
 
-// MARK: - BakerEarningsSnapshot
-/// Aggregated earnings data computed from completed orders and payment records.
+// MARK: - Baker Earnings Snapshot
+
 struct BakerEarningsSnapshot {
     let totalEarningsThisMonth: Double
     let totalEarningsLastMonth: Double
@@ -172,8 +172,8 @@ struct BakerEarningsSnapshot {
     }
 }
 
-// MARK: - BakerPaymentRecord
-/// A single payment record associated with a baker's order.
+// MARK: - Baker Payment Record
+
 struct BakerPaymentRecord: Identifiable {
     let id: String
     let orderID: String
@@ -195,15 +195,15 @@ struct BakerPaymentRecord: Identifiable {
     }
 }
 
-// MARK: - AnalyticsChartPoint
-/// A labeled data point used in analytics charts.
+// MARK: - Analytics Chart Point
+
 struct AnalyticsChartPoint: Identifiable {
     let id = UUID()
     let label: String
     let value: Double
 }
 
-// MARK: - BakerEarningsEntry (internal)
+// MARK: - Baker Earnings Entry (internal)
 private struct BakerEarningsEntry {
     let amount: Double
     let date: Date

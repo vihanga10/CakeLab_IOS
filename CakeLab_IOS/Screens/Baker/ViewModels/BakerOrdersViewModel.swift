@@ -2,8 +2,7 @@ import Foundation
 import Combine
 import FirebaseFirestore
 
-// MARK: - BakerOrdersViewModel
-/// Loads active and completed orders from Firestore for the baker's Orders tab.
+
 @MainActor
 final class BakerOrdersViewModel: ObservableObject {
     @Published var activeOrders: [CakeOrder] = []
@@ -101,6 +100,7 @@ final class BakerOrdersViewModel: ObservableObject {
         }
     }
 
+    /// Loads completed orders and calculates total earnings
     func loadCompletedOrdersData() async {
         isLoading = true
         do {
@@ -135,8 +135,8 @@ final class BakerOrdersViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Private Helpers
 
+    // Returns a map of orderID → total paid amount for all successful payments by the baker.
     private func loadPaidAmountsByOrderID() async -> [String: Double] {
         do {
             let snapshot = try await db.collection("payments")

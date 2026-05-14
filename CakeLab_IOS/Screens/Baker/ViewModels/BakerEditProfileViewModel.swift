@@ -7,8 +7,11 @@ import UIKit
 
 @MainActor
 final class BakerEditProfileViewModel: ObservableObject {
+
+    // MARK: - Identity
     let user: AppUser
 
+    // MARK: - Published State
     @Published var isActive = true
     @Published var bakeryName = ""
     @Published var email = ""
@@ -28,6 +31,8 @@ final class BakerEditProfileViewModel: ObservableObject {
     init(user: AppUser) {
         self.user = user
     }
+
+    // MARK: - Public Methods
 
     func loadExistingData() async {
         let db = Firestore.firestore()

@@ -3,8 +3,7 @@ import Combine
 import FirebaseFirestore
 import FirebaseAuth
 
-// MARK: - BakerHomeViewModel
-/// Loads live stats, profile avatar, baker city, active orders, and earnings for BakerHomeView.
+
 @MainActor
 final class BakerHomeViewModel: ObservableObject {
     @Published var profileAvatar: UIImage?
@@ -45,6 +44,7 @@ final class BakerHomeViewModel: ObservableObject {
         }
     }
 
+    // Fetches the baker's registered city 
     func loadBakerCity() {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         Task {

@@ -2,7 +2,7 @@ import SwiftUI
 import Charts
 import UIKit
 
-// MARK: - Baker Profile View (Tab 3 — Portfolio)
+
 @MainActor
 struct BakerProfileView: View {
     let user: AppUser
@@ -1296,7 +1296,7 @@ private struct PortfolioThumbnail: View {
     }
 }
 
-// MARK: - PortfolioPreviewDetailSheet
+// MARK: - Portfolio Preview DetailSheet
 private struct PortfolioPreviewDetailSheet: View {
     let work: PortfolioPreviewWork
     @Environment(\.dismiss) private var dismiss

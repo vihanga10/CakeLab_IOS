@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Reset Password View
+
 @MainActor
 struct ResetPasswordView: View {
 

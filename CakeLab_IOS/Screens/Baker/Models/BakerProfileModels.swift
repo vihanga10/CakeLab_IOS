@@ -1,7 +1,7 @@
 import Foundation
 
-// MARK: - BakerProfileData
-/// Aggregated data for the baker's profile tab, loaded from the artisan Firestore document.
+// MARK: - Baker Profile Data
+
 struct BakerProfileData {
     let shopName: String
     let address: String
@@ -38,8 +38,8 @@ struct BakerProfileData {
     )
 }
 
-// MARK: - PortfolioPreviewWork
-/// A lightweight portfolio work entry shown in the profile portfolio gallery section.
+// MARK: - Portfolio Preview Work
+
 struct PortfolioPreviewWork: Identifiable {
     let id: String
     let title: String
@@ -71,16 +71,16 @@ struct PortfolioPreviewWork: Identifiable {
     }
 }
 
-// MARK: - MonthlyOrderData
-/// A single month's order count, used in the performance chart.
+// MARK: - Monthly Order Data
+
 struct MonthlyOrderData: Identifiable {
     let id = UUID()
     let month: String
     let count: Int
 }
 
-// MARK: - EarningsData
-/// Aggregated earnings figures displayed in the baker profile earnings section.
+// MARK: - Earnings Data
+
 struct EarningsData {
     let totalEarningsThisMonth: Double
     let totalEarningsLastMonth: Double
@@ -101,7 +101,7 @@ struct EarningsData {
 }
 
 // MARK: - RatingData
-/// Star rating breakdown item used in the profile rating chart.
+
 struct RatingData: Identifiable {
     let id = UUID()
     let stars: Int

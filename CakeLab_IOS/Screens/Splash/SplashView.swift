@@ -20,12 +20,12 @@ struct SplashView: View {
             OnboardingView()
         } else {
             ZStack {
-                // Clean white background matching the design
+                
                 Color.white
                     .ignoresSafeArea()
 
                 ZStack {
-                    // Soft glow ring behind logo that pulses
+                    
                     Circle()
                         .fill(
                             RadialGradient(
@@ -42,7 +42,7 @@ struct SplashView: View {
                         .scaleEffect(glowRadius)
                         .opacity(glowOpacity)
 
-                    // Logo image (contains cake + "CakeLab" text)
+                    
                     Image("logo")
                         .resizable()
                         .scaledToFit()
@@ -53,19 +53,19 @@ struct SplashView: View {
                 }
             }
             .onAppear {
-                // Phase 1: Spring pop-in entrance
+                
                 withAnimation(.spring(response: 0.7, dampingFraction: 0.55, blendDuration: 0)) {
                     logoScale = 1.0
                     logoOpacity = 1.0
                 }
 
-                // Phase 2: Glow ring fades in shortly after
+                
                 withAnimation(.easeOut(duration: 0.9).delay(0.4)) {
                     glowRadius = 1.0
                     glowOpacity = 1.0
                 }
 
-                // Phase 3: Continuous subtle float after entry settles
+                
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                     withAnimation(
                         .easeInOut(duration: 1.6)

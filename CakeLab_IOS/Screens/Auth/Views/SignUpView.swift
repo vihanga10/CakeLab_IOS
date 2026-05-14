@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Sign Up View
+
 @MainActor
 struct SignUpView: View {
 
@@ -15,14 +15,14 @@ struct SignUpView: View {
             GeometryReader { geo in
                 ZStack(alignment: .bottom) {
 
-                    //  Background photo 
+                     
                     Image("Signin_up")
                         .resizable()
                         .scaledToFill()
                         .frame(width: geo.size.width, height: geo.size.height)
                         .clipped()
 
-                    //  Gradient fade photo → card 
+                     
                     LinearGradient(
                         colors: [.clear, Color.white.opacity(0.15), .white],
                         startPoint: .top, endPoint: .bottom
@@ -30,7 +30,7 @@ struct SignUpView: View {
                     .frame(height: geo.size.height * 0.55)
                     .frame(maxWidth: .infinity)
 
-                    //  White card (fixed, no scroll) 
+                     
                     VStack(spacing: 0) {
                         cardContent
                             .frame(maxWidth: .infinity)
@@ -41,7 +41,7 @@ struct SignUpView: View {
                         Color.white.frame(height: geo.safeAreaInsets.bottom)
                     }
 
-                    //  Back chevron (under status bar) 
+                     
                     VStack(spacing: 0) {
                         HStack {
                             Button { dismiss() } label: {
@@ -83,13 +83,13 @@ struct SignUpView: View {
         )
     }
 
-    // MARK: - Card content (fixed layout — no ScrollView)
+    // MARK: - Card content
     private var cardContent: some View {
         VStack(alignment: .leading, spacing: 0) {
 
             Spacer().frame(height: 24)
 
-            //  Heading 
+             
             Text("CREATE YOUR ACCOUNT")
                 .font(.urbanistBold(24))
                 .foregroundColor(.cakeBrown)
@@ -102,7 +102,7 @@ struct SignUpView: View {
 
             Spacer().frame(height: 20)
 
-            //  Email 
+             
             fieldLabel("Email Address")
             AuthTextField(placeholder: "you@example.com",
                           text: $vm.email,
@@ -110,7 +110,7 @@ struct SignUpView: View {
 
             Spacer().frame(height: 12)
 
-            //  Password 
+            
             fieldLabel("Password")
             AuthTextField(placeholder: "••••••••••",
                           text: $vm.password,
@@ -121,7 +121,7 @@ struct SignUpView: View {
 
             Spacer().frame(height: 12)
 
-            //  Confirm Password 
+            
             fieldLabel("Confirm Password")
             AuthTextField(placeholder: "••••••••••",
                           text: $vm.confirmPassword,
@@ -168,12 +168,12 @@ struct SignUpView: View {
 
             Spacer().frame(height: 14)
 
-            //  OR divider 
+             
             ORDivider()
 
             Spacer().frame(height: 12)
 
-            //  Social buttons apple
+            //  Social buttons 
             SocialButtons(
                 onGoogleTap: {
                     guard let presentingViewController = UIApplication.shared.authTopViewController else {
@@ -193,7 +193,7 @@ struct SignUpView: View {
 
             Spacer().frame(height: 12)
 
-            //  Sign In link 
+            //  Sign In  
             HStack(spacing: 4) {
                 Spacer()
                 Text("Already have an account?")
@@ -225,7 +225,7 @@ struct SignUpView: View {
     }
 }
 
-// MARK: - Preview
+
 #Preview {
     NavigationStack { SignUpView() }
 }

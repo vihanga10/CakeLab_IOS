@@ -2,19 +2,14 @@ import Foundation
 import Combine
 import FirebaseFirestore
 
-// MARK: - BakerTabViewModel
-/// Handles login-time side-effects for the baker tab: loading matching requests
-/// and triggering in-app notifications for new matches.
+
 @MainActor
 final class BakerTabViewModel: ObservableObject {
     @Published var matchingRequestsLoaded = false
 
     private let db = Firestore.firestore()
 
-    /// Fetches open matching requests once per session and fires notifications
-    /// for the first three matches. Pass the baker's AppUser and the app-wide
-    /// NotificationManager as parameters because ViewModels cannot hold
-    /// @EnvironmentObject references.
+    
     func loadMatchingRequestsAndNotify(
         user: AppUser,
         notificationManager: NotificationManager
@@ -71,7 +66,7 @@ final class BakerTabViewModel: ObservableObject {
         matchingRequestsLoaded = true
     }
 
-    // MARK: - Private Helpers
+    
 
     private func loadBakerSpecialties(userID: String) async throws -> [String] {
         let snapshot = try await db.collection("artisans").document(userID).getDocument()

@@ -2,8 +2,8 @@ import Foundation
 import Combine
 import FirebaseFirestore
 
-// MARK: - CustomerOrdersViewModel
-/// Loads active and completed orders from Firestore for the customer orders tab.
+
+// Loads active and completed orders from Firestore for the customer orders tab.
 @MainActor
 final class CustomerOrdersViewModel: ObservableObject {
     @Published var activeOrders: [CustomerOrder] = []
@@ -50,7 +50,7 @@ final class CustomerOrdersViewModel: ObservableObject {
         isLoading = false
     }
 
-    // MARK: - Private Helpers
+    
 
     private func enrichOrdersWithBakerProfiles(_ orders: [CustomerOrder]) async -> [CustomerOrder] {
         var cache: [String: BakerOrderProfile] = [:]

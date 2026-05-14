@@ -1,7 +1,7 @@
 import Foundation
 
-// MARK: - BakerPaymentDetailsRecord
-/// A single payment record shown in the baker's payment history detail view.
+// MARK: - Baker Payment Details Record
+
 struct BakerPaymentDetailsRecord: Identifiable {
     let id: String
     let orderID: String

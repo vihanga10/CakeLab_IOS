@@ -2,7 +2,7 @@ import Foundation
 import Combine
 import LocalAuthentication
 
-// MARK: - Biometric Auth ViewModel
+
 @MainActor
 final class BiometricAuthViewModel: ObservableObject {
     
@@ -21,7 +21,9 @@ final class BiometricAuthViewModel: ObservableObject {
         checkFaceIDAvailability()
     }
     
-    // MARK: - Check Face ID Availability
+    // MARK: - Public Methods
+
+    // check if biometric authentication is available on this device.
     func checkFaceIDAvailability() {
         let context = LAContext()
         context.localizedFallbackTitle = ""
@@ -29,7 +31,7 @@ final class BiometricAuthViewModel: ObservableObject {
         faceIDAvailable = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
         
         if !faceIDAvailable {
-            // Don't show error message immediately - users can still use email/password
+            
             print("Face ID not available: \(error?.localizedDescription ?? "Unknown error")")
             print("User can still authenticate using Email & Password")
         }
@@ -138,7 +140,7 @@ final class BiometricAuthViewModel: ObservableObject {
 
                 print("DEBUG: Face ID authentication successful for \(email)")
                 print("DEBUG: User role: \(signedInUser.role.rawValue)")
-                // Successfully authenticated - the view will handle navigation via binding
+                
                 isLoading = false
             } else {
                 authenticatedUser = nil
@@ -191,6 +193,7 @@ final class BiometricAuthViewModel: ObservableObject {
         }
     }
 
+    // Clears all authentication state.
     func resetSessionState() {
         authenticatedUser = nil
         isUserValid = false

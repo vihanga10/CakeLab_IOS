@@ -45,18 +45,18 @@ struct BakerBidDetailView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
 
-                        // MARK: Request Details Card
+                        
                         requestDetailsCard
                             .padding(.horizontal, 20)
                             .padding(.top, 16)
                             .padding(.bottom, 20)
 
-                        // MARK: Customer Specs
+                        
                         specsSection
                             .padding(.horizontal, 20)
                             .padding(.bottom, 20)
 
-                        // MARK: Bid Form
+                        
                         bidFormSection
                             .padding(.horizontal, 20)
                             .padding(.bottom, 32)

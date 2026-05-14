@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - OTP Verification View (Bottom Sheet)
+
 struct OTPVerificationView: View {
     let email: String
     let onVerified: () -> Void
@@ -137,11 +137,11 @@ struct OTPVerificationView: View {
         }
     }
 
-    // MARK: - Computed
+
 
     private var otpCode: String { otpDigits.joined() }
 
-    // MARK: - View Helpers
+    
 
     private func handleOTPChange(_ index: Int) {
         if !otpDigits[index].isEmpty && index < 4 { }
@@ -173,7 +173,7 @@ struct OTPVerificationView: View {
     }
 }
 
-// MARK: - OTP Digit Box Component
+// MARK: - OTP Digit Box 
 struct OTPDigitBox: View {
     @Binding var text: String
     let index: Int

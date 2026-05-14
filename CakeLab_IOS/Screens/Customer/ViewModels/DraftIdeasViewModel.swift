@@ -2,8 +2,8 @@ import Foundation
 import Combine
 import FirebaseAuth
 
-// MARK: - DraftIdeasViewModel
-/// Loads the customer's draft cake requests using CustomerRequestStore.
+
+// Loads the customer's draft cake requests using CustomerRequestStore.
 @MainActor
 final class DraftIdeasViewModel: ObservableObject {
     @Published var drafts: [CakeRequestRecord] = []

@@ -2,8 +2,7 @@ import Foundation
 import Combine
 import FirebaseFirestore
 
-// MARK: - BakerPaymentDetailsViewModel
-/// Loads a baker's full payment history from Firestore with CoreData caching.
+
 @MainActor
 final class BakerPaymentDetailsViewModel: ObservableObject {
     @Published var payments: [BakerPaymentDetailsRecord] = []
@@ -16,6 +15,7 @@ final class BakerPaymentDetailsViewModel: ObservableObject {
         payments.filter(\.isSuccess).reduce(0) { $0 + $1.amount }
     }
 
+    // Payment records grouped and sorted by calendar month.
     var groupedByMonth: [(month: String, records: [BakerPaymentDetailsRecord])] {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMMM yyyy"
@@ -108,7 +108,6 @@ final class BakerPaymentDetailsViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Private Helpers
 
     private func firstString(_ values: Any?...) -> String {
         values.compactMap { $0 as? String }

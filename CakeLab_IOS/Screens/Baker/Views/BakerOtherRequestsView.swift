@@ -1,8 +1,6 @@
 import SwiftUI
 
-// MARK: - Baker Other Requests View
-// Shows all open cake requests that do NOT match the baker's specialties
-// and have not yet been confirmed by another baker (status == "open").
+
 @MainActor
 struct BakerOtherRequestsView: View {
     @ObservedObject var viewModel: BakerMatchingRequestsViewModel
@@ -29,7 +27,7 @@ struct BakerOtherRequestsView: View {
             Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // MARK: - Header
+                
                 HStack {
                     Button { dismiss() } label: {
                         Image(systemName: "chevron.left")

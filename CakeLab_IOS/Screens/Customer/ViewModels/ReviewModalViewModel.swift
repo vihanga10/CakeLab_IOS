@@ -2,7 +2,7 @@ import Foundation
 import Combine
 import FirebaseFirestore
 
-// MARK: - ReviewModalViewModel
+
 /// Handles review submission to Firestore and baker stats updates.
 @MainActor
 final class ReviewModalViewModel: ObservableObject {
@@ -63,7 +63,6 @@ final class ReviewModalViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Private Helpers
 
     private func loadCustomerProfile(customerId: String) async -> (name: String, imageBase64: String) {
         guard !customerId.isEmpty else { return ("", "") }

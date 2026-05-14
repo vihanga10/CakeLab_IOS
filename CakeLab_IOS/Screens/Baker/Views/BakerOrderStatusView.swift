@@ -96,7 +96,7 @@ struct BakerOrderStatusView: View {
         .asBakerSubScreen()
     }
 
-    // MARK: - Custom Header (matches CustomerOrderStatusView)
+    
     private var headerBar: some View {
         HStack {
             Button { dismiss() } label: {
@@ -116,14 +116,14 @@ struct BakerOrderStatusView: View {
         .background(Color.cakeSurface)
     }
 
-    // MARK: - Order Details Card (matches CustomerOrderStatusView.orderDetailsCard)
+    // MARK: - Order Details Card
     private func orderDetailsCard(order: CakeOrder) -> some View {
         let displayCategory  = resolvedCategory(order.category)
         let deliveryDateText = Self.dateFmt.string(from: order.deliveryDate)
 
         return VStack(alignment: .leading, spacing: 0) {
 
-            // ── Top row: thumbnail + Order ID / status / cake name ──────
+            
             HStack(alignment: .top, spacing: 12) {
                 cakeThumbnail(referenceImages: order.referenceImages, imageURLString: order.imageURL)
                     .padding(.top, 4)
@@ -158,7 +158,7 @@ struct BakerOrderStatusView: View {
 
             Spacer(minLength: 2)
 
-            // ── Footer: Date | Budget | Category ───────────────────────
+            
             HStack(alignment: .center, spacing: 12) {
 
                 // Date
@@ -229,7 +229,7 @@ struct BakerOrderStatusView: View {
     private func progressEditorCard(order: CakeOrder) -> some View {
         VStack(alignment: .leading, spacing: 0) {
 
-            // ── Step timeline (tappable — baker can select step) ────────
+            
             ForEach(viewModel.steps, id: \.step) { item in
                 HStack(alignment: .top, spacing: 12) {
                     VStack(spacing: 0) {
@@ -294,7 +294,7 @@ struct BakerOrderStatusView: View {
                 }
             }
 
-            // ── Add to Calendar ─────────────────────────────────────────
+            //  Add to Calendar 
             Button {
                 Task { await addDeliveryEventToCalendar(order: order) }
             } label: {
@@ -310,7 +310,7 @@ struct BakerOrderStatusView: View {
             }
             .padding(.top, 14)
 
-            // ── Update button (baker-specific backend action) ───────────
+            //  Update button (baker-specific backend action) 
             Button {
                 Task { await viewModel.updateStatus(orderID: order.id, notificationManager: notificationManager) }
             } label: {
@@ -389,7 +389,7 @@ struct BakerOrderStatusView: View {
         .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
     }
 
-    // MARK: - Cake Thumbnail (matches CustomerOrderStatusView)
+    // MARK: - Cake Thumbnail 
     @ViewBuilder
     private func cakeThumbnail(referenceImages: [String], imageURLString: String?) -> some View {
         let size: CGFloat = 80
@@ -424,7 +424,7 @@ struct BakerOrderStatusView: View {
             )
     }
 
-    // MARK: - Step helpers
+    
     private func stepDateText(step: Int, statusKey: String) -> String {
         if step == 1, let d = viewModel.timestamp(for: statusKey) ?? viewModel.createdAt {
             return Self.dateFmt.string(from: d)
@@ -513,7 +513,7 @@ struct BakerOrderStatusView: View {
         return t.isEmpty ? "No category" : t
     }
 
-    // MARK: - Date / Time helpers
+    // MARK: - Date / Time 
     private func formattedHeaderDate(_ raw: String) -> String {
         guard let d = parseHeaderDate(raw) else { return raw }
         let f = DateFormatter(); f.dateFormat = "dd MMM yyyy"; return f.string(from: d)

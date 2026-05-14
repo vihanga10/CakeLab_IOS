@@ -1,7 +1,7 @@
 import SwiftUI
 
-// MARK: - ArtisanCard
-/// Reusable card for displaying a baker/artisan profile in list context.
+
+// Reusable card for displaying a baker/artisan profile in list context.
 struct ArtisanCard: View {
     let name: String
     let rating: String

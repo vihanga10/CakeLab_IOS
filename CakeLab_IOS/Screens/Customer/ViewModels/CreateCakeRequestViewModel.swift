@@ -3,8 +3,7 @@ import Combine
 import FirebaseAuth
 import FirebaseFirestore
 
-// MARK: - CreateCakeRequestViewModel
-/// Handles publishing and saving cake requests to Firestore.
+
 @MainActor
 final class CreateCakeRequestViewModel: ObservableObject {
     @Published var isSaving = false
@@ -62,7 +61,7 @@ final class CreateCakeRequestViewModel: ObservableObject {
         Auth.auth().currentUser?.uid
     }
 
-    /// Returns a new unique Firestore document ID for the given collection.
+    
     func newDocumentID(for collection: String) -> String {
         Firestore.firestore().collection(collection).document().documentID
     }

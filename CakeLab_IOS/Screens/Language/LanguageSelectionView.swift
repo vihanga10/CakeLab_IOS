@@ -28,14 +28,14 @@ struct LanguageSelectionView: View {
             GeometryReader { geo in
                 ZStack(alignment: .bottom) {
 
-                    //  Full-screen background photo 
+                     
                     Image("language")
                         .resizable()
                         .scaledToFill()
                         .frame(width: geo.size.width, height: geo.size.height)
                         .clipped()
 
-                    //  Gradient fade: photo into card 
+                     
                     LinearGradient(
                         gradient: Gradient(colors: [.clear, Color.white.opacity(0.18), Color.white]),
                         startPoint: .top,
@@ -44,14 +44,14 @@ struct LanguageSelectionView: View {
                     .frame(height: cardHeight + 80)
                     .frame(maxWidth: .infinity)
 
-                    //  White card + safe-area filler 
+                 
                     VStack(spacing: 0) {
 
                         VStack(spacing: 0) {
 
                             Spacer().frame(height: 32)
 
-                            //  Heading 
+                             
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("WELCOME !")
                                     .font(.urbanistBold(26))
@@ -104,7 +104,7 @@ struct LanguageSelectionView: View {
                         .background(Color.cakeSurface)
                         .clipShape(TopRoundedRectangle(cornerRadius: 40))
 
-                        // Extend white below home indicator
+                        
                         Color.white
                             .frame(height: geo.safeAreaInsets.bottom)
                     }
@@ -147,7 +147,7 @@ private struct LanguageButton: View {
     }
 }
 
-// MARK: - TopRoundedRectangle (used for the card background)
+
 
 private struct TopRoundedRectangle: Shape {
     let cornerRadius: CGFloat

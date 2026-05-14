@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Baker Orders View (Tab 2)
+// MARK: - Baker Orders View 
 @MainActor
 struct BakerOrdersView: View {
     let user: AppUser
@@ -22,7 +22,7 @@ struct BakerOrdersView: View {
             ZStack {
                 Color.cakeBackground.ignoresSafeArea()
                 VStack(spacing: 0) {
-                    // MARK: Custom Header (matches BakerMatchingRequestsView)
+                    
                     HStack {
                         Spacer()
                         Text("Order Details")
@@ -289,7 +289,7 @@ struct BakerOrderDetailView: View {
                         }
                         
                         Button {
-                            // TODO: Update Firestore
+
                         } label: {
                             Text("Update Status")
                                 .font(.urbanistBold(15))
@@ -349,15 +349,4 @@ struct BakerOrderDetailView: View {
     }
 }
 
-// MARK: - Mock Data
-let mockActiveOrdersFull: [BakerOrderFull] = [
-    BakerOrderFull(cakeName: "3-Tier Wedding Cake", customerName: "Kavya Naidoo", deliveryDate: "Apr 08, 2026", location: "Colombo 07", status: "baking", amount: "LKR 18,500", progressPercent: 40, currentStep: 1, notes: "Please ensure white fondant with gold leaf accents"),
-    BakerOrderFull(cakeName: "Unicorn Birthday Cake", customerName: "Dinesh Kumar", deliveryDate: "Apr 10, 2026", location: "Nugegoda", status: "decorating", amount: "LKR 6,200", progressPercent: 65, currentStep: 2, notes: "Pink and purple colors. Serves 20."),
-    BakerOrderFull(cakeName: "Red Velvet Tiramisu", customerName: "Amali Perera", deliveryDate: "Apr 12, 2026", location: "Dehiwala", status: "confirmed", amount: "LKR 4,800", progressPercent: 10, currentStep: 0, notes: ""),
-]
 
-let mockCompletedOrders: [BakerOrderFull] = [
-    BakerOrderFull(cakeName: "Chocolate Ganache Cake", customerName: "Rohan Gupta", deliveryDate: "Mar 28, 2026", location: "Kollupitiya", status: "completed", amount: "LKR 8,500", progressPercent: 100, currentStep: 4, notes: "", rating: 5),
-    BakerOrderFull(cakeName: "Mango Cream Cake", customerName: "Priya Raj", deliveryDate: "Mar 20, 2026", location: "Rajagiriya", status: "completed", amount: "LKR 5,200", progressPercent: 100, currentStep: 4, notes: "", rating: 4),
-    BakerOrderFull(cakeName: "Fondant Anniversary Cake", customerName: "Saman Fernando", deliveryDate: "Mar 15, 2026", location: "Colombo 03", status: "completed", amount: "LKR 14,000", progressPercent: 100, currentStep: 4, notes: "", rating: 5),
-]

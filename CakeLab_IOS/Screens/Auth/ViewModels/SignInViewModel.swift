@@ -1,19 +1,18 @@
 import Foundation
-import AuthenticationServices //apple
+import AuthenticationServices 
 import Combine
 import UIKit
 
-// MARK: - Sign In ViewModel
+
 @MainActor
 final class SignInViewModel: ObservableObject {
 
-    // MARK: - Inputs
+
     @Published var email        = ""
     @Published var password     = ""
     @Published var selectedRole: UserRole? = nil
     @Published var rememberMe   = false
 
-    // MARK: - Outputs
     @Published var isLoading    = false
     @Published var errorMessage: String?
     @Published var signedInUser: AppUser?
@@ -39,7 +38,7 @@ final class SignInViewModel: ObservableObject {
                 let user = try await authService.signIn(email: normalizedEmail,
                                                         password: password)
                 
-                // Validate that selected role matches database role
+                
                 guard let selectedRole = selectedRole else {
                     errorMessage = AuthError.roleNotSelected.errorDescription
                     isLoading = false
@@ -77,6 +76,7 @@ final class SignInViewModel: ObservableObject {
         }
     }
 
+    // Signs in via Google OAuth, validates the account role
     func signInWithGoogle(presentingViewController: UIViewController) {
         guard let selectedRole else {
             errorMessage = AuthError.roleNotSelected.errorDescription
@@ -113,7 +113,8 @@ final class SignInViewModel: ObservableObject {
         }
     }
 
-    func signInWithApple(presentationAnchor: ASPresentationAnchor) { //apple
+    // Signs in via Apple ID, validates the account role.
+    func signInWithApple(presentationAnchor: ASPresentationAnchor) {
         guard let selectedRole else {
             errorMessage = AuthError.roleNotSelected.errorDescription
             return
@@ -186,12 +187,13 @@ final class SignInViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Helpers
+
     private func isValidEmail(_ email: String) -> Bool {
         let regex = #"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$"#
         return email.range(of: regex, options: .regularExpression) != nil
     }
 
+    // Clears all sign-in state
     func resetSessionState() {
         signedInUser = nil
         navigateToFaceID = false

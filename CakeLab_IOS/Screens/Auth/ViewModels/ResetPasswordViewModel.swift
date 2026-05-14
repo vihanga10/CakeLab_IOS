@@ -1,8 +1,7 @@
 import Foundation
 import Combine
 
-// MARK: - ResetPasswordViewModel
-/// Handles password change via AuthService.
+
 @MainActor
 final class ResetPasswordViewModel: ObservableObject {
     @Published var currentPassword   = ""
@@ -16,6 +15,7 @@ final class ResetPasswordViewModel: ObservableObject {
 
     private let authService = AuthService()
 
+    // Validates all three password fields, then calls `AuthService.updatePassword`.
     func changePassword() {
         errorMessage = nil
         successMessage = nil
@@ -28,20 +28,20 @@ final class ResetPasswordViewModel: ObservableObject {
 
         Task {
             do {
-                print("🔐 DEBUG: Changing password for email: \(email)")
+                print(" DEBUG: Changing password for email: \(email)")
                 try await authService.updatePassword(
                     newPassword: newPassword,
                     currentEmail: email,
                     currentPassword: currentPassword
                 )
-                print("✅ DEBUG: Password updated successfully")
+                print(" DEBUG: Password updated successfully")
                 successMessage = "Password changed. Please sign in again."
                 didReset = true
                 isLoading = false
             } catch {
                 errorMessage = error.localizedDescription
                 isLoading = false
-                print("❌ ERROR: Password update failed - \(error.localizedDescription)")
+                print(" ERROR: Password update failed - \(error.localizedDescription)")
             }
         }
     }

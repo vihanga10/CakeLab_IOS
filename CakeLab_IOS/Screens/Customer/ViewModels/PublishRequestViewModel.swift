@@ -2,8 +2,8 @@ import Foundation
 import Combine
 import FirebaseAuth
 
-// MARK: - PublishRequestViewModel
-/// Loads the customer's published cake requests using CustomerRequestStore.
+
+// Loads the customer's published cake requests using CustomerRequestStore.
 @MainActor
 final class PublishRequestViewModel: ObservableObject {
     @Published var requests: [CakeRequestRecord] = []

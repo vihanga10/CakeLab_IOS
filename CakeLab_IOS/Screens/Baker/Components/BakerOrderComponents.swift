@@ -1,7 +1,7 @@
 import SwiftUI
 
 // MARK: - BakerOrderFullCard
-/// Full order card with a progress bar, used for active orders.
+// Full order card with a progress bar, used for active orders.
 struct BakerOrderFullCard: View {
     let order: BakerOrderFull
 
@@ -85,7 +85,7 @@ struct BakerOrderFullCard: View {
 }
 
 // MARK: - BakerCompletedOrderCard
-/// Compact card showing a completed order with star rating (used with BakerOrderFull model).
+// Compact card showing a completed order with star rating.
 struct BakerCompletedOrderCard: View {
     let order: BakerOrderFull
 
@@ -134,8 +134,7 @@ struct BakerCompletedOrderCard: View {
     }
 }
 
-// MARK: - BakerCompletedOrderCardFromCakeOrder
-/// Completed order card built directly from a CakeOrder Firestore model.
+// MARK: - Completed order card built directly from a CakeOrder Firestore model.
 struct BakerCompletedOrderCardFromCakeOrder: View {
     let order: CakeOrder
 
@@ -205,8 +204,7 @@ struct BakerCompletedOrderCardFromCakeOrder: View {
     }
 }
 
-// MARK: - BakerActiveOrderCardFromCakeOrder
-/// Full active order card with progress tracker and customer info, built from a CakeOrder.
+// MARK: - Active order card with progress tracker and customer info, built from a CakeOrder.
 struct BakerActiveOrderCardFromCakeOrder: View {
     let order: CakeOrder
     let customer: BakerOrderCustomerProfile

@@ -2,8 +2,8 @@ import Foundation
 import Combine
 import FirebaseFirestore
 
-// MARK: - PaymentHistoryViewModel
-/// Loads customer payment history from Firestore.
+
+// Loads customer payment history from Firestore.
 @MainActor
 final class PaymentHistoryViewModel: ObservableObject {
     @Published var payments: [PaymentRecord] = []
@@ -12,10 +12,12 @@ final class PaymentHistoryViewModel: ObservableObject {
 
     private let db = Firestore.firestore()
 
+    // Sum of all successful payment totals for this customer.
     var totalSpent: Double {
         payments.filter(\.isSuccess).reduce(0) { $0 + $1.total }
     }
 
+    // Payment records grouped and sorted by calendar month (most recent first).
     var groupedByMonth: [(month: String, records: [PaymentRecord])] {
         let fmt = DateFormatter()
         fmt.dateFormat = "MMMM yyyy"

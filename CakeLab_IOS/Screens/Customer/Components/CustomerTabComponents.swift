@@ -1,8 +1,6 @@
 import SwiftUI
 
-// MARK: - CustomerSubScreenTabBar
-/// Floating tab bar shown on pushed sub-screens. All tabs appear unselected
-/// so the customer can jump directly to any tab from any sub-screen.
+
 struct CustomerSubScreenTabBar: View {
     let onSelectTab: (Int) -> Void
 

@@ -3,17 +3,17 @@ import AuthenticationServices //apple
 import Combine
 import UIKit
 
-// MARK: - Sign Up ViewModel
+
 @MainActor
 final class SignUpViewModel: ObservableObject {
 
-    // MARK: - Inputs
+    
     @Published var email           = ""
     @Published var password        = ""
     @Published var confirmPassword = ""
     @Published var selectedRole: UserRole? = nil
 
-    // MARK: - Outputs
+    
     @Published var isLoading    = false
     @Published var errorMessage: String?
     @Published var createdUser: AppUser?
@@ -46,6 +46,7 @@ final class SignUpViewModel: ObservableObject {
         }
     }
 
+    // Creates an account via Google OAuth for the selected role.
     func signUpWithGoogle(presentingViewController: UIViewController) {
         guard let selectedRole else {
             errorMessage = AuthError.roleNotSelected.errorDescription
@@ -69,7 +70,8 @@ final class SignUpViewModel: ObservableObject {
         }
     }
 
-    func signUpWithApple(presentationAnchor: ASPresentationAnchor) { //apple
+    // Creates an account via Apple ID for the selected role.
+    func signUpWithApple(presentationAnchor: ASPresentationAnchor) {
         guard let selectedRole else {
             errorMessage = AuthError.roleNotSelected.errorDescription
             return
@@ -116,7 +118,7 @@ final class SignUpViewModel: ObservableObject {
         return true
     }
 
-    // MARK: - Helpers
+    
     private func isValidEmail(_ email: String) -> Bool {
         let regex = #"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$"#
         return email.range(of: regex, options: .regularExpression) != nil

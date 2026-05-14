@@ -2,7 +2,7 @@ import Foundation
 import FirebaseFirestore
 
 // MARK: - PortfolioWork
-/// A single portfolio work item stored in Firestore under the baker's artisan profile.
+
 struct PortfolioWork: Identifiable, Hashable {
     let id: String
     let title: String
@@ -51,7 +51,7 @@ struct PortfolioWork: Identifiable, Hashable {
         )
     }
 
-    /// Summary dictionary used when publishing to the artisan's Firestore profile.
+    /// Summary dictionary 
     var publishedSummary: [String: Any] {
         [
             "workID": id,
@@ -64,8 +64,7 @@ struct PortfolioWork: Identifiable, Hashable {
     }
 }
 
-// MARK: - PortfolioTrait
-/// A scored skill trait attached to a portfolio work (e.g. "Creativity: 88%").
+// MARK: - Portfolio Trait
 struct PortfolioTrait: Identifiable, Hashable {
     let id: String
     let name: String
@@ -100,8 +99,7 @@ struct PortfolioTrait: Identifiable, Hashable {
     }
 }
 
-// MARK: - PortfolioWorkDraft
-/// Mutable draft used when creating or editing a portfolio work entry.
+// MARK: - Portfolio Work Draft
 struct PortfolioWorkDraft {
     var title: String
     var description: String
@@ -133,8 +131,7 @@ struct PortfolioWorkDraft {
     }
 }
 
-// MARK: - PortfolioTraitDraft
-/// Mutable draft for a single trait while editing a portfolio work.
+// MARK: - Portfolio Trait Draft
 struct PortfolioTraitDraft: Identifiable {
     let id: String
     var name: String

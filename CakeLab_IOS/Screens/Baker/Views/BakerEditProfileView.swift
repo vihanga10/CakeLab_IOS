@@ -29,31 +29,31 @@ struct BakerEditProfileView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
-                        // MARK: Header
+                        
                         headerSection
                             .padding(.bottom, 24)
 
-                        // MARK: Profile Photo
+                        
                         profilePhotoSection
                             .padding(.horizontal, 20)
                             .padding(.bottom, 24)
 
-                        // MARK: Active/Inactive Toggle
+                        
                         activeToggleSection
                             .padding(.horizontal, 20)
                             .padding(.bottom, 20)
 
-                        // MARK: Form Fields
+                        
                         formSection
                             .padding(.horizontal, 20)
                             .padding(.bottom, 20)
 
-                        // MARK: Categories
+                        
                         categoriesSection
                             .padding(.horizontal, 20)
                             .padding(.bottom, 20)
 
-                        // MARK: Update Button
+                        
                         updateButton
                             .padding(.horizontal, 20)
                             .padding(.bottom, 104)

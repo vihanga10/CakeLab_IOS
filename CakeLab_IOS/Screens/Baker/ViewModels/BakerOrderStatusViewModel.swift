@@ -22,6 +22,7 @@ final class BakerOrderStatusViewModel: ObservableObject {
     private let db = Firestore.firestore()
     private var listener: ListenerRegistration?
 
+    // Ordered workflow stages shown in the baker's progress tracker.
     let steps: [(step: Int, statusKey: String, title: String)] = [
         (1, "confirmed", "Confirmed"),
         (2, "baking", "Baking"),
@@ -105,6 +106,7 @@ final class BakerOrderStatusViewModel: ObservableObject {
         }
     }
 
+    // Returns the recorded completion time for the given workflow stage key, if available.
     func timestamp(for statusKey: String) -> Date? {
         progressTimestamps[statusKey]
     }

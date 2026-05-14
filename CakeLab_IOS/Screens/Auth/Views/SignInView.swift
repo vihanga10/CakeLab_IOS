@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Sign In View
+
 @MainActor
 struct SignInView: View {
 
@@ -17,14 +17,14 @@ struct SignInView: View {
             GeometryReader { geo in
                 ZStack(alignment: .bottom) {
 
-                    //  Background photo 
+                     
                     Image("Signin_up")
                         .resizable()
                         .scaledToFill()
                         .frame(width: geo.size.width, height: geo.size.height)
                         .clipped()
 
-                    //  Gradient fade photo → card 
+                     
                     LinearGradient(
                         colors: [.clear, Color.white.opacity(0.15), .white],
                         startPoint: .top, endPoint: .bottom
@@ -32,7 +32,7 @@ struct SignInView: View {
                     .frame(height: geo.size.height * 0.55)
                     .frame(maxWidth: .infinity)
 
-                    //  White card (fixed, no scroll) 
+                     
                     VStack(spacing: 0) {
                         cardContent
                             .frame(maxWidth: .infinity)
@@ -43,7 +43,7 @@ struct SignInView: View {
                         Color.white.frame(height: geo.safeAreaInsets.bottom)
                     }
 
-                    //  Back chevron (under status bar) 
+                     
                     VStack(spacing: 0) {
                         HStack {
                             Button { dismiss() } label: {
@@ -64,7 +64,7 @@ struct SignInView: View {
             .navigationDestination(isPresented: $showSignUp)  { SignUpView() }
             .navigationDestination(isPresented: $showForgot)  { ForgotPasswordView() }
             .navigationDestination(isPresented: $showContentView)  {
-                // Pass the signed-in user to ContentView
+                
                 if let user = vm.signedInUser {
                     ContentViewWrapper(user: user)
                 }
@@ -87,13 +87,13 @@ struct SignInView: View {
         }
     }
 
-    // MARK: - Card content (fixed layout — no ScrollView)
+    // MARK: - Card content
     private var cardContent: some View {
         VStack(alignment: .leading, spacing: 0) {
 
             Spacer().frame(height: 28)
 
-            //  Heading 
+            
             Text("HI , WELCOME BACK")
                 .font(.urbanistBold(24))
                 .foregroundColor(.cakeBrown)
@@ -106,7 +106,7 @@ struct SignInView: View {
 
             Spacer().frame(height: 26)
 
-            //  Email 
+             
             fieldLabel("Email Address")
             AuthTextField(placeholder: "you@example.com",
                           text: $vm.email,
@@ -114,7 +114,7 @@ struct SignInView: View {
 
             Spacer().frame(height: 16)
 
-            //  Password 
+             
             fieldLabel("Password")
             AuthTextField(placeholder: "••••••••••",
                           text: $vm.password,
@@ -188,12 +188,12 @@ struct SignInView: View {
 
             Spacer().frame(height: 20)
 
-            //  OR divider 
+             
             ORDivider()
 
             Spacer().frame(height: 18)
 
-            //  Social buttons apple
+            //  Social buttons
             SocialButtons(
                 onGoogleTap: {
                     guard let presentingViewController = UIApplication.shared.authTopViewController else {
@@ -213,7 +213,7 @@ struct SignInView: View {
 
             Spacer().frame(height: 18)
 
-            //  Create Account link 
+            //  Create Account  
             HStack(spacing: 4) {
                 Spacer()
                 Text("Don't have an account ?")
@@ -240,7 +240,7 @@ struct SignInView: View {
     }
 }
 
-// MARK: - Preview
+
 #Preview {
     SignInView()
 }

@@ -3,7 +3,7 @@ import Combine
 import FirebaseFirestore
 import FirebaseAuth
 
-// MARK: - Baker Matching Requests ViewModel
+
 @MainActor
 final class BakerMatchingRequestsViewModel: ObservableObject {
     
@@ -14,8 +14,7 @@ final class BakerMatchingRequestsViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
-    /// Open requests that do NOT match the baker's specialties and are still
-    /// open (status == "open" means no baker has been confirmed/paid yet).
+
     var otherOpenRequests: [CakeRequestRecord] {
         let matchingIDs = Set(matchingRequests.map(\.id))
         return allPublishedRequests.filter { !matchingIDs.contains($0.id) }
@@ -42,7 +41,7 @@ final class BakerMatchingRequestsViewModel: ObservableObject {
         }
         
         do {
-            // Step 1: Fetch baker's specialties from artisans collection
+            // Fetch baker's specialties from artisans collection
             let bakerDoc = try await db.collection("artisans").document(uid).getDocument()
             guard let data = bakerDoc.data() else {
                 errorMessage = "Baker profile not found. Please complete your profile first."

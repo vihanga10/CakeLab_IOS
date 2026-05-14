@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Baker Matching Requests View (Nav Tab 1)
+// MARK: - Baker Matching Requests View 
 @MainActor
 struct BakerMatchingRequestsView: View {
     @Environment(\.dismiss) private var dismiss
@@ -34,7 +34,7 @@ struct BakerMatchingRequestsView: View {
                 Color.cakeBackground.ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    // MARK: - Custom Header
+                    
                     HStack {
                         Spacer()
                         Text("Matching Requests")

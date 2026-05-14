@@ -3,10 +3,7 @@ import Combine
 import FirebaseFirestore
 import UIKit
 
-// MARK: - ProfileViewModel
-//
-// Manages profile photo storage as Base64 in Firestore and
-// profile updates to Firestore.
+
 
 @MainActor
 final class ProfileViewModel: ObservableObject {
@@ -41,8 +38,7 @@ final class ProfileViewModel: ObservableObject {
     }
 
     // MARK: - Upload Profile Photo
-    /// Converts the selected photo to Base64 (compressed) and stores it locally in UserDefaults.
-    /// Avoids Firestore size limits and reduces storage costs.
+    
     func uploadProfilePhoto() async {
         guard let photo = selectedPhoto else { return }
         guard let jpegData = photo.jpegData(compressionQuality: 0.3) else { return }
@@ -80,7 +76,7 @@ final class ProfileViewModel: ObservableObject {
     }
 
     // MARK: - Update Profile
-    /// Updates all user profile fields in Firestore and locally.
+    
     func updateProfile(
         name: String,
         phone: String,
@@ -118,7 +114,7 @@ final class ProfileViewModel: ObservableObject {
     }
 
     // MARK: - Fetch Profile
-    /// Loads the most up-to-date profile from Firestore.
+    
     func fetchProfile() async {
         do {
             let snapshot = try await db.collection("users").document(user.id).getDocument()
@@ -142,7 +138,7 @@ final class ProfileViewModel: ObservableObject {
     }
 
     // MARK: - Load Avatar from UserDefaults
-    /// Retrieves the locally stored avatar image from UserDefaults.
+    
     func loadAvatarFromUserDefaults() -> UIImage? {
         guard let base64String = UserDefaults.standard.string(forKey: "profileAvatar_\(user.id)") else {
             return nil

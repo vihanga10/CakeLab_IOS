@@ -2,8 +2,7 @@ import Foundation
 import FirebaseFirestore
 import Combine
 
-// MARK: - BakerPortfolioViewModel
-/// Manages loading, saving, deleting, and publishing portfolio works to Firestore.
+
 @MainActor
 final class BakerPortfolioViewModel: ObservableObject {
     @Published var works: [PortfolioWork] = []
@@ -51,6 +50,7 @@ final class BakerPortfolioViewModel: ObservableObject {
         }
     }
 
+    // Creates a new portfolio work document or updates an existing one.
     func saveWork(from draft: PortfolioWorkDraft, editingWorkID: String?) async {
         let trimmedTitle = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedDescription = draft.description.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -105,6 +105,7 @@ final class BakerPortfolioViewModel: ObservableObject {
         }
     }
 
+    // Deletes the portfolio work document and removes it from the published selection.
     func deleteWork(_ work: PortfolioWork) async {
         isSaving = true
         defer { isSaving = false }
@@ -125,6 +126,7 @@ final class BakerPortfolioViewModel: ObservableObject {
         }
     }
 
+    /// Adds or removes `work` from the published set.
     func togglePublished(for work: PortfolioWork) async {
         let isCurrentlyPublished = publishedWorkIDs.contains(work.id)
 
@@ -151,11 +153,10 @@ final class BakerPortfolioViewModel: ObservableObject {
         }
     }
 
+    /// Returns only the works currently in the published set.
     var publishedWorks: [PortfolioWork] {
         works.filter { publishedWorkIDs.contains($0.id) }
     }
-
-    // MARK: - Private
 
     private func persistPublishedSelection() async throws {
         let orderedPublishedWorks = publishedWorks

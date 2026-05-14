@@ -1,7 +1,6 @@
 import SwiftUI
 
-// MARK: - LocationPickerSheet
-/// Sheet that lets the baker filter matching requests by Sri Lanka district.
+
 struct LocationPickerSheet: View {
     @Binding var filterCity: String?
     @Environment(\.dismiss) private var dismiss
@@ -71,7 +70,7 @@ struct LocationPickerSheet: View {
 }
 
 // MARK: - MatchingRequestCard
-/// Card displaying a cake request that matches the baker's specialties.
+// Card displaying a cake request that matches the baker's specialties.
 struct MatchingRequestCard: View {
     let request: CakeRequest
     var onPlaceBid: (() -> Void)? = nil
@@ -219,7 +218,7 @@ struct MatchingRequestCard: View {
 }
 
 // MARK: - OtherRequestCard
-/// Card displaying an open cake request outside the baker's specialties.
+// Card displaying an open cake request outside the baker's specialties.
 struct OtherRequestCard: View {
     let request: CakeRequest
 
@@ -277,7 +276,7 @@ struct OtherRequestCard: View {
 }
 
 // MARK: - BakerActiveOrderCard
-/// Compact card showing a baker's active order (used with BakerOrder model).
+// Compact card showing a baker's active order.
 struct BakerActiveOrderCard: View {
     let order: BakerOrder
 

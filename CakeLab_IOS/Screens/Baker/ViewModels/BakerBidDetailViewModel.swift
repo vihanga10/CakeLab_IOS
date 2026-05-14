@@ -7,8 +7,7 @@ extension Notification.Name {
     static let bidDidChange = Notification.Name("bidDidChange")
 }
 
-// MARK: - BakerBidDetailViewModel
-/// Handles bid submission to Firestore and posts in-app notifications on success.
+
 @MainActor
 final class BakerBidDetailViewModel: ObservableObject {
     @Published var isSubmittingBid = false

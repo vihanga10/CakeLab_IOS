@@ -2,7 +2,7 @@ import SwiftUI
 import PhotosUI
 import UIKit
 
-// MARK: - BakerPortfolioManagerView
+// MARK: - Baker Portfolio ManagerView
 struct BakerPortfolioManagerView: View {
     let user: AppUser
 

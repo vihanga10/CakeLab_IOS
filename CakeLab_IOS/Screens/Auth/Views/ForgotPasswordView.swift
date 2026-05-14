@@ -1,7 +1,7 @@
 import SwiftUI
 import Combine
 
-// MARK: - Forgot Password View
+
 struct ForgotPasswordView: View {
 
     @StateObject private var vm = ForgotPasswordViewModel()
@@ -14,7 +14,7 @@ struct ForgotPasswordView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                //  Back chevron 
+                 
                 HStack {
                     Button { dismiss() } label: {
                         Image(systemName: "chevron.left")
@@ -31,7 +31,7 @@ struct ForgotPasswordView: View {
                 ScrollView {
                     VStack(alignment: .center, spacing: 0) {
                         
-                        //  Illustration Box (350 x 355) 
+                         
                         ZStack {
                             
                             
@@ -44,7 +44,7 @@ struct ForgotPasswordView: View {
                         .frame(width: 350, height: 355)
                         .padding(.bottom, 32)
                         
-                        //  Heading 
+                         
                         VStack(alignment: .leading, spacing: 4) {
                             Text("FORGOT PASSWORD")
                                 .font(.urbanistBold(24))
@@ -58,7 +58,7 @@ struct ForgotPasswordView: View {
                         .padding(.horizontal, 28)
                         .padding(.bottom, 28)
                         
-                        //  Email field 
+                         
                         VStack(alignment: .leading, spacing: 8) {
                             HStack(spacing: 2) {
                                 Text("Email Address")
@@ -95,7 +95,7 @@ struct ForgotPasswordView: View {
                         .padding(.horizontal, 28)
                         .padding(.bottom, 24)
                         
-                        //  Hint text (Centered) 
+                         
                         Text("Enter your email address and click 'Send OTP'. A one-time password (OTP) will be created for this password reset.")
                             .font(.urbanistRegular(12))
                             .foregroundColor(.cakeGrey)
@@ -146,7 +146,7 @@ struct ForgotPasswordView: View {
     }
 }
 
-// MARK: - Preview
+
 #Preview {
     NavigationStack { ForgotPasswordView() }
 }

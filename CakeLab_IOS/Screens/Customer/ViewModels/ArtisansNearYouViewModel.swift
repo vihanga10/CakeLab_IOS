@@ -3,8 +3,7 @@ import Combine
 import CoreLocation
 import FirebaseFirestore
 
-// MARK: - ArtisansNearYouViewModel
-/// Loads artisan profiles from Firestore, merges data sources, and handles district filtering.
+
 @MainActor
 final class ArtisansNearYouViewModel: ObservableObject {
     @Published var artisans: [ArtisanProfile] = []
@@ -79,7 +78,7 @@ final class ArtisansNearYouViewModel: ObservableObject {
         scopedArtisans = artisans
     }
 
-    // MARK: - Private Loaders
+    
 
     private func fetchBakersFromUsersCollection() async throws -> [ArtisanProfile] {
         let snapshot = try await db.collection("users")
@@ -191,7 +190,7 @@ final class ArtisansNearYouViewModel: ObservableObject {
         return output
     }
 
-    // MARK: - Type Helpers
+    
 
     private func asDouble(_ value: Any?) -> Double? {
         if let value = value as? Double { return value }

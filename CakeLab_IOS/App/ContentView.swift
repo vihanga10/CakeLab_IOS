@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-// Controls which auth screen to show: onboarding for new users, biometric for returning users
 private enum AuthEntryMode {
     case onboarding
     case biometric
@@ -20,16 +19,16 @@ private struct AuthEntryView: View {
     var body: some View {
         switch mode {
         case .onboarding:
-            OnboardingView()   // Shown on first launch
+            OnboardingView()   
         case .biometric:
             NavigationStack {
-                BiometricAuthView()   // Shown for returning users after sign-out
+                BiometricAuthView()   
             }
         }
     }
 }
 
-// MARK: - Wrapper for navigation
+
 // Routes authenticated users to the correct tab view based on their role (customer or baker)
 struct ContentViewWrapper: View {
     let user: AppUser
@@ -38,49 +37,49 @@ struct ContentViewWrapper: View {
     var body: some View {
         Group {
             if user.role == .customer {
-                CustomerTabView(user: user, widgetRoute: $widgetRoute)   // Customer main tab UI
+                CustomerTabView(user: user, widgetRoute: $widgetRoute)   
             } else if user.role == .baker {
-                BakerTabView(user: user, widgetRoute: $widgetRoute)   // Baker main tab UI
+                BakerTabView(user: user, widgetRoute: $widgetRoute)   
             } else {
                 Text("Unknown role")
             }
         }
         .onOpenURL { url in
-            widgetRoute = WidgetDeepLinkRoute(url: url)   // Parse and store widget deep link on open
+            widgetRoute = WidgetDeepLinkRoute(url: url)   
         }
-        .id("\(user.id)-\(user.role.rawValue)")   // Re-creates view if user or role changes
+        .id("\(user.id)-\(user.role.rawValue)")   
         .task {
-            WidgetDataSyncManager.shared.refreshFromCurrentSession()   // Syncs widget data when app opens
+            WidgetDataSyncManager.shared.refreshFromCurrentSession()   
         }
     }
 }
 
 // Root view that manages the full app navigation lifecycle
 struct ContentView: View {
-    @State private var currentUser: AppUser?   // Holds the logged-in user;  when unauthenticated
-    @State private var showSplash = true   // Displays splash screen on first launch
-    @State private var authEntryMode: AuthEntryMode = .onboarding   // Default to onboarding for fresh installs
+    @State private var currentUser: AppUser?   
+    @State private var showSplash = true   
+    @State private var authEntryMode: AuthEntryMode = .onboarding   
 
     var body: some View {
         Group {
             if showSplash {
                 SplashView {
-                    showSplash = false   // Dismiss splash when animation completes
+                    showSplash = false   
                 }
             } else if let user = currentUser {
-                ContentViewWrapper(user: user)   // Navigate to main app for authenticated user
+                ContentViewWrapper(user: user)   
             } else {
-                AuthEntryView(mode: authEntryMode)   // Show auth screen when no user is logged in
+                AuthEntryView(mode: authEntryMode)   
             }
         }
-        // Called when user successfully logs in; stores user and switches to biometric auth for next session
+        
         .onReceive(NotificationCenter.default.publisher(for: .appUserDidAuthenticate)) { notification in
             guard let user = notification.object as? AppUser else { return }
             currentUser = user
             authEntryMode = .biometric
             showSplash = false
         }
-        // Called on sign-out; clears user and shows biometric login screen
+        
         .onReceive(NotificationCenter.default.publisher(for: .appUserDidSignOut)) { _ in
             currentUser = nil
             authEntryMode = .biometric

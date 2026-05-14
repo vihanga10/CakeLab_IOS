@@ -33,21 +33,21 @@ struct BakerHomeView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
-                        // MARK: Header
+                        
                         bakerHeader
                             .padding(.bottom, 16)
 
-                        // MARK: Location Banner
+                        
                         locationBanner
                             .padding(.horizontal, 20)
                             .padding(.bottom, 28)
 
-                        // MARK: Stats Cards
+                        
                         statsSection
                             .padding(.horizontal, 20)
                             .padding(.bottom, 28)
 
-                        // MARK: Matching Requests Preview
+                        
                         VStack(alignment: .leading, spacing: 14) {
                             sectionHeader("Matching Requests", count: newRequests) {
                                 withAnimation(.easeInOut(duration: 0.15)) {
@@ -392,7 +392,7 @@ struct BakerHomeView: View {
             } else if homeVM.activeOrdersList.isEmpty {
                 activeOrdersEmptyState
             } else {
-                // Horizontal scrolling circles — mirrors customer home screen
+                // Horizontal scrolling circles
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 16) {
                         ForEach(homeVM.activeOrdersList) { order in
@@ -452,7 +452,7 @@ struct BakerHomeView: View {
         .padding(.vertical, 22)
     }
 
-    // MARK: - Other Open Requests Preview (max 3, real data)
+    // MARK: - Other Open Requests Preview
     private var otherOpenRequestsPreview: some View {
         VStack(spacing: 12) {
             if matchingRequestsVM.isLoading {

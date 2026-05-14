@@ -1,8 +1,7 @@
 import Foundation
 import Combine
 
-// MARK: - OTPVerificationViewModel
-/// Handles OTP verification and resend logic via AuthService.
+
 @MainActor
 final class OTPVerificationViewModel: ObservableObject {
     @Published var isVerifying: Bool = false
@@ -11,8 +10,7 @@ final class OTPVerificationViewModel: ObservableObject {
 
     private let authService = AuthService()
 
-    /// Verifies the entered OTP for the given email.
-    /// Calls onSuccess when verification passes.
+    // Verifies the entered OTP for the given email.
     func verifyOTP(email: String, otpCode: String, onSuccess: @escaping () -> Void) {
         errorMessage = nil
         successMessage = nil

@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Brand Colours
+
 extension Color {
     static let cakeBrown = Color(red: 93 / 255, green: 55 / 255, blue: 20 / 255)   // #5D3714
     static let cakeGrey  = Color(red: 115 / 255, green: 115 / 255, blue: 115 / 255) // #737373
@@ -9,7 +9,7 @@ extension Color {
 
 // MARK: - Data Model
 struct OnboardingPage {
-    /// [(text, isBrown)] segments that compose the title.
+    
     let titleSegments: [(String, Bool)]
     let subtitle: String
     let imageName: String
@@ -25,7 +25,7 @@ struct OnboardingPage {
     }
 }
 
-// MARK: - Top-corners-only rounded rectangle (radius 40)
+
 private struct TopRoundedRectangle: Shape {
     let cornerRadius: CGFloat
 
@@ -64,14 +64,14 @@ struct OnboardingPageView: View {
         GeometryReader { geo in
             ZStack(alignment: .bottom) {
 
-                //  Full-screen photo 
+                 
                 Image(page.imageName)
                     .resizable()
                     .scaledToFill()
                     .frame(width: geo.size.width, height: geo.size.height)
                     .clipped()
 
-                //  Gradient fade: photo into card 
+                 
                 LinearGradient(
                     gradient: Gradient(colors: [.clear, Color.white.opacity(0.18), Color.white]),
                     startPoint: .top,
@@ -80,14 +80,14 @@ struct OnboardingPageView: View {
                 .frame(height: cardHeight + 80)
                 .frame(maxWidth: .infinity)
 
-                //  White card + safe-area filler 
+                 
                 VStack(spacing: 0) {
 
                     VStack(spacing: 0) {
 
                         Spacer().frame(height: 32)
 
-                        //  Progress bar (pill segments) 
+                        //  Progress bar  
                         HStack(spacing: 6) {
                             ForEach(0..<totalPages, id: \.self) { index in
                                 Capsule()
@@ -101,7 +101,7 @@ struct OnboardingPageView: View {
 
                         Spacer().frame(height: 48)
 
-                        //  Title 
+                        
                         page.titleText
                             .font(.urbanistBold(18))
                             .multilineTextAlignment(.leading)
@@ -113,7 +113,7 @@ struct OnboardingPageView: View {
 
                         Spacer().frame(height: 11)
 
-                        //  Subtitle 
+                        
                         Text(page.subtitle)
                             .font(.urbanistRegular(15))
                             .foregroundColor(.cakeGrey)
@@ -125,10 +125,10 @@ struct OnboardingPageView: View {
 
                         Spacer()
 
-                        //  Action row 
+                         
                         HStack(alignment: .center) {
 
-                            // Back button
+                            
                             Button(action: onPrev) {
                                 Image(systemName: "chevron.left")
                                     .font(.system(size: 20, weight: .bold))
@@ -139,7 +139,7 @@ struct OnboardingPageView: View {
 
                             Spacer()
 
-                            // Next button – chevron, final page shows small Done button
+                            
                             Button(action: onNext) {
                                 if currentPage == totalPages - 1 {
                                     Text("Done")
@@ -164,7 +164,7 @@ struct OnboardingPageView: View {
                     .background(Color.cakeSurface)
                     .clipShape(TopRoundedRectangle(cornerRadius: 40))
 
-                    // Extend white below home indicator
+                    
                     Color.white
                         .frame(height: geo.safeAreaInsets.bottom)
                 }

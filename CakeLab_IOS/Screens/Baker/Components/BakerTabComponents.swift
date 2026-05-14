@@ -1,8 +1,6 @@
 import SwiftUI
 
-// MARK: - BakerSubScreenTabBar
-/// Floating tab bar shown on pushed sub-screens. All tabs appear unselected
-/// so the baker can jump directly to any tab from any sub-screen.
+
 struct BakerSubScreenTabBar: View {
     let onSelectTab: (Int) -> Void
 
@@ -50,8 +48,6 @@ struct BakerSubScreenTabBar: View {
 }
 
 // MARK: - BakerSubScreenModifier
-/// Overlays the floating sub-screen tab bar on any baker sub-screen and tracks
-/// navigation depth via BakerNavState.
 struct BakerSubScreenModifier: ViewModifier {
     @Environment(\.dismiss) private var dismiss
 

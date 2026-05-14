@@ -2,8 +2,7 @@ import Foundation
 import Combine
 import FirebaseFirestore
 
-// MARK: - CustomerOrderStatusViewModel
-/// Listens to real-time order status updates from Firestore for the customer order status screen.
+// Listens to real-time order status updates from Firestore for the customer order status screen.
 @MainActor
 final class CustomerOrderStatusViewModel: ObservableObject {
     @Published var order: CakeOrder?
@@ -76,7 +75,6 @@ final class CustomerOrderStatusViewModel: ObservableObject {
 
     func timestamp(for statusKey: String) -> Date? { progressTimestamps[statusKey] }
 
-    // MARK: - Private Loaders
 
     private func loadRequestDetails(requestDocumentID: String) async {
         do {
@@ -128,7 +126,7 @@ final class CustomerOrderStatusViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Static Parsers
+    
 
     private static func parseDate(_ raw: Any?) -> Date? {
         if let ts = raw as? Timestamp { return ts.dateValue() }

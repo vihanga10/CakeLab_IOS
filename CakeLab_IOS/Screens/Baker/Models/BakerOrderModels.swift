@@ -1,7 +1,7 @@
 import SwiftUI
 
-// MARK: - BakerOrderFull
-/// Full order details used in the Baker Orders detail view, including progress tracking.
+// MARK: - Baker Order 
+
 struct BakerOrderFull: Identifiable {
     let id = UUID()
     let cakeName: String
@@ -36,8 +36,8 @@ struct BakerOrderFull: Identifiable {
     }
 }
 
-// MARK: - BakerOrderCustomerProfile
-/// Customer profile data displayed on the baker's active order card.
+// MARK: - Baker Order Customer Profile
+
 struct BakerOrderCustomerProfile {
     let name: String
     let address: String
