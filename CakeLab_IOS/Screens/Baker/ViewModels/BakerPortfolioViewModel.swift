@@ -10,7 +10,6 @@ final class BakerPortfolioViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var isSaving = false
     @Published var errorMessage = ""
-    @Published var successMessage = ""
 
     let user: AppUser
     private let db = Firestore.firestore()
@@ -51,7 +50,9 @@ final class BakerPortfolioViewModel: ObservableObject {
     }
 
     // Creates a new portfolio work document or updates an existing one.
-    func saveWork(from draft: PortfolioWorkDraft, editingWorkID: String?) async {
+    @discardableResult
+    func saveWork(from draft: PortfolioWorkDraft, editingWorkID: String?) async -> Bool {
+        errorMessage = ""
         let trimmedTitle = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedDescription = draft.description.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanedTraits = draft.traits.compactMap { trait -> PortfolioTrait? in
@@ -62,12 +63,12 @@ final class BakerPortfolioViewModel: ObservableObject {
 
         guard !trimmedTitle.isEmpty else {
             errorMessage = "Please enter a title for this work."
-            return
+            return false
         }
 
         guard !draft.imageBase64.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             errorMessage = "Please add a photo for this work."
-            return
+            return false
         }
 
         isSaving = true
@@ -94,14 +95,21 @@ final class BakerPortfolioViewModel: ObservableObject {
             }
 
             try await document.setData(payload, merge: true)
-            successMessage = editingWorkID == nil ? "Portfolio work added." : "Portfolio work updated."
             await loadPortfolio()
 
             if publishedWorkIDs.contains(workID) {
                 try await persistPublishedSelection()
             }
+
+            await NotificationManager.scheduleLocalNotification(
+                title: "Portfolio",
+                body: "Portfolio work added",
+                identifier: "portfolio-work-added-\(UUID().uuidString)"
+            )
+            return true
         } catch {
             errorMessage = "Failed to save portfolio work: \(error.localizedDescription)"
+            return false
         }
     }
 
@@ -120,7 +128,6 @@ final class BakerPortfolioViewModel: ObservableObject {
             publishedWorkIDs.remove(work.id)
             works.removeAll { $0.id == work.id }
             try await persistPublishedSelection()
-            successMessage = "Portfolio work deleted."
         } catch {
             errorMessage = "Failed to delete portfolio work: \(error.localizedDescription)"
         }
@@ -128,6 +135,7 @@ final class BakerPortfolioViewModel: ObservableObject {
 
     /// Adds or removes `work` from the published set.
     func togglePublished(for work: PortfolioWork) async {
+        errorMessage = ""
         let isCurrentlyPublished = publishedWorkIDs.contains(work.id)
 
         if isCurrentlyPublished {
@@ -142,7 +150,11 @@ final class BakerPortfolioViewModel: ObservableObject {
 
         do {
             try await persistPublishedSelection()
-            successMessage = isCurrentlyPublished ? "Removed from profile portfolio." : "Published to profile portfolio."
+            await NotificationManager.scheduleLocalNotification(
+                title: "Portfolio",
+                body: isCurrentlyPublished ? "Removed from Profile Portfolio" : "Published to Profile Portfolio",
+                identifier: "portfolio-publish-\(UUID().uuidString)"
+            )
         } catch {
             if isCurrentlyPublished {
                 publishedWorkIDs.insert(work.id)
@@ -161,13 +173,11 @@ final class BakerPortfolioViewModel: ObservableObject {
     private func persistPublishedSelection() async throws {
         let orderedPublishedWorks = publishedWorks
         let publishedIDs = orderedPublishedWorks.map(\.id)
-        let publishedSummaries = orderedPublishedWorks.map(\.publishedSummary)
-        let legacyImages = orderedPublishedWorks.map(\.imageBase64).filter { !$0.isEmpty }
 
         try await db.collection("artisans").document(user.id).setData([
             "portfolioPublishedWorkIDs": publishedIDs,
-            "portfolioPublishedWorks": publishedSummaries,
-            "portfolioImages": legacyImages,
+            "portfolioPublishedWorks": FieldValue.delete(),
+            "portfolioImages": FieldValue.delete(),
             "portfolioUpdatedAt": Timestamp(date: Date())
         ], merge: true)
 

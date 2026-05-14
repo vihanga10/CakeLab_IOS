@@ -9,7 +9,7 @@ struct BakerOrdersView: View {
 
     enum OrderTab: String, CaseIterable {
         case active = "Active Orders"
-        case completed = "Completed"
+        case completed = "Completed Orders"
     }
 
     init(user: AppUser) {
@@ -22,7 +22,6 @@ struct BakerOrdersView: View {
             ZStack {
                 Color.cakeBackground.ignoresSafeArea()
                 VStack(spacing: 0) {
-                    
                     HStack {
                         Spacer()
                         Text("Order Details")
@@ -32,41 +31,41 @@ struct BakerOrdersView: View {
                     }
                     .padding(.horizontal, 20)
                     .frame(height: 56)
-                    .background(Color.cakeSurface)
+                    .background(Color.cakeBackground)
 
                     // MARK: Segmented Tabs
                     HStack(spacing: 0) {
                         ForEach(OrderTab.allCases, id: \.self) { tab in
-                            Button {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    selectedTab = tab
-                                }
-                            } label: {
-                                VStack(spacing: 6) {
-                                    Text(tab.rawValue)
-                                        .font(selectedTab == tab ? .urbanistBold(14) : .urbanistMedium(14))
-                                        .foregroundColor(selectedTab == tab ? .cakeBrown : .cakeGrey)
-                                    Rectangle()
-                                        .fill(selectedTab == tab ? Color.cakeBrown : Color.clear)
-                                        .frame(height: 2.5)
-                                        .cornerRadius(2)
-                                }
-                            }
-                            .frame(maxWidth: .infinity)
+                            tabButton(tab)
                         }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 8)
-                    .background(Color.cakeSurface)
-                    .overlay(
-                        Rectangle().fill(Color(red: 0.88, green: 0.88, blue: 0.88)).frame(height: 1),
-                        alignment: .bottom
-                    )
+                    .padding(4)
+                    .background(Color(red: 0.92, green: 0.92, blue: 0.92))
+                    .clipShape(Capsule())
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 16)
 
                     if selectedTab == .active {
-                        activeOrdersList
+                        if vm.isLoadingActive {
+                            ProgressView("Loading active orders...")
+                                .tint(.cakeBrown)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else if vm.activeOrders.isEmpty {
+                            emptyState(message: "No active orders")
+                        } else {
+                            activeOrdersList
+                        }
                     } else {
-                        completedOrdersList
+                        if vm.isLoading {
+                            ProgressView("Loading completed orders...")
+                                .tint(.cakeBrown)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else if vm.completedOrders.isEmpty {
+                            emptyState(message: "No completed orders")
+                        } else {
+                            completedOrdersList
+                        }
                     }
                 }
             }
@@ -84,36 +83,50 @@ struct BakerOrdersView: View {
         }
     }
 
+    private func tabButton(_ tab: OrderTab) -> some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedTab = tab
+            }
+        } label: {
+            Text(tab.rawValue)
+                .font(selectedTab == tab ? .urbanistSemiBold(13) : .urbanistRegular(13))
+                .foregroundColor(selectedTab == tab ? .white : Color(red: 0.4, green: 0.4, blue: 0.4))
+                .frame(maxWidth: .infinity)
+                .frame(height: 36)
+                .background(selectedTab == tab ? Color.cakeBrown : Color.clear)
+                .clipShape(Capsule())
+        }
+    }
+
+    private func emptyState(message: String) -> some View {
+        VStack {
+            Image(systemName: "tray")
+                .font(.system(size: 24))
+                .foregroundColor(.cakeGrey)
+                .padding(.bottom, 8)
+
+            Text(message)
+                .font(.urbanistRegular(15))
+                .foregroundColor(.cakeGrey)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     // MARK: - Active Orders
     private var activeOrdersList: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 16) {
-                if vm.isLoadingActive {
-                    ProgressView("Loading active orders...")
-                        .tint(.cakeBrown)
-                        .padding(.top, 24)
-                } else if vm.activeOrders.isEmpty {
-                    VStack(spacing: 10) {
-                        Image(systemName: "tray")
-                            .font(.system(size: 34))
-                            .foregroundColor(.cakeGrey.opacity(0.6))
-                        Text("No active orders yet")
-                            .font(.urbanistRegular(14))
-                            .foregroundColor(.cakeGrey)
+                ForEach(vm.activeOrders) { order in
+                    NavigationLink {
+                        BakerOrderStatusView(orderID: order.id)
+                    } label: {
+                        BakerActiveOrderCardFromCakeOrder(
+                            order: order,
+                            customer: vm.activeOrderCustomers[order.id] ?? .fallback(for: order)
+                        )
                     }
-                    .padding(.top, 40)
-                } else {
-                    ForEach(vm.activeOrders) { order in
-                        NavigationLink {
-                            BakerOrderStatusView(orderID: order.id)
-                        } label: {
-                            BakerActiveOrderCardFromCakeOrder(
-                                order: order,
-                                customer: vm.activeOrderCustomers[order.id] ?? .fallback(for: order)
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, 16)
@@ -152,35 +165,9 @@ struct BakerOrdersView: View {
                 .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: 2)
                 .padding(.horizontal, 20)
 
-                if vm.isLoading {
-                    VStack(spacing: 16) {
-                        ProgressView()
-                            .tint(.cakeBrown)
-                        Text("Loading completed orders...")
-                            .font(.urbanistRegular(14))
-                            .foregroundColor(.cakeGrey)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                    .padding(.vertical, 60)
-                } else if vm.completedOrders.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "checkmark.circle")
-                            .font(.system(size: 48))
-                            .foregroundColor(.cakeBrown.opacity(0.3))
-                        Text("No Completed Orders Yet")
-                            .font(.urbanistBold(16))
-                            .foregroundColor(.cakePrimaryText)
-                        Text("Complete orders to see them here")
-                            .font(.urbanistRegular(13))
-                            .foregroundColor(.cakeGrey)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 60)
-                } else {
-                    ForEach(vm.completedOrders) { order in
-                        BakerCompletedOrderCardFromCakeOrder(order: order)
-                            .padding(.horizontal, 20)
-                    }
+                ForEach(vm.completedOrders) { order in
+                    BakerCompletedOrderCardFromCakeOrder(order: order)
+                        .padding(.horizontal, 20)
                 }
             }
             .padding(.top, 16)
@@ -348,5 +335,4 @@ struct BakerOrderDetailView: View {
         }
     }
 }
-
 

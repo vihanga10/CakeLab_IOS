@@ -66,9 +66,9 @@ struct SignUpView: View {
             .onChange(of: vm.navigateToFaceID) { _, newVal in
                 if newVal {
                     vm.navigateToFaceID = false
+                    showSignIn = true
                     Task {
                         await scheduleAccountCreatedNotification()
-                        dismiss()
                     }
                 }
             }

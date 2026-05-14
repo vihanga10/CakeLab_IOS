@@ -34,6 +34,7 @@ final class BakerProfileViewModel: ObservableObject {
         do {
             let artisanSnapshot = try await loadArtisanDocument(userID: user.id)
             let artisanData = artisanSnapshot.data() ?? [:]
+            let portfolioWorks = try await fetchPublishedPortfolioWorks(userID: user.id, artisanData: artisanData)
 
             let statuses = ["completed", "delivered", "done"]
             var completedCount = 0
@@ -63,7 +64,7 @@ final class BakerProfileViewModel: ObservableObject {
                 profileImageBase64: artisanData["profileImageBase64"] as? String ?? "",
                 coverImageURL: artisanData["coverImageURL"] as? String ?? "",
                 coverImageBase64: artisanData["coverImageBase64"] as? String ?? "",
-                portfolioWorks: resolvePortfolioWorks(artisanData: artisanData)
+                portfolioWorks: portfolioWorks
             )
         } catch {
             print("ERROR BakerProfileViewModel.loadProfileData: \(error.localizedDescription)")
@@ -183,6 +184,42 @@ final class BakerProfileViewModel: ObservableObject {
         .sorted { $0.createdAt < $1.createdAt }
     }
 
+    private func fetchPublishedPortfolioWorks(userID: String, artisanData: [String: Any]) async throws -> [PortfolioPreviewWork] {
+        let publishedIDs = artisanData["portfolioPublishedWorkIDs"] as? [String] ?? []
+
+        if !publishedIDs.isEmpty {
+            var worksByID: [String: PortfolioPreviewWork] = [:]
+            for workID in publishedIDs.prefix(6) {
+                let document = try await db.collection("artisans")
+                    .document(userID)
+                    .collection("portfolioWorks")
+                    .document(workID)
+                    .getDocument()
+
+                if let work = PortfolioPreviewWork(document: document) {
+                    worksByID[workID] = work
+                }
+            }
+
+            let orderedWorks = publishedIDs.compactMap { worksByID[$0] }
+            if !orderedWorks.isEmpty { return Array(orderedWorks.prefix(6)) }
+        }
+
+        let snapshot = try await db.collection("artisans")
+            .document(userID)
+            .collection("portfolioWorks")
+            .whereField("isPublished", isEqualTo: true)
+            .limit(to: 6)
+            .getDocuments()
+
+        let subcollectionWorks = snapshot.documents.compactMap(PortfolioPreviewWork.init(document:))
+        if !subcollectionWorks.isEmpty {
+            return subcollectionWorks.sorted { $0.updatedAt > $1.updatedAt }
+        }
+
+        return resolveLegacyPortfolioWorks(artisanData: artisanData)
+    }
+
     // MARK: - Data Resolvers
 
     private func resolveShopName(artisanData: [String: Any], user: AppUser) -> String {
@@ -220,7 +257,7 @@ final class BakerProfileViewModel: ObservableObject {
         return user.avatarURL ?? ""
     }
 
-    private func resolvePortfolioWorks(artisanData: [String: Any]) -> [PortfolioPreviewWork] {
+    private func resolveLegacyPortfolioWorks(artisanData: [String: Any]) -> [PortfolioPreviewWork] {
         let publishedWorks = artisanData["portfolioPublishedWorks"] as? [[String: Any]] ?? []
         let resolved = publishedWorks.compactMap(PortfolioPreviewWork.init(dictionary:))
         if !resolved.isEmpty { return Array(resolved.prefix(6)) }

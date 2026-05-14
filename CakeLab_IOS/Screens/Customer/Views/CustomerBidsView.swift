@@ -27,11 +27,21 @@ struct CustomerBidsView: View {
                     ProgressView("Loading your request bids...")
                         .tint(.cakeBrown)
                 } else if viewModel.requests.isEmpty {
-                    ContentUnavailableView(
-                        "No Requests Yet",
-                        systemImage: "tray",
-                        description: Text("Publish a cake request to start receiving bids from bakers.")
-                    )
+                    VStack(spacing: 8) {
+                        Image(systemName: "tray")
+                            .font(.system(size: 24, weight: .regular))
+                            .foregroundColor(.secondary)
+
+                        Text("No Requests Yet")
+                            .font(.urbanistSemiBold(15))
+                            .foregroundColor(.primary)
+
+                        Text("Publish a cake request to start receiving bids from bakers.")
+                            .font(.urbanistRegular(12))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.horizontal, 32)
                 } else {
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 16) {

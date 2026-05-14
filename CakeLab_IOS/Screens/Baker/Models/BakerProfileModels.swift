@@ -1,4 +1,5 @@
 import Foundation
+import FirebaseFirestore
 
 // MARK: - Baker Profile Data
 
@@ -46,13 +47,15 @@ struct PortfolioPreviewWork: Identifiable {
     let description: String
     let imageReference: String
     let traits: [PortfolioTrait]
+    let updatedAt: Date
 
-    init(id: String, title: String, description: String, imageReference: String, traits: [PortfolioTrait]) {
+    init(id: String, title: String, description: String, imageReference: String, traits: [PortfolioTrait], updatedAt: Date = Date()) {
         self.id = id
         self.title = title
         self.description = description
         self.imageReference = imageReference
         self.traits = traits
+        self.updatedAt = updatedAt
     }
 
     init?(dictionary: [String: Any]) {
@@ -61,6 +64,7 @@ struct PortfolioPreviewWork: Identifiable {
         let description = (dictionary["description"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let imageReference = (dictionary["imageBase64"] as? String ?? dictionary["imageURL"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let traitsData = dictionary["traits"] as? [[String: Any]] ?? []
+        let updatedAt = (dictionary["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
         guard !imageReference.isEmpty else { return nil }
 
         self.id = id
@@ -68,6 +72,25 @@ struct PortfolioPreviewWork: Identifiable {
         self.description = description
         self.imageReference = imageReference
         self.traits = traitsData.compactMap(PortfolioTrait.init(dictionary:))
+        self.updatedAt = updatedAt
+    }
+
+    init?(document: DocumentSnapshot) {
+        guard let data = document.data() else { return nil }
+        let title = (data["title"] as? String ?? "Portfolio Work").trimmingCharacters(in: .whitespacesAndNewlines)
+        let imageReference = (data["imageBase64"] as? String ?? data["imageURL"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !imageReference.isEmpty else { return nil }
+
+        let description = (data["description"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let traitsData = data["traits"] as? [[String: Any]] ?? []
+        let updatedAt = (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
+
+        self.id = document.documentID
+        self.title = title.isEmpty ? "Portfolio Work" : title
+        self.description = description
+        self.imageReference = imageReference
+        self.traits = traitsData.compactMap(PortfolioTrait.init(dictionary:))
+        self.updatedAt = updatedAt
     }
 }
 

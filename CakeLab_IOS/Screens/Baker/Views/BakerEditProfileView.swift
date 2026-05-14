@@ -14,6 +14,7 @@ struct BakerEditProfileView: View {
     @State private var showDistrictPicker = false
 
     @Environment(\.dismiss) private var dismiss
+    private let inactiveStatusColor = Color(hex: "D22B2B")
 
     init(user: AppUser) {
         self.user = user
@@ -76,11 +77,6 @@ struct BakerEditProfileView: View {
             Task {
                 await viewModel.updateProfileImage(from: item)
             }
-        }
-        .alert("Success", isPresented: $viewModel.showSuccessMessage) {
-            Button("OK") { dismiss() }
-        } message: {
-            Text("Profile updated successfully!")
         }
         .alert("Error", isPresented: .constant(!viewModel.errorMessage.isEmpty)) {
             Button("OK") { viewModel.errorMessage = "" }
@@ -190,13 +186,17 @@ struct BakerEditProfileView: View {
                 
 
                 PhotosPicker(selection: $selectedProfilePickerItem, matching: .images, photoLibrary: .shared()) {
-                    Text("Change Photo")
-                        .font(.urbanistMedium(13))
-                        .foregroundColor(.cakeBrown)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 5)
-                        .background(Color.cakeBrown.opacity(0.1))
-                        .clipShape(Capsule())
+                    HStack(spacing: 6) {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 11))
+                        Text("Change Photo")
+                            .font(.urbanistMedium(11))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Color.cakeBrown)
+                    .clipShape(Capsule())
                 }
             }
 
@@ -239,14 +239,14 @@ struct BakerEditProfileView: View {
                 Button(action: { viewModel.isActive = false }) {
                     Text("Inactive")
                         .font(.urbanistMedium(13))
-                        .foregroundColor(!viewModel.isActive ? .white : .cakeBrown)
+                        .foregroundColor(!viewModel.isActive ? .white : inactiveStatusColor)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
-                        .background(!viewModel.isActive ? Color.red.opacity(0.6) : Color.clear)
+                        .background(!viewModel.isActive ? inactiveStatusColor : Color.clear)
                         .clipShape(Capsule())
                         .overlay(
                             Capsule()
-                                .stroke(Color.red.opacity(0.6), lineWidth: !viewModel.isActive ? 0 : 1)
+                                .stroke(inactiveStatusColor, lineWidth: !viewModel.isActive ? 0 : 1)
                         )
                 }
             }

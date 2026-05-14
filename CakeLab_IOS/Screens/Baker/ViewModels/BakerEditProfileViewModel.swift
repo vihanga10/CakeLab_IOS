@@ -25,7 +25,6 @@ final class BakerEditProfileViewModel: ObservableObject {
     @Published var coverImageBase64 = ""
     @Published var profileImageBase64 = ""
     @Published var isLoading = false
-    @Published var showSuccessMessage = false
     @Published var errorMessage = ""
 
     init(user: AppUser) {
@@ -134,7 +133,11 @@ final class BakerEditProfileViewModel: ObservableObject {
             ], merge: true)
             print("Profile updated successfully!")
             NotificationCenter.default.post(name: Notification.Name("bakerProfileDidChange"), object: nil)
-            showSuccessMessage = true
+            await NotificationManager.scheduleLocalNotification(
+                title: "Profile Updated",
+                body: "Profile updated successfully!",
+                identifier: "profile-updated-\(UUID().uuidString)"
+            )
         } catch {
             errorMessage = "Failed to save profile: \(error.localizedDescription)"
             print("Error saving profile: \(error.localizedDescription)")

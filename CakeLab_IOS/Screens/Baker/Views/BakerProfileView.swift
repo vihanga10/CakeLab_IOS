@@ -155,7 +155,7 @@ struct BakerProfileView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(vm.profileData.shopName)
-                    .font(.urbanistSemiBold(30))
+                    .font(.urbanistBold(22))
                     .foregroundColor(.cakePrimaryText)
 
                 HStack(spacing: 6) {

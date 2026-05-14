@@ -53,7 +53,7 @@ struct CustomerOrdersView: View {
                         }
                     } else {
                         if viewModel.completedOrders.isEmpty {
-                            emptyState(message: "No completed orders yet")
+                            emptyState(message: "No completed orders")
                         } else {
                             ScrollView(showsIndicators: false) {
                                 VStack(spacing: 16) {
@@ -113,11 +113,11 @@ struct CustomerOrdersView: View {
     private func emptyState(message: String) -> some View {
         VStack {
             Image(systemName: "tray")
-                .font(.system(size: 40))
+                .font(.system(size: 24))
                 .foregroundColor(.cakeGrey)
                 .padding(.bottom, 8)
             Text(message)
-                .font(.urbanistRegular(14))
+                .font(.urbanistRegular(15))
                 .foregroundColor(.cakeGrey)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

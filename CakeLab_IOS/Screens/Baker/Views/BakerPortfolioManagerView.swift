@@ -50,8 +50,8 @@ struct BakerPortfolioManagerView: View {
                 isSaving: viewModel.isSaving,
                 onSave: {
                     Task {
-                        await viewModel.saveWork(from: draft, editingWorkID: editingWorkID)
-                        if viewModel.errorMessage.isEmpty {
+                        let didSave = await viewModel.saveWork(from: draft, editingWorkID: editingWorkID)
+                        if didSave {
                             isPresentingEditor = false
                             draft = .empty
                             editingWorkID = nil
@@ -83,13 +83,6 @@ struct BakerPortfolioManagerView: View {
         } message: {
             Text(viewModel.errorMessage)
         }
-        .alert("Success", isPresented: successAlertBinding) {
-            Button("OK") {
-                viewModel.successMessage = ""
-            }
-        } message: {
-            Text(viewModel.successMessage)
-        }
     }
 
     private var deleteAlertBinding: Binding<Bool> {
@@ -106,15 +99,6 @@ struct BakerPortfolioManagerView: View {
             get: { !viewModel.errorMessage.isEmpty },
             set: { isPresented in
                 if !isPresented { viewModel.errorMessage = "" }
-            }
-        )
-    }
-
-    private var successAlertBinding: Binding<Bool> {
-        Binding(
-            get: { !viewModel.successMessage.isEmpty },
-            set: { isPresented in
-                if !isPresented { viewModel.successMessage = "" }
             }
         )
     }
@@ -206,7 +190,7 @@ struct BakerPortfolioManagerView: View {
     private var publishedPreviewSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Published In Profile")
+                Text("Published in Profile")
                     .font(.urbanistBold(16))
                     .foregroundColor(Color(hex: "5D3714"))
                 Spacer()
@@ -267,7 +251,7 @@ struct BakerPortfolioManagerView: View {
                 )
             } else {
                 VStack(spacing: 14) {
-                    ForEach(viewModel.works) { work in
+                    ForEach(Array(viewModel.works.enumerated()), id: \.element.id) { index, work in
                         PortfolioWorkCard(
                             work: work,
                             isPublished: viewModel.publishedWorkIDs.contains(work.id),
@@ -281,6 +265,8 @@ struct BakerPortfolioManagerView: View {
                                 workPendingDelete = work
                             }
                         )
+                        .id(work.id)
+                        .zIndex(Double(viewModel.works.count - index))
                     }
                 }
             }
@@ -370,7 +356,7 @@ struct PortfolioWorkCard: View {
             if showsActions {
                 HStack(spacing: 10) {
                     Button(action: onTogglePublished) {
-                        Text(isPublished ? "Remove From Profile" : "Publish To Profile")
+                        Text(isPublished ? "Remove From Profile" : "Publish to Profile")
                             .font(.urbanistBold(13))
                             .foregroundColor(isPublished ? .white : .cakeBrown)
                             .frame(maxWidth: .infinity)
@@ -378,6 +364,7 @@ struct PortfolioWorkCard: View {
                             .background(isPublished ? Color.cakeBrown : Color.cakeBrown.opacity(0.12))
                             .clipShape(Capsule())
                     }
+                    .buttonStyle(.plain)
 
                     Button(action: onEdit) {
                         Image(systemName: "square.and.pencil")
@@ -387,6 +374,7 @@ struct PortfolioWorkCard: View {
                             .background(Color.cakeInsetSurface)
                             .clipShape(Circle())
                     }
+                    .buttonStyle(.plain)
 
                     Button(action: onDelete) {
                         Image(systemName: "trash")
@@ -396,12 +384,15 @@ struct PortfolioWorkCard: View {
                             .background(Color.red.opacity(0.08))
                             .clipShape(Circle())
                     }
+                    .buttonStyle(.plain)
                 }
+                .contentShape(Rectangle())
             }
         }
         .padding(14)
         .background(Color.cakeSurface)
         .clipShape(RoundedRectangle(cornerRadius: 18))
+        .contentShape(RoundedRectangle(cornerRadius: 18))
         .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
     }
 }
@@ -692,4 +683,3 @@ struct PortfolioTraitBar: View {
         }
     }
 }
-
