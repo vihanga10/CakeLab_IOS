@@ -1,53 +1,7 @@
 import PDFKit
-import SwiftUI
 import UIKit
-import UniformTypeIdentifiers
-import CoreTransferable
 
-struct PDFReceiptData: Identifiable {
-    let id: String
-    let title: String
-    let receiptNumber: String
-    let cakeName: String
-    let payerLabel: String
-    let payerName: String
-    let receiverLabel: String
-    let receiverName: String
-    let paymentMethod: String
-    let status: String
-    let paidAt: Date
-    let subtotalLabel: String
-    let subtotal: Double
-    let serviceFee: Double
-    let totalLabel: String
-    let total: Double
-
-    var fileName: String {
-        let raw = "\(cakeName)-\(receiptNumber)"
-        let allowed = CharacterSet.alphanumerics.union(.whitespaces).union(CharacterSet(charactersIn: "-_"))
-        let sanitized = raw.unicodeScalars
-            .map { allowed.contains($0) ? Character($0) : "-" }
-        let collapsed = String(sanitized)
-            .replacingOccurrences(of: "  ", with: " ")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: " ", with: "_")
-        return (collapsed.isEmpty ? "CakeLab_Receipt" : collapsed) + ".pdf"
-    }
-}
-
-struct PDFReceiptTransferable: Transferable {
-    let receipt: PDFReceiptData
-
-    static var transferRepresentation: some TransferRepresentation {
-        FileRepresentation(exportedContentType: .pdf) { item in
-            let url = FileManager.default.temporaryDirectory
-                .appendingPathComponent(item.receipt.fileName)
-            try PDFReceiptRenderer.makePDF(from: item.receipt).write(to: url, options: .atomic)
-            return SentTransferredFile(url)
-        }
-    }
-}
-
+// MARK: - PDF Receipt Renderer
 enum PDFReceiptRenderer {
     static func makePDF(from receipt: PDFReceiptData) -> Data {
         let pageRect = CGRect(x: 0, y: 0, width: 595, height: 842)
@@ -172,51 +126,5 @@ enum PDFReceiptRenderer {
 
     private static func currency(_ value: Double) -> String {
         "LKR \(Int(value).formatted())"
-    }
-}
-
-struct PDFReceiptPreviewView: View {
-    let receipt: PDFReceiptData
-    @Environment(\.dismiss) private var dismiss
-
-    private var pdfData: Data {
-        PDFReceiptRenderer.makePDF(from: receipt)
-    }
-
-    var body: some View {
-        NavigationStack {
-            PDFKitView(data: pdfData)
-                .navigationTitle("Payment Receipt")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Done") { dismiss() }
-                            .foregroundColor(.cakeBrown)
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        ShareLink(
-                            item: PDFReceiptTransferable(receipt: receipt),
-                            preview: SharePreview(receipt.fileName)
-                        )
-                            .foregroundColor(.cakeBrown)
-                    }
-                }
-        }
-    }
-}
-
-private struct PDFKitView: UIViewRepresentable {
-    let data: Data
-
-    func makeUIView(context: Context) -> PDFView {
-        let view = PDFView()
-        view.autoScales = true
-        view.displayMode = .singlePageContinuous
-        view.backgroundColor = .white
-        return view
-    }
-
-    func updateUIView(_ uiView: PDFView, context: Context) {
-        uiView.document = PDFDocument(data: data)
     }
 }

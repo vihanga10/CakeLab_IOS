@@ -452,10 +452,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleURLTypes = (
-					"{CFBundleURLName=com.vihanga.CakeLab-IOS;CFBundleURLSchemes=(cakelab);}",
-					"{CFBundleURLName=com.googleusercontent.apps.87076472407-us364g1b5des2qmp0jqug00m93peoiq2;CFBundleURLSchemes=(com.googleusercontent.apps.87076472407-us364g1b5des2qmp0jqug00m93peoiq2);}",
-				);
+				INFOPLIST_KEY_CFBundleURLTypes = "{CFBundleURLName=com.vihanga.CakeLab-IOS;CFBundleURLSchemes=(cakelab);} {CFBundleURLName=com.googleusercontent.apps.87076472407-us364g1b5des2qmp0jqug00m93peoiq2;CFBundleURLSchemes=(com.googleusercontent.apps.87076472407-us364g1b5des2qmp0jqug00m93peoiq2);}";
 				INFOPLIST_KEY_GIDClientID = "87076472407-us364g1b5des2qmp0jqug00m93peoiq2.apps.googleusercontent.com";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "CakeLab needs calendar access to add and update delivery reminders for your orders.";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "CakeLab needs calendar access to add delivery reminders for your orders.";
@@ -496,10 +493,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleURLTypes = (
-					"{CFBundleURLName=com.vihanga.CakeLab-IOS;CFBundleURLSchemes=(cakelab);}",
-					"{CFBundleURLName=com.googleusercontent.apps.87076472407-us364g1b5des2qmp0jqug00m93peoiq2;CFBundleURLSchemes=(com.googleusercontent.apps.87076472407-us364g1b5des2qmp0jqug00m93peoiq2);}",
-				);
+				INFOPLIST_KEY_CFBundleURLTypes = "{CFBundleURLName=com.vihanga.CakeLab-IOS;CFBundleURLSchemes=(cakelab);} {CFBundleURLName=com.googleusercontent.apps.87076472407-us364g1b5des2qmp0jqug00m93peoiq2;CFBundleURLSchemes=(com.googleusercontent.apps.87076472407-us364g1b5des2qmp0jqug00m93peoiq2);}";
 				INFOPLIST_KEY_GIDClientID = "87076472407-us364g1b5des2qmp0jqug00m93peoiq2.apps.googleusercontent.com";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "CakeLab needs calendar access to add and update delivery reminders for your orders.";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "CakeLab needs calendar access to add delivery reminders for your orders.";
