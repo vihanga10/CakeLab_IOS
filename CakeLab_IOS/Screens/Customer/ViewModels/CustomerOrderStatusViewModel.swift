@@ -50,7 +50,11 @@ final class CustomerOrderStatusViewModel: ObservableObject {
             self.isLoading = false
             self.bakerProfile = OrderStatusBakerProfile(
                 name: order.artisanName, ratingText: order.artisanRating, reviewCount: 0,
-                address: order.artisanAddress, city: "", profileImageBase64: "", imageURL: ""
+                address: order.artisanAddress,
+                city: "",
+                phone: self.firstString(data["artisanPhone"], data["bakerPhone"], data["phone"], data["phoneNumber"]),
+                profileImageBase64: "",
+                imageURL: ""
             )
 
             let directCategory = Self.parseCategory(from: data)
@@ -111,6 +115,20 @@ final class CustomerOrderStatusViewModel: ObservableObject {
             ratingText: ratingText, reviewCount: reviewCount,
             address: firstString(primaryData["address"], primaryData["location"], fallbackData["address"], orderData["artisanAddress"]),
             city: SriLankaDistricts.canonical(rawCity) ?? rawCity,
+            phone: firstString(
+                primaryData["phone"],
+                primaryData["phoneNumber"],
+                primaryData["contactNumber"],
+                primaryData["mobile"],
+                fallbackData["phone"],
+                fallbackData["phoneNumber"],
+                fallbackData["contactNumber"],
+                fallbackData["mobile"],
+                orderData["artisanPhone"],
+                orderData["bakerPhone"],
+                orderData["phone"],
+                orderData["phoneNumber"]
+            ),
             profileImageBase64: firstString(primaryData["profileImageBase64"], fallbackData["profileImageBase64"]),
             imageURL: firstString(primaryData["imageURL"], primaryData["avatarURL"], fallbackData["imageURL"], fallbackData["avatarURL"])
         )

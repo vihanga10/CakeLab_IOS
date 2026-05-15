@@ -102,6 +102,7 @@ struct CustomerOrderStatusView: View {
                                 reviewCount: bakerProfile.reviewCount,
                                 address: resolvedBakerAddress(liveOrder, profile: bakerProfile),
                                 city: bakerProfile.city,
+                                phone: bakerProfile.phone,
                                 profileImageBase64: bakerProfile.profileImageBase64,
                                 imageURL: bakerProfile.imageURL,
                                 artisanId: liveOrder?.artisanId ?? "",
@@ -398,6 +399,7 @@ struct CustomerOrderStatusView: View {
         reviewCount: Int,
         address: String,
         city: String,
+        phone: String,
         profileImageBase64: String,
         imageURL: String,
         artisanId: String,
@@ -438,6 +440,17 @@ struct CustomerOrderStatusView: View {
                             .font(.urbanistRegular(12))
                             .foregroundColor(.cakeGrey)
                             .lineLimit(2)
+                    }
+
+                    HStack(alignment: .top, spacing: 4) {
+                        Image(systemName: "phone.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.cakeGrey)
+                            .padding(.top, 3)
+                        Text(resolvedBakerPhone(phone))
+                            .font(.urbanistRegular(12))
+                            .foregroundColor(.cakeGrey)
+                            .lineLimit(1)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -631,6 +644,11 @@ struct CustomerOrderStatusView: View {
     private func resolvedBakerLocation(address: String, city: String) -> String {
         let display = SriLankaDistricts.displayLocation(address: address, city: city)
         return display.isEmpty ? "Address not provided" : display
+    }
+
+    private func resolvedBakerPhone(_ phone: String) -> String {
+        let trimmed = phone.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Phone not provided" : trimmed
     }
 
     private func reviewSummaryText(rating: String, reviewCount: Int) -> String {

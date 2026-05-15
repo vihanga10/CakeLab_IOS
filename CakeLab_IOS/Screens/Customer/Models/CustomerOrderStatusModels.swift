@@ -8,11 +8,12 @@ struct OrderStatusBakerProfile {
     let reviewCount: Int
     let address: String
     let city: String
+    let phone: String
     let profileImageBase64: String
     let imageURL: String
 
     static let empty = OrderStatusBakerProfile(
         name: "", ratingText: "", reviewCount: 0,
-        address: "", city: "", profileImageBase64: "", imageURL: ""
+        address: "", city: "", phone: "", profileImageBase64: "", imageURL: ""
     )
 }

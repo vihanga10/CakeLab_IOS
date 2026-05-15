@@ -444,13 +444,13 @@ private func analyticsEmptyState(message: String) -> some View {
 }
 
 private let pastelChartPalette: [Color] = [
-    Color(red: 0.70, green: 0.48, blue: 0.43),
-    Color(red: 0.76, green: 0.56, blue: 0.49),
-    Color(red: 0.83, green: 0.64, blue: 0.55),
-    Color(red: 0.90, green: 0.72, blue: 0.62),
-    Color(red: 0.88, green: 0.78, blue: 0.68),
-    Color(red: 0.78, green: 0.70, blue: 0.62),
-    Color(red: 0.93, green: 0.82, blue: 0.75)
+    Color(hex: "7D6148"),
+    Color(hex: "A0826B"),
+    Color(hex: "C2A18E"),
+    Color(hex: "D9B8A3"),
+    Color(hex: "C8C4C1"),
+    Color(hex: "B49B87"),
+    Color(hex: "E8D6C8")
 ]
 
 private let performanceDailyChartColor = Color(hex: "7D6148")

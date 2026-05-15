@@ -381,6 +381,8 @@ struct OrderProgressTracker: View {
     let currentStep: Int
     let labels: [String]
     private let totalSteps = 5
+    private let circleSize: CGFloat = 30
+    private let labelWidth: CGFloat = 64
 
     var body: some View {
         VStack(spacing: 6) {
@@ -390,39 +392,66 @@ struct OrderProgressTracker: View {
                     if step < totalSteps { connectorLine(step: step) }
                 }
             }
-            HStack(spacing: 0) {
-                ForEach(0..<totalSteps, id: \.self) { idx in
-                    Text(labels[idx])
-                        .font(.urbanistRegular(9))
-                        .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.4))
-                        .multilineTextAlignment(.center).lineLimit(2)
-                        .frame(maxWidth: .infinity)
+
+            GeometryReader { proxy in
+                ZStack(alignment: .topLeading) {
+                    ForEach(0..<totalSteps, id: \.self) { idx in
+                        Text(labels[idx])
+                            .font(.urbanistRegular(9))
+                            .foregroundColor(Color(red: 0.4, green: 0.4, blue: 0.4))
+                            .multilineTextAlignment(labelTextAlignment(for: idx))
+                            .lineLimit(2)
+                            .frame(width: labelWidth, alignment: labelFrameAlignment(for: idx))
+                            .position(
+                                x: labelXPosition(index: idx, width: proxy.size.width),
+                                y: 12
+                            )
+                    }
                 }
             }
+            .frame(height: 28)
         }
     }
 
     private func stepCircle(step: Int) -> some View {
         ZStack {
             if step < currentStep {
-                Circle().fill(Color(red: 0.15, green: 0.60, blue: 0.22)).frame(width: 30, height: 30)
+                Circle().fill(Color(red: 0.15, green: 0.60, blue: 0.22)).frame(width: circleSize, height: circleSize)
                 Text("\(step)").font(.urbanistBold(12)).foregroundColor(.white)
             } else if step == currentStep {
-                Circle().fill(Color(red: 0.92, green: 0.86, blue: 0.76)).frame(width: 30, height: 30)
-                Circle().stroke(Color(red: 0.80, green: 0.72, blue: 0.60), lineWidth: 1.5).frame(width: 30, height: 30)
+                Circle().fill(Color(red: 0.92, green: 0.86, blue: 0.76)).frame(width: circleSize, height: circleSize)
+                Circle().stroke(Color(red: 0.80, green: 0.72, blue: 0.60), lineWidth: 1.5).frame(width: circleSize, height: circleSize)
                 Text("\(step)").font(.urbanistBold(12)).foregroundColor(Color(red: 0.5, green: 0.35, blue: 0.15))
             } else {
-                Circle().fill(Color(red: 0.82, green: 0.82, blue: 0.82)).frame(width: 30, height: 30)
+                Circle().fill(Color(red: 0.82, green: 0.82, blue: 0.82)).frame(width: circleSize, height: circleSize)
                 Text("\(step)").font(.urbanistBold(12)).foregroundColor(.white)
             }
         }
-        .frame(width: 30)
+        .frame(width: circleSize)
     }
 
     private func connectorLine(step: Int) -> some View {
         Rectangle()
             .fill(step < currentStep ? Color(red: 0.15, green: 0.60, blue: 0.22) : Color(red: 0.80, green: 0.80, blue: 0.80))
             .frame(height: 2).frame(maxWidth: .infinity)
+    }
+
+    private func labelXPosition(index: Int, width: CGFloat) -> CGFloat {
+        let connectorWidth = max(0, (width - (CGFloat(totalSteps) * circleSize)) / CGFloat(totalSteps - 1))
+        let circleCenter = (circleSize / 2) + CGFloat(index) * (circleSize + connectorWidth)
+        return min(max(circleCenter, labelWidth / 2), width - (labelWidth / 2))
+    }
+
+    private func labelFrameAlignment(for index: Int) -> Alignment {
+        if index == 0 { return .leading }
+        if index == totalSteps - 1 { return .trailing }
+        return .center
+    }
+
+    private func labelTextAlignment(for index: Int) -> TextAlignment {
+        if index == 0 { return .leading }
+        if index == totalSteps - 1 { return .trailing }
+        return .center
     }
 }
 
