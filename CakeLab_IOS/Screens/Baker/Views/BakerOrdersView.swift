@@ -166,8 +166,17 @@ struct BakerOrdersView: View {
                 .padding(.horizontal, 20)
 
                 ForEach(vm.completedOrders) { order in
-                    BakerCompletedOrderCardFromCakeOrder(order: order)
-                        .padding(.horizontal, 20)
+                    NavigationLink {
+                        BakerOrderStatusView(orderID: order.id)
+                    } label: {
+                        BakerCompletedOrderCardFromCakeOrder(
+                            order: order,
+                            customer: vm.completedOrderCustomers[order.id] ?? .fallback(for: order),
+                            amount: vm.completedOrderAmounts[order.id] ?? order.amount
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 20)
                 }
             }
             .padding(.top, 16)
@@ -335,4 +344,3 @@ struct BakerOrderDetailView: View {
         }
     }
 }
-

@@ -137,70 +137,185 @@ struct BakerCompletedOrderCard: View {
 // MARK: - Completed order card built directly from a CakeOrder Firestore model.
 struct BakerCompletedOrderCardFromCakeOrder: View {
     let order: CakeOrder
+    let customer: BakerOrderCustomerProfile
+    let amount: Double
 
     var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(red: 0.95, green: 0.93, blue: 0.90))
-                    .frame(width: 48, height: 48)
+        HStack(alignment: .center, spacing: 14) {
+            orderImage
 
-                if let firstReferenceImage = order.referenceImages.first,
-                   let imageData = Data(base64Encoded: firstReferenceImage),
-                   let uiImage = UIImage(data: imageData) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 48, height: 48)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                } else if let imageURL = order.imageURL, !imageURL.isEmpty, let url = URL(string: imageURL) {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image.resizable().scaledToFill()
-                                .frame(width: 48, height: 48)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        default:
-                            Image(systemName: "birthday.cake")
-                                .font(.system(size: 18))
-                                .foregroundColor(.cakeBrown.opacity(0.7))
-                        }
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(alignment: .top, spacing: 8) {
+                    Text(order.cakeName)
+                        .font(.urbanistSemiBold(15))
+                        .foregroundColor(Color(red: 0.10, green: 0.10, blue: 0.10))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Spacer(minLength: 0)
+
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text(amountText)
+                            .font(.urbanistBold(13))
+                            .foregroundColor(.cakeBrown)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color(red: 0.70, green: 0.70, blue: 0.70))
                     }
-                } else {
-                    Image(systemName: "birthday.cake")
-                        .font(.system(size: 18))
-                        .foregroundColor(.cakeBrown.opacity(0.7))
+                    .frame(minWidth: 76, alignment: .trailing)
                 }
-            }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(order.cakeName)
-                    .font(.urbanistSemiBold(14))
-                    .foregroundColor(.cakePrimaryText)
-                Text(order.artisanName)
-                    .font(.urbanistRegular(12))
-                    .foregroundColor(.cakeGrey)
-                    .lineLimit(1)
-                Text("Delivered on \(order.formattedDeliveryDate)")
-                    .font(.urbanistRegular(11))
-                    .foregroundColor(.cakeGrey)
-            }
+                HStack(spacing: 6) {
+                    customerProfileImage
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(customer.name)
+                            .font(.urbanistSemiBold(12))
+                            .foregroundColor(Color(red: 0.22, green: 0.22, blue: 0.22))
+                            .lineLimit(1)
+                        Text(customer.displayLocation)
+                            .font(.urbanistRegular(11))
+                            .foregroundColor(.cakeGrey)
+                            .lineLimit(1)
+                    }
+                }
 
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("LKR 3,500")
-                    .font(.urbanistBold(14))
+                HStack(spacing: 8) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 10, weight: .semibold))
+                        Text(order.formattedDeliveryDate)
+                            .font(.urbanistSemiBold(11))
+                    }
                     .foregroundColor(.cakeBrown)
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 16))
-                    .foregroundColor(Color(red: 0.2, green: 0.6, blue: 0.4))
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(Color(red: 0.96, green: 0.94, blue: 0.91))
+                    .clipShape(Capsule())
+
+                    statusBadge
+                }
             }
         }
         .padding(14)
-        .background(Color.cakeSurface)
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.04), radius: 5, x: 0, y: 2)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.cakeSurface)
+                .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 3)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.black.opacity(0.05), lineWidth: 1)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var amountText: String {
+        amount > 0 ? "LKR \(Int(amount).formatted())" : "LKR 0"
+    }
+
+    private var orderImage: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(red: 0.95, green: 0.93, blue: 0.90))
+
+            if let firstReferenceImage = order.referenceImages.first,
+               let imageData = Data(base64Encoded: firstReferenceImage),
+               let uiImage = UIImage(data: imageData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 72, height: 72)
+                    .clipped()
+            } else if let imageURL = order.imageURL, !imageURL.isEmpty, let url = URL(string: imageURL) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    default:
+                        orderImageFallback
+                    }
+                }
+                .frame(width: 72, height: 72)
+                .clipped()
+            } else {
+                orderImageFallback
+            }
+        }
+        .frame(width: 72, height: 72)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private var orderImageFallback: some View {
+        Image(systemName: "birthday.cake.fill")
+            .font(.system(size: 28))
+            .foregroundColor(.cakeBrown.opacity(0.42))
+    }
+
+    private var customerProfileImage: some View {
+        Group {
+            if let image = decodeBase64Image(customer.profileImageBase64) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else if let url = URL(string: customer.imageURL), !customer.imageURL.isEmpty {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().scaledToFill()
+                    default:
+                        customerProfileFallback
+                    }
+                }
+            } else {
+                customerProfileFallback
+            }
+        }
+        .frame(width: 28, height: 28)
+        .clipShape(Circle())
+    }
+
+    private var customerProfileFallback: some View {
+        Circle()
+            .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+            .overlay(
+                Image(systemName: "person.fill")
+                    .font(.system(size: 13))
+                    .foregroundColor(.cakeBrown.opacity(0.5))
+            )
+    }
+
+    private var statusBadge: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 10, weight: .semibold))
+            Text("Delivered")
+                .font(.urbanistSemiBold(11))
+        }
+        .foregroundColor(Color(red: 0.18, green: 0.58, blue: 0.25))
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(Color(red: 0.90, green: 0.97, blue: 0.91))
+        .clipShape(Capsule())
+    }
+
+    private func decodeBase64Image(_ rawBase64: String) -> UIImage? {
+        let trimmed = rawBase64.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let payload: String
+        if let commaIndex = trimmed.firstIndex(of: ",") {
+            payload = String(trimmed[trimmed.index(after: commaIndex)...])
+        } else {
+            payload = trimmed
+        }
+
+        guard let data = Data(base64Encoded: payload) else { return nil }
+        return UIImage(data: data)
     }
 }
 

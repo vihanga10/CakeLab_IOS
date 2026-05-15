@@ -8,6 +8,8 @@ final class BakerOrdersViewModel: ObservableObject {
     @Published var activeOrders: [CakeOrder] = []
     @Published var activeOrderCustomers: [String: BakerOrderCustomerProfile] = [:]
     @Published var completedOrders: [CakeOrder] = []
+    @Published var completedOrderCustomers: [String: BakerOrderCustomerProfile] = [:]
+    @Published var completedOrderAmounts: [String: Double] = [:]
     @Published var totalEarnings: Double = 0
     @Published var completedCount: Int = 0
     @Published var isLoading = true
@@ -106,6 +108,7 @@ final class BakerOrdersViewModel: ObservableObject {
         do {
             let statuses = ["completed", "delivered", "done"]
             var allOrders: [CakeOrder] = []
+            var customerProfiles: [String: BakerOrderCustomerProfile] = [:]
 
             for key in ["bakerID", "bakerId", "artisanId"] {
                 let query = db.collection("orders")
@@ -116,17 +119,22 @@ final class BakerOrdersViewModel: ObservableObject {
                 for doc in snapshot.documents {
                     if let order = CakeOrder(document: doc), !allOrders.contains(where: { $0.id == order.id }) {
                         allOrders.append(order)
+                        customerProfiles[order.id] = await fetchCustomerProfile(order: order, orderData: doc.data())
                     }
                 }
             }
 
             completedOrders = allOrders.sorted { $0.deliveryDate > $1.deliveryDate }
+            completedOrderCustomers = customerProfiles
             completedCount = completedOrders.count
 
             let paidAmountsByOrderID = await loadPaidAmountsByOrderID()
-            totalEarnings = completedOrders.reduce(0) { total, order in
+            completedOrderAmounts = completedOrders.reduce(into: [String: Double]()) { amounts, order in
                 let paidAmount = paidAmountsByOrderID[order.id] ?? 0
-                return total + (paidAmount > 0 ? paidAmount : order.amount)
+                amounts[order.id] = paidAmount > 0 ? paidAmount : order.amount
+            }
+            totalEarnings = completedOrders.reduce(0) { total, order in
+                total + (completedOrderAmounts[order.id] ?? order.amount)
             }
             isLoading = false
         } catch {
