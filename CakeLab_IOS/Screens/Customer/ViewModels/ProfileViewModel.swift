@@ -105,6 +105,11 @@ final class ProfileViewModel: ObservableObject {
 
             try await db.collection("users").document(user.id).setData(from: user, merge: true)
             selectedPhoto = nil
+            await NotificationManager.scheduleLocalNotification(
+                title: "Profile Updated",
+                body: "Profile updated successfully!",
+                identifier: "customer-profile-updated-\(UUID().uuidString)"
+            )
         } catch {
             errorMessage = "Failed to update profile: \(error.localizedDescription)"
             print("ERROR updating profile: \(error)")

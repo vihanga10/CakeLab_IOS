@@ -35,6 +35,8 @@ struct BakerBidDetailView: View {
         parsedBidAmount != nil && !vm.isSubmittingBid
     }
 
+    private let specificationBackgroundColor = Color(hex: "F7F5F3")
+
     var body: some View {
         ZStack {
             Color.cakeBackground.ignoresSafeArea()
@@ -59,7 +61,7 @@ struct BakerBidDetailView: View {
                         
                         bidFormSection
                             .padding(.horizontal, 20)
-                            .padding(.bottom, 32)
+                            .padding(.bottom, 128)
                     }
                 }
             }
@@ -301,7 +303,7 @@ struct BakerBidDetailView: View {
             Spacer()
         }
         .padding(10)
-        .background(Color(red: 236/255, green: 230/255, blue: 225/255))
+        .background(specificationBackgroundColor)
         .cornerRadius(12)
     }
 
@@ -335,9 +337,9 @@ struct BakerBidDetailView: View {
                         }
                 }
                 .background(Color.cakeSurface)
-                .cornerRadius(14)
+                .clipShape(Capsule())
                 .overlay(
-                    RoundedRectangle(cornerRadius: 14)
+                    Capsule()
                         .stroke(parsedBidAmount == nil ? Color(red: 0.88, green: 0.88, blue: 0.88) : Color.cakeBrown, lineWidth: 1.5)
                 )
             }
@@ -373,8 +375,8 @@ struct BakerBidDetailView: View {
                         }
                         .padding(14)
                         .background(Color.cakeSurface)
-                        .cornerRadius(14)
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.cakeBrown, lineWidth: 1.5))
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(Color.cakeBrown, lineWidth: 1.5))
                     }
 
                     if showDatePicker {
@@ -442,8 +444,8 @@ struct BakerBidDetailView: View {
             .padding(.vertical, 10)
             .frame(maxWidth: .infinity)
             .background(isSelected ? Color.cakeBrown.opacity(0.1) : Color(red: 0.95, green: 0.95, blue: 0.95))
-            .cornerRadius(12)
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(isSelected ? Color.cakeBrown : Color.clear, lineWidth: 1.5))
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(isSelected ? Color.cakeBrown : Color.clear, lineWidth: 1.5))
         }
     }
 
@@ -473,12 +475,12 @@ struct BakerBidDetailView: View {
                 }
             } label: {
                 Text("Place Bid")
-                    .font(.urbanistBold(15))
+                    .font(.urbanistBold(16))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(canPlaceBid ? Color.cakeBrown : Color.cakeGrey.opacity(0.4))
-                    .cornerRadius(16)
+                    .clipShape(Capsule())
             }
             .disabled(!canPlaceBid)
         }
@@ -490,6 +492,7 @@ struct BakerBidDetailView: View {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.cakeBrown)
+                    .frame(width: 24, height: 38)
             }
 
             Spacer()
@@ -523,7 +526,7 @@ struct BakerBidDetailView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(Color(red: 236/255, green: 230/255, blue: 225/255))
+        .background(specificationBackgroundColor)
         .cornerRadius(12)
     }
 
@@ -647,7 +650,7 @@ struct BakerBidDetailView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                             .background(Color(red: 0.92, green: 0.92, blue: 0.92))
-                            .cornerRadius(14)
+                            .clipShape(Capsule())
                     }
                     Button {
                         Task {
@@ -681,7 +684,7 @@ struct BakerBidDetailView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
                     .background(Color.cakeBrown)
-                    .cornerRadius(14)
+                    .clipShape(Capsule())
                 }
             }
             .padding(24)

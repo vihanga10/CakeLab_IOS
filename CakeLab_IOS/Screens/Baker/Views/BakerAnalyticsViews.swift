@@ -15,6 +15,8 @@ struct BakerPerformanceAnalyticsView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
                         summaryCard
+                        dailyOrdersCard
+                        weeklyOrdersCard
                         monthlyOrdersCard
                         reviewTrendCard
                         categoryMixCard
@@ -34,19 +36,70 @@ struct BakerPerformanceAnalyticsView: View {
     private var summaryCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("How your bakery is performing")
-                .font(.urbanistBold(18))
+                .font(.urbanistBold(16))
                 .foregroundColor(Color(hex: "5D3714"))
 
-            HStack(spacing: 12) {
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3),
+                spacing: 8
+            ) {
                 metricChip(title: "Completed Orders", value: "\(snapshot.completedOrders)")
                 metricChip(title: "Avg Rating", value: snapshot.averageRatingText)
                 metricChip(title: "Reviews", value: "\(snapshot.totalReviews)")
             }
         }
-        .padding(18)
-        .background(Color.cakeSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 22))
+        .padding(14)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 18))
         .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
+    }
+
+    private var dailyOrdersCard: some View {
+        analyticsCard(title: "Completed Orders Per Day", subtitle: "Last 7 days") {
+            if snapshot.dailyOrders.allSatisfy({ $0.value == 0 }) {
+                analyticsEmptyState(message: "Daily completed orders will appear here.")
+            } else {
+                Chart(snapshot.dailyOrders) { item in
+                    BarMark(
+                        x: .value("Day", item.label),
+                        y: .value("Orders", item.value)
+                    )
+                    .foregroundStyle(performanceDailyChartColor)
+                    .cornerRadius(6)
+                }
+                .frame(height: 220)
+                .chartPlotStyle { plotArea in
+                    plotArea.background(Color.white)
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading)
+                }
+            }
+        }
+    }
+
+    private var weeklyOrdersCard: some View {
+        analyticsCard(title: "Completed Orders Per Week", subtitle: "Last 8 weeks") {
+            if snapshot.weeklyOrders.allSatisfy({ $0.value == 0 }) {
+                analyticsEmptyState(message: "Weekly completed orders will appear here.")
+            } else {
+                Chart(snapshot.weeklyOrders) { item in
+                    BarMark(
+                        x: .value("Week", item.label),
+                        y: .value("Orders", item.value)
+                    )
+                    .foregroundStyle(performanceWeeklyChartColor)
+                    .cornerRadius(6)
+                }
+                .frame(height: 220)
+                .chartPlotStyle { plotArea in
+                    plotArea.background(Color.white)
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading)
+                }
+            }
+        }
     }
 
     private var monthlyOrdersCard: some View {
@@ -59,10 +112,13 @@ struct BakerPerformanceAnalyticsView: View {
                         x: .value("Month", item.label),
                         y: .value("Orders", item.value)
                     )
-                    .foregroundStyle(Color.cakeBrown.gradient)
+                    .foregroundStyle(performanceMonthlyChartColor)
                     .cornerRadius(6)
                 }
                 .frame(height: 220)
+                .chartPlotStyle { plotArea in
+                    plotArea.background(Color.white)
+                }
                 .chartYAxis {
                     AxisMarks(position: .leading)
                 }
@@ -80,22 +136,25 @@ struct BakerPerformanceAnalyticsView: View {
                         x: .value("Month", item.label),
                         y: .value("Rating", item.value)
                     )
-                    .foregroundStyle(Color(red: 0.96, green: 0.79, blue: 0.49).opacity(0.22))
+                    .foregroundStyle(performanceRatingFillColor)
 
                     LineMark(
                         x: .value("Month", item.label),
                         y: .value("Rating", item.value)
                     )
-                    .foregroundStyle(Color(red: 0.87, green: 0.56, blue: 0.15))
+                    .foregroundStyle(performanceRatingLineColor)
                     .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
 
                     PointMark(
                         x: .value("Month", item.label),
                         y: .value("Rating", item.value)
                     )
-                    .foregroundStyle(Color(red: 0.87, green: 0.56, blue: 0.15))
+                    .foregroundStyle(performanceRatingLineColor)
                 }
                 .frame(height: 220)
+                .chartPlotStyle { plotArea in
+                    plotArea.background(Color.white)
+                }
                 .chartYScale(domain: 0...5)
                 .chartYAxis {
                     AxisMarks(position: .leading)
@@ -118,6 +177,9 @@ struct BakerPerformanceAnalyticsView: View {
                     .foregroundStyle(pastelChartColor(at: index))
                 }
                 .frame(height: 240)
+                .chartPlotStyle { plotArea in
+                    plotArea.background(Color.white)
+                }
                 pastelLegend(for: snapshot.categoryMix)
             }
         }
@@ -133,10 +195,13 @@ struct BakerPerformanceAnalyticsView: View {
                         x: .value("Reviews", item.value),
                         y: .value("Stars", item.label)
                     )
-                    .foregroundStyle(Color.cakeBrown.gradient)
+                    .foregroundStyle(performanceRatingBreakdownColor)
                     .cornerRadius(6)
                 }
                 .frame(height: 220)
+                .chartPlotStyle { plotArea in
+                    plotArea.background(Color.white)
+                }
                 .chartXAxis {
                     AxisMarks(position: .bottom)
                 }
@@ -145,18 +210,20 @@ struct BakerPerformanceAnalyticsView: View {
     }
 
     private func metricChip(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.urbanistRegular(11))
                 .foregroundColor(.cakeGrey)
             Text(value)
-                .font(.urbanistBold(18))
+                .font(.urbanistBold(17))
                 .foregroundColor(Color(hex: "5D3714"))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(Color.cakeInsetSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .frame(height: 58)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(performanceMetricChipBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
     private func headerBar(title: String) -> some View {
@@ -215,7 +282,7 @@ struct BakerEarningsAnalyticsView: View {
     private var summaryCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Your earnings overview")
-                .font(.urbanistBold(18))
+                .font(.urbanistBold(16))
                 .foregroundColor(Color(hex: "5D3714"))
 
             HStack(spacing: 12) {
@@ -244,10 +311,13 @@ struct BakerEarningsAnalyticsView: View {
                         x: .value("Month", item.label),
                         y: .value("Earnings", item.value)
                     )
-                    .foregroundStyle(Color(red: 0.20, green: 0.60, blue: 0.40).gradient)
+                    .foregroundStyle(earningsMonthlyChartColor)
                     .cornerRadius(6)
                 }
                 .frame(height: 220)
+                .chartPlotStyle { plotArea in
+                    plotArea.background(Color.white)
+                }
                 .chartYAxis {
                     AxisMarks(position: .leading)
                 }
@@ -269,6 +339,9 @@ struct BakerEarningsAnalyticsView: View {
                     .foregroundStyle(pastelChartColor(at: index))
                 }
                 .frame(height: 240)
+                .chartPlotStyle { plotArea in
+                    plotArea.background(Color.white)
+                }
                 pastelLegend(for: snapshot.categoryEarnings)
             }
         }
@@ -284,10 +357,13 @@ struct BakerEarningsAnalyticsView: View {
                         x: .value("Amount", item.value),
                         y: .value("Method", item.label)
                     )
-                    .foregroundStyle(pastelChartColor(at: index).gradient)
+                    .foregroundStyle(paymentMethodChartColor(at: index))
                     .cornerRadius(6)
                 }
                 .frame(height: 220)
+                .chartPlotStyle { plotArea in
+                    plotArea.background(Color.white)
+                }
             }
         }
     }
@@ -299,12 +375,12 @@ struct BakerEarningsAnalyticsView: View {
                 .foregroundColor(.cakeGrey)
             Text(value)
                 .font(.urbanistBold(16))
-                .foregroundColor(Color(hex: "12471F"))
+                .foregroundColor(Color(hex: "5D3714"))
                 .minimumScaleFactor(0.75)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
-        .background(Color(red: 0.95, green: 0.98, blue: 0.95))
+        .background(Color(hex: "F8F6F3"))
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -346,7 +422,7 @@ private func analyticsCard<Content: View>(title: String, subtitle: String, @View
         content()
     }
     .padding(18)
-    .background(Color.cakeSurface)
+    .background(Color.white)
     .clipShape(RoundedRectangle(cornerRadius: 20))
     .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 3)
 }
@@ -363,22 +439,43 @@ private func analyticsEmptyState(message: String) -> some View {
     }
     .frame(maxWidth: .infinity)
     .frame(height: 180)
-    .background(Color.cakeInsetSurface)
+    .background(Color.white)
     .clipShape(RoundedRectangle(cornerRadius: 18))
 }
 
 private let pastelChartPalette: [Color] = [
-    Color(red: 0.98, green: 0.72, blue: 0.74),
-    Color(red: 0.74, green: 0.86, blue: 1.00),
-    Color(red: 0.78, green: 0.91, blue: 0.76),
-    Color(red: 0.96, green: 0.84, blue: 0.60),
-    Color(red: 0.82, green: 0.78, blue: 0.96),
-    Color(red: 0.72, green: 0.91, blue: 0.90),
-    Color(red: 0.96, green: 0.74, blue: 0.88)
+    Color(red: 0.70, green: 0.48, blue: 0.43),
+    Color(red: 0.76, green: 0.56, blue: 0.49),
+    Color(red: 0.83, green: 0.64, blue: 0.55),
+    Color(red: 0.90, green: 0.72, blue: 0.62),
+    Color(red: 0.88, green: 0.78, blue: 0.68),
+    Color(red: 0.78, green: 0.70, blue: 0.62),
+    Color(red: 0.93, green: 0.82, blue: 0.75)
+]
+
+private let performanceDailyChartColor = Color(hex: "7D6148")
+private let performanceWeeklyChartColor = Color(hex: "C8C4C1")
+private let performanceMonthlyChartColor = Color(red: 0.72, green: 0.60, blue: 0.50)
+private let performanceRatingFillColor = Color(red: 0.94, green: 0.82, blue: 0.74)
+private let performanceRatingLineColor = Color(red: 0.70, green: 0.48, blue: 0.43)
+private let performanceRatingBreakdownColor = Color(red: 0.78, green: 0.67, blue: 0.58)
+private let performanceMetricChipBackground = Color(hex: "F8F6F3")
+private let earningsMonthlyChartColor = Color(hex: "76604B")
+private let paymentMethodChartPalette: [Color] = [
+    Color(red: 0.74, green: 0.55, blue: 0.47),
+    Color(hex: "564638"),
+    Color(red: 0.73, green: 0.66, blue: 0.57),
+    Color(red: 0.88, green: 0.80, blue: 0.70),
+    Color(hex: "ac9889"),
+    Color(red: 0.80, green: 0.62, blue: 0.52)
 ]
 
 private func pastelChartColor(at index: Int) -> Color {
     pastelChartPalette[index % pastelChartPalette.count]
+}
+
+private func paymentMethodChartColor(at index: Int) -> Color {
+    paymentMethodChartPalette[index % paymentMethodChartPalette.count]
 }
 
 private func pastelLegend(for items: [AnalyticsChartPoint]) -> some View {
@@ -398,4 +495,3 @@ private func pastelLegend(for items: [AnalyticsChartPoint]) -> some View {
     }
     .padding(.top, 2)
 }
-

@@ -464,12 +464,6 @@ private struct DistrictPickerSheet: View {
 struct ArtisanNearCard: View {
     let artisan: ArtisanProfile
     let onTap: () -> Void
-    private let chipPalette: [Color] = [
-        Color(red: 0.88, green: 0.88, blue: 0.97),
-        Color(red: 0.95, green: 0.85, blue: 0.76),
-        Color(red: 0.86, green: 0.94, blue: 0.90),
-        Color(red: 0.98, green: 0.90, blue: 0.82)
-    ]
 
     private var displaySpecialties: [String] {
         let trimmed = artisan.specialties
@@ -513,13 +507,14 @@ struct ArtisanNearCard: View {
 
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
-                                ForEach(Array(displaySpecialties.prefix(3).enumerated()), id: \.element) { index, tag in
+                                ForEach(Array(displaySpecialties.prefix(3).enumerated()), id: \.offset) { _, tag in
+                                    let style = categoryChipStyle(for: tag)
                                     Text(tag)
                                         .font(.urbanistMedium(12))
-                                        .foregroundColor(Color(hex: "5D3714"))
+                                        .foregroundColor(style.text)
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 7)
-                                        .background(chipPalette[index % chipPalette.count])
+                                        .background(style.background)
                                         .clipShape(Capsule())
                                 }
                             }
@@ -610,6 +605,39 @@ struct ArtisanNearCard: View {
 
         guard let data = Data(base64Encoded: payload) else { return nil }
         return UIImage(data: data)
+    }
+
+    private func categoryChipStyle(for category: String) -> (background: Color, text: Color) {
+        let key = category.lowercased()
+
+        switch key {
+        case let value where value.contains("wedding"):
+            return (Color(red: 0.96, green: 0.83, blue: 0.92), Color(red: 0.52, green: 0.20, blue: 0.39))
+        case let value where value.contains("birthday"):
+            return (Color(red: 0.99, green: 0.85, blue: 0.80), Color(red: 0.58, green: 0.30, blue: 0.20))
+        case let value where value.contains("baby"):
+            return (Color(red: 0.98, green: 0.93, blue: 0.72), Color(red: 0.48, green: 0.39, blue: 0.12))
+        case let value where value.contains("corporate"):
+            return (Color(red: 0.84, green: 0.93, blue: 0.98), Color(red: 0.20, green: 0.38, blue: 0.50))
+        case let value where value.contains("anniversary"):
+            return (Color(red: 0.85, green: 0.94, blue: 0.86), Color(red: 0.22, green: 0.46, blue: 0.26))
+        case let value where value.contains("buttercream"):
+            return (Color(red: 0.88, green: 0.83, blue: 0.96), Color(red: 0.40, green: 0.28, blue: 0.58))
+        case let value where value.contains("cupcake"):
+            return (Color(red: 1.00, green: 0.91, blue: 0.76), Color(red: 0.57, green: 0.36, blue: 0.12))
+        case let value where value.contains("engagement"):
+            return (Color(red: 1.00, green: 0.88, blue: 0.84), Color(red: 0.58, green: 0.25, blue: 0.20))
+        case let value where value.contains("graduation"):
+            return (Color(red: 0.86, green: 0.90, blue: 0.99), Color(red: 0.24, green: 0.34, blue: 0.58))
+        case let value where value.contains("vegan"):
+            return (Color(red: 0.86, green: 0.95, blue: 0.80), Color(red: 0.25, green: 0.48, blue: 0.18))
+        case let value where value.contains("sculpted"):
+            return (Color(red: 0.96, green: 0.86, blue: 0.98), Color(red: 0.49, green: 0.25, blue: 0.56))
+        case let value where value.contains("custom"):
+            return (Color(red: 0.91, green: 0.88, blue: 0.82), Color(red: 0.45, green: 0.35, blue: 0.24))
+        default:
+            return (Color(red: 0.90, green: 0.91, blue: 0.92), Color(red: 0.36, green: 0.38, blue: 0.40))
+        }
     }
 }
 

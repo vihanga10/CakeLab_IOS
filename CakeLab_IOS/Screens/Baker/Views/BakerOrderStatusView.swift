@@ -48,7 +48,7 @@ struct BakerOrderStatusView: View {
                         VStack(spacing: 16) {
                             orderDetailsCard(order: order)
                             progressEditorCard(order: order)
-                            expectedDeliveryCard(order: order)
+                            orderActionButtons(order: order)
                             customerInfoCard
                         }
                         .padding(.horizontal, 15)
@@ -61,14 +61,6 @@ struct BakerOrderStatusView: View {
         .navigationBarBackButtonHidden(true)
         .task {
             viewModel.startListening(orderID: orderID)
-        }
-        .alert("Updated", isPresented: Binding(
-            get: { viewModel.successMessage != nil },
-            set: { if !$0 { viewModel.successMessage = nil } }
-        )) {
-            Button("OK") { viewModel.successMessage = nil }
-        } message: {
-            Text(viewModel.successMessage ?? "")
         }
         .alert("Error", isPresented: Binding(
             get: { viewModel.order != nil && viewModel.errorMessage != nil },
@@ -120,109 +112,86 @@ struct BakerOrderStatusView: View {
     private func orderDetailsCard(order: CakeOrder) -> some View {
         let displayCategory  = resolvedCategory(order.category)
         let deliveryDateText = Self.dateFmt.string(from: order.deliveryDate)
+        let deliveryTimeText = expectedTimeText(for: order)
+        let amountText = order.amount > 0 ? "LKR \(Int(order.amount).formatted())" : "N/A"
 
-        return VStack(alignment: .leading, spacing: 0) {
-
-            
+        return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
                 cakeThumbnail(referenceImages: order.referenceImages, imageURLString: order.imageURL)
-                    .padding(.top, 4)
 
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .center, spacing: 10) {
                         Text("Order ID: \(orderID.uppercased())")
-                            .font(.urbanistBold(12))
+                            .font(.urbanistSemiBold(12))
                             .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
-                            .lineLimit(2)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+
                         Spacer(minLength: 6)
+
                         Text(order.statusLabel)
-                            .font(.urbanistMedium(12))
+                            .font(.urbanistMedium(11))
                             .foregroundColor(order.statusColor)
-                            .padding(.horizontal, 18)
-                            .frame(height: 25)
+                            .lineLimit(1)
+                            .padding(.horizontal, 12)
+                            .frame(height: 24)
                             .background(order.statusColor.opacity(0.18))
                             .clipShape(Capsule())
                     }
-                    .padding(.top, 4)
 
                     Text(order.cakeName)
-                        .font(.urbanistMedium(15))
+                        .font(.urbanistBold(15))
                         .foregroundColor(Color(red: 0.11, green: 0.11, blue: 0.11))
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                }
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 14)
-
-            Spacer(minLength: 2)
-
-            
-            HStack(alignment: .center, spacing: 12) {
-
-                // Date
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "calendar").font(.system(size: 13, weight: .medium))
-                        Text("Date").font(.urbanistRegular(11))
-                    }
-                    .foregroundColor(.cakeGrey)
-                    Text(formattedHeaderDate(deliveryDateText))
-                        .font(.urbanistMedium(11))
-                        .foregroundColor(.cakePrimaryText)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(.top, 2).padding(.bottom, 4)
-
-                // Budget
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "banknote").font(.system(size: 13, weight: .medium))
-                        Text("Budget").font(.urbanistRegular(11))
-                    }
-                    .foregroundColor(.cakeGrey)
-                    Text(order.budgetMin > 0 && order.budgetMax > 0
-                         ? "Rs \(Int(order.budgetMin).formatted()) – \(Int(order.budgetMax).formatted())"
-                         : "N/A")
-                        .font(.urbanistMedium(10.5))
-                        .foregroundColor(.cakePrimaryText)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(.top, 2).padding(.bottom, 4)
+                        .truncationMode(.tail)
+                        .multilineTextAlignment(.leading)
 
-                // Category
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "tag").font(.system(size: 13, weight: .medium))
-                        Text("Category").font(.urbanistRegular(11))
-                    }
-                    .foregroundColor(.cakeGrey)
                     Text(displayCategory)
-                        .font(.urbanistMedium(10.8))
+                        .font(.urbanistMedium(11))
                         .foregroundColor(categoryTextColor(for: displayCategory))
-                        .frame(minWidth: 100, minHeight: 25)
-                        .padding(.horizontal, 12)
+                        .lineLimit(1)
+                        .padding(.horizontal, 10)
+                        .frame(height: 23)
                         .background(categoryBackgroundColor(for: displayCategory))
                         .clipShape(Capsule())
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(.top, 2).padding(.bottom, 4)
+                .frame(maxWidth: .infinity, minHeight: 80, maxHeight: 80, alignment: .topLeading)
             }
-            .frame(height: 58, alignment: .top)
-            .padding(.horizontal, 9)
-            .padding(.bottom, 10)
+
+            Divider()
+
+            HStack(spacing: 0) {
+                statusMetric(label: "Delivery", value: formattedHeaderDate(deliveryDateText))
+                Divider().frame(height: 34)
+                statusMetric(label: "Time", value: deliveryTimeText)
+                Divider().frame(height: 34)
+                statusMetric(label: "Amount", value: amountText)
+            }
         }
-        .frame(width: 363, height: 156)
-        .background(Color.cakeSurface)
-        .cornerRadius(24)
-        .shadow(color: Color.black.opacity(0.07), radius: 12, x: 0, y: 4)
-        .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.cakeStroke, lineWidth: 1))
+        .padding(14)
+        .background(Color(red: 0.98, green: 0.98, blue: 0.98))
+        .cornerRadius(14)
+        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 3)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.black.opacity(0.05), lineWidth: 1)
+        )
         .frame(maxWidth: .infinity)
+    }
+
+    private func statusMetric(label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.urbanistRegular(10))
+                .foregroundColor(.cakeGrey)
+            Text(value)
+                .font(.urbanistBold(12))
+                .foregroundColor(.cakePrimaryText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 8)
     }
 
     // MARK: - Progress Editor Card
@@ -294,7 +263,6 @@ struct BakerOrderStatusView: View {
                 }
             }
 
-            //  Add to Calendar 
             Button {
                 Task { await addDeliveryEventToCalendar(order: order) }
             } label: {
@@ -306,11 +274,19 @@ struct BakerOrderStatusView: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 38)
                 .background(Color(red: 0.92, green: 0.90, blue: 0.87))
-                .cornerRadius(19)
+                .clipShape(Capsule())
             }
             .padding(.top, 14)
 
-            //  Update button (baker-specific backend action) 
+        }
+        .padding(16)
+        .background(surface)
+        .cornerRadius(22)
+        .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 3)
+    }
+
+    private func orderActionButtons(order: CakeOrder) -> some View {
+        VStack(spacing: 12) {
             Button {
                 Task { await viewModel.updateStatus(orderID: order.id, notificationManager: notificationManager) }
             } label: {
@@ -319,59 +295,23 @@ struct BakerOrderStatusView: View {
                         ProgressView().tint(.white)
                         Text("Updating...").font(.urbanistBold(15))
                     }
+                    .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 15)
                 } else {
                     Text("Update")
-                        .font(.urbanistBold(15))
+                        .font(.urbanistBold(16))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 15)
                 }
             }
             .background(accent)
-            .cornerRadius(18)
+            .clipShape(Capsule())
             .disabled(viewModel.isSaving)
             .opacity(viewModel.isSaving ? 0.8 : 1.0)
-            .padding(.top, 16)
         }
-        .padding(16)
-        .background(surface)
-        .cornerRadius(22)
-        .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 3)
-    }
-
-    private func expectedDeliveryCard(order: CakeOrder) -> some View {
-        HStack(alignment: .top, spacing: 0) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Expected Date")
-                    .font(.urbanistSemiBold(12))
-                    .foregroundColor(accent)
-                Text(Self.dateFmt.string(from: order.deliveryDate))
-                    .font(.urbanistBold(14))
-                    .foregroundColor(Color(red: 0.08, green: 0.08, blue: 0.08))
-            }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
-
-            Rectangle()
-                .fill(Color(red: 0.80, green: 0.80, blue: 0.80))
-                .frame(width: 1, height: 38)
-
-            VStack(alignment: .trailing, spacing: 8) {
-                Text("Expected Time")
-                    .font(.urbanistSemiBold(12))
-                    .foregroundColor(accent)
-                Text(expectedTimeText(for: order).lowercased())
-                    .font(.urbanistBold(14))
-                    .foregroundColor(Color(red: 0.08, green: 0.08, blue: 0.08))
-            }
-            .frame(maxWidth: .infinity, alignment: .topTrailing)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity)
-        .background(surface)
-        .cornerRadius(18)
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+        .padding(.horizontal, 16)
     }
 
     // MARK: - Customer Info Card
@@ -458,7 +398,7 @@ struct BakerOrderStatusView: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: icon)
                 .font(.system(size: 14))
-                .foregroundColor(.cakeBrown)
+                .foregroundColor(Color(red: 0.25, green: 0.25, blue: 0.25))
                 .frame(width: 16)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.urbanistRegular(11)).foregroundColor(.cakeGrey)

@@ -496,21 +496,27 @@ struct BakerProfileView: View {
                         message: "Successful paid orders will appear in your earnings charts."
                     )
                 } else {
-                    let monthlyRevenuePreview = vm.earningsSnapshot.monthlyEarnings.filter { $0.value > 0 }
+                    let monthlyRevenuePreview = vm.earningsSnapshot.monthlyEarnings
                     if !monthlyRevenuePreview.isEmpty {
                         Chart(monthlyRevenuePreview) { item in
                             LineMark(
                                 x: .value("Month", item.label),
                                 y: .value("Earnings", item.value)
                             )
-                            .foregroundStyle(Color(red: 0.2, green: 0.6, blue: 0.4))
+                            .foregroundStyle(Color(hex: "76604B"))
                             .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
 
                             AreaMark(
                                 x: .value("Month", item.label),
                                 y: .value("Earnings", item.value)
                             )
-                            .foregroundStyle(Color(red: 0.2, green: 0.6, blue: 0.4).opacity(0.18))
+                            .foregroundStyle(Color(hex: "C8C4C1").opacity(0.28))
+
+                            PointMark(
+                                x: .value("Month", item.label),
+                                y: .value("Earnings", item.value)
+                            )
+                            .foregroundStyle(Color(hex: "76604B"))
                         }
                         .frame(height: 150)
                         .chartYAxis {
@@ -519,12 +525,40 @@ struct BakerProfileView: View {
                     }
 
                     HStack(spacing: 12) {
-                        earningCard(title: "This Month", value: vm.earningsData.thisMonthFormatted, icon: "calendar", color: Color.cakeBrown)
-                        earningCard(title: "Last Month", value: vm.earningsData.lastMonthFormatted, icon: "clock.arrow.circlepath", color: Color(red: 0.3, green: 0.45, blue: 0.8))
+                        earningCard(
+                            title: "This Month",
+                            value: vm.earningsData.thisMonthFormatted,
+                            icon: "calendar",
+                            iconColor: Color.cakeBrown,
+                            cardBackground: Color(hex: "F8F6F3"),
+                            valueColor: Color(hex: "5D3714")
+                        )
+                        earningCard(
+                            title: "Last Month",
+                            value: vm.earningsData.lastMonthFormatted,
+                            icon: "clock.arrow.circlepath",
+                            iconColor: Color(red: 0.30, green: 0.45, blue: 0.80),
+                            cardBackground: Color(hex: "F4F9FE"),
+                            valueColor: Color(red: 0.10, green: 0.28, blue: 0.60)
+                        )
                     }
                     HStack(spacing: 12) {
-                        earningCard(title: "This Year", value: vm.earningsData.thisYearFormatted, icon: "chart.line.uptrend.xyaxis", color: Color(red: 0.2, green: 0.6, blue: 0.4))
-                        earningCard(title: "Avg Per Order", value: vm.earningsData.avgPerOrderFormatted, icon: "equal.circle.fill", color: Color(red: 0.7, green: 0.45, blue: 0.1))
+                        earningCard(
+                            title: "This Year",
+                            value: vm.earningsData.thisYearFormatted,
+                            icon: "chart.line.uptrend.xyaxis",
+                            iconColor: Color(red: 0.20, green: 0.60, blue: 0.40),
+                            cardBackground: Color(hex: "F5FEF5"),
+                            valueColor: Color(red: 0.08, green: 0.38, blue: 0.18)
+                        )
+                        earningCard(
+                            title: "Avg Per Order",
+                            value: vm.earningsData.avgPerOrderFormatted,
+                            icon: "equal.circle.fill",
+                            iconColor: Color(red: 0.70, green: 0.45, blue: 0.10),
+                            cardBackground: Color(hex: "FFF7EA"),
+                            valueColor: Color(red: 0.58, green: 0.36, blue: 0.05)
+                        )
                     }
                 }
             }
@@ -536,15 +570,22 @@ struct BakerProfileView: View {
         .buttonStyle(.plain)
     }
 
-    private func earningCard(title: String, value: String, icon: String, color: Color) -> some View {
+    private func earningCard(
+        title: String,
+        value: String,
+        icon: String,
+        iconColor: Color,
+        cardBackground: Color,
+        valueColor: Color
+    ) -> some View {
         HStack(spacing: 10) {
             ZStack {
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(color.opacity(0.1))
+                    .fill(iconColor.opacity(0.1))
                     .frame(width: 36, height: 36)
                 Image(systemName: icon)
                     .font(.system(size: 16))
-                    .foregroundColor(color)
+                    .foregroundColor(iconColor)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -552,14 +593,14 @@ struct BakerProfileView: View {
                     .foregroundColor(.cakeGrey)
                 Text(value)
                     .font(.urbanistBold(13))
-                    .foregroundColor(.cakePrimaryText)
+                    .foregroundColor(valueColor)
                     .minimumScaleFactor(0.75)
                     .lineLimit(1)
             }
             Spacer()
         }
         .padding(12)
-        .background(Color.cakeInsetSurface)
+        .background(cardBackground)
         .cornerRadius(14)
         .frame(maxWidth: .infinity)
     }
@@ -1379,19 +1420,81 @@ private struct PastelTagFlowLayout: View {
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                ForEach(Array(tags.enumerated()), id: \.element) { index, tag in
-                    Text(tag)
-                        .font(.urbanistRegular(11))
-                        .foregroundColor(Color(red: 0.32, green: 0.23, blue: 0.16))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(pastelPalette[index % pastelPalette.count])
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                }
+        WrappingTagLayout(horizontalSpacing: 8, verticalSpacing: 10) {
+            ForEach(Array(tags.enumerated()), id: \.offset) { index, tag in
+                Text(tag)
+                    .font(.urbanistRegular(12))
+                    .foregroundColor(Color(red: 0.32, green: 0.23, blue: 0.16))
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(pastelPalette[index % pastelPalette.count])
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
-            .flipsForRightToLeftLayoutDirection(false)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .flipsForRightToLeftLayoutDirection(false)
+    }
+}
+
+private struct WrappingTagLayout: Layout {
+    let horizontalSpacing: CGFloat
+    let verticalSpacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .greatestFiniteMagnitude
+        var lineWidth: CGFloat = 0
+        var lineHeight: CGFloat = 0
+        var totalWidth: CGFloat = 0
+        var totalHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            let proposedLineWidth = lineWidth == 0 ? size.width : lineWidth + horizontalSpacing + size.width
+
+            if proposedLineWidth > maxWidth, lineWidth > 0 {
+                totalWidth = max(totalWidth, lineWidth)
+                totalHeight += lineHeight + verticalSpacing
+                lineWidth = size.width
+                lineHeight = size.height
+            } else {
+                lineWidth = proposedLineWidth
+                lineHeight = max(lineHeight, size.height)
+            }
+        }
+
+        totalWidth = max(totalWidth, lineWidth)
+        totalHeight += lineHeight
+
+        return CGSize(
+            width: proposal.width ?? totalWidth,
+            height: totalHeight
+        )
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let maxWidth = bounds.width
+        var x = bounds.minX
+        var y = bounds.minY
+        var lineHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+
+            if x > bounds.minX, x + size.width > bounds.minX + maxWidth {
+                x = bounds.minX
+                y += lineHeight + verticalSpacing
+                lineHeight = 0
+            }
+
+            subview.place(
+                at: CGPoint(x: x, y: y),
+                proposal: ProposedViewSize(width: size.width, height: size.height)
+            )
+
+            x += size.width + horizontalSpacing
+            lineHeight = max(lineHeight, size.height)
         }
     }
 }

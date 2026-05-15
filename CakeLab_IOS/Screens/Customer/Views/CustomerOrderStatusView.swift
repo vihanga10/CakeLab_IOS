@@ -72,9 +72,11 @@ struct CustomerOrderStatusView: View {
                     let statusColor = liveOrder?.statusColor ?? fallbackOrder.statusColor
                     let currentStep = max(1, min(5, liveOrder?.currentStep ?? fallbackOrder.currentStep))
                     let deliveryDateText = liveOrder?.formattedDeliveryDate ?? fallbackOrder.deliveryDate
+                    let deliveryTimeText = expectedTimeText()
                     let category = resolvedOrderCategory(liveOrder)
                     let budgetMin = resolvedBudgetMin(liveOrder)
                     let budgetMax = resolvedBudgetMax(liveOrder)
+                    let amountText = resolvedBidAmountText(liveOrder, budgetMin: budgetMin, budgetMax: budgetMax)
                     let bakerProfile = viewModel.bakerProfile
 
                     ScrollView(showsIndicators: false) {
@@ -82,17 +84,16 @@ struct CustomerOrderStatusView: View {
                             // Order Details (Date, Budget, Category)
                             orderDetailsCard(
                                 deliveryDate: deliveryDateText,
-                                budgetMin: budgetMin,
-                                budgetMax: budgetMax,
                                 category: category,
                                 cakeName: cakeName,
                                 statusText: statusText,
-                                statusColor: statusColor
+                                statusColor: statusColor,
+                                deliveryTime: deliveryTimeText,
+                                amountText: amountText
                             )
 
                             // Status Timeline
                             statusTimelineCard(currentStep: currentStep, deliveryDateText: deliveryDateText)
-                            expectedDeliveryCard(deliveryDateText: deliveryDateText)
 
                             // Baker Info
                             bakerInfoCard(
@@ -201,131 +202,98 @@ struct CustomerOrderStatusView: View {
 
     private func orderDetailsCard(
         deliveryDate: String,
-        budgetMin: Double,
-        budgetMax: Double,
         category: String,
         cakeName: String,
         statusText: String,
-        statusColor: Color
+        statusColor: Color,
+        deliveryTime: String,
+        amountText: String
     ) -> some View {
         let referenceImages = viewModel.order?.referenceImages ?? fallbackOrder.referenceImages
         let remoteImageURL = viewModel.order?.imageURL
         let displayCategory = resolvedCategory(category)
 
-        return VStack(alignment: .leading, spacing: 0) {
+        return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
                 cakeThumbnail(
                     referenceImages: referenceImages,
                     imageURLString: remoteImageURL,
                     fallbackImageName: fallbackOrder.imageName
                 )
-                .padding(.top, 4)
 
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .center, spacing: 10) {
                         Text("Order ID: \(orderID.uppercased())")
-                            .font(.urbanistBold(12))
+                            .font(.urbanistSemiBold(12))
                             .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.078))
-                            .lineLimit(2)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
 
                         Spacer(minLength: 6)
 
                         Text(statusText)
-                            .font(.urbanistMedium(12))
+                            .font(.urbanistMedium(11))
                             .foregroundColor(statusColor)
-                            .padding(.horizontal, 18)
-                            .frame(height: 25)
+                            .lineLimit(1)
+                            .padding(.horizontal, 12)
+                            .frame(height: 24)
                             .background(statusColor.opacity(0.18))
                             .clipShape(Capsule())
                     }
-                    .padding(.top, 4)
 
                     Text(cakeName)
-                        .font(.urbanistMedium(15))
+                        .font(.urbanistBold(15))
                         .foregroundColor(Color(red: 0.11, green: 0.11, blue: 0.11))
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                }
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 14)
-
-            Spacer(minLength: 2)
-
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "calendar")
-                            .font(.system(size: 13, weight: .medium))
-                        Text("Date")
-                            .font(.urbanistRegular(11))
-                    }
-                    .foregroundColor(.cakeGrey)
-
-                    Text(formattedHeaderDate(deliveryDate))
-                        .font(.urbanistMedium(11))
-                        .foregroundColor(.cakePrimaryText)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(.top, 2)
-                .padding(.bottom, 4)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "banknote")
-                            .font(.system(size: 13, weight: .medium))
-                        Text("Budget")
-                            .font(.urbanistRegular(11))
-                    }
-                    .foregroundColor(.cakeGrey)
-
-                    Text("Rs \(Int(budgetMin).formatted()) - \(Int(budgetMax).formatted())")
-                        .font(.urbanistMedium(10.5))
-                        .foregroundColor(.cakePrimaryText)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(.top, 2)
-                .padding(.bottom, 4)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "tag")
-                            .font(.system(size: 13, weight: .medium))
-                        Text("Category")
-                            .font(.urbanistRegular(11))
-                    }
-                    .foregroundColor(.cakeGrey)
+                        .truncationMode(.tail)
+                        .multilineTextAlignment(.leading)
 
                     Text(displayCategory)
-                        .font(.urbanistMedium(10.8))
+                        .font(.urbanistMedium(11))
                         .foregroundColor(categoryTextColor(for: displayCategory))
-                        .frame(minWidth: 100, minHeight: 25)
-                        .padding(.horizontal, 12)
+                        .lineLimit(1)
+                        .padding(.horizontal, 10)
+                        .frame(height: 23)
                         .background(categoryBackgroundColor(for: displayCategory))
                         .clipShape(Capsule())
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(.top, 2)
-                .padding(.bottom, 4)
+                .frame(maxWidth: .infinity, minHeight: 80, maxHeight: 80, alignment: .topLeading)
             }
-            .frame(height: 58, alignment: .top)
-            .padding(.horizontal, 9)
-            .padding(.bottom, 10)
+
+            Divider()
+
+            HStack(spacing: 0) {
+                statusMetric(label: "Delivery", value: formattedHeaderDate(deliveryDate))
+                Divider().frame(height: 34)
+                statusMetric(label: "Time", value: deliveryTime)
+                Divider().frame(height: 34)
+                statusMetric(label: "Amount", value: amountText)
+            }
         }
-        .frame(width: 363, height: 156)
-        .background(Color.cakeSurface)
-        .cornerRadius(24)
-        .shadow(color: Color.black.opacity(0.07), radius: 12, x: 0, y: 4)
+        .padding(14)
+        .background(Color(red: 0.98, green: 0.98, blue: 0.98))
+        .cornerRadius(14)
+        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 3)
         .overlay(
-            RoundedRectangle(cornerRadius: 24)
-                .stroke(Color.cakeStroke, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(Color.black.opacity(0.05), lineWidth: 1)
         )
         .frame(maxWidth: .infinity)
+    }
+
+    private func statusMetric(label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.urbanistRegular(10))
+                .foregroundColor(.cakeGrey)
+            Text(value)
+                .font(.urbanistBold(12))
+                .foregroundColor(.cakePrimaryText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 8)
     }
 
     private func statusTimelineCard(currentStep: Int, deliveryDateText: String) -> some View {
@@ -422,39 +390,6 @@ struct CustomerOrderStatusView: View {
         .background(surface)
         .cornerRadius(22)
         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 3)
-    }
-
-    private func expectedDeliveryCard(deliveryDateText: String) -> some View {
-        HStack(alignment: .top, spacing: 0) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Expected Date")
-                    .font(.urbanistSemiBold(12))
-                    .foregroundColor(accent)
-                Text(deliveryDateText)
-                    .font(.urbanistBold(14))
-                    .foregroundColor(Color(red: 0.08, green: 0.08, blue: 0.08))
-            }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
-
-            Rectangle()
-                .fill(Color(red: 0.80, green: 0.80, blue: 0.80))
-                .frame(width: 1, height: 38)
-
-            VStack(alignment: .trailing, spacing: 8) {
-                Text("Expected Time")
-                    .font(.urbanistSemiBold(12))
-                    .foregroundColor(accent)
-                Text(expectedTimeText().lowercased())
-                    .font(.urbanistBold(14))
-                    .foregroundColor(Color(red: 0.08, green: 0.08, blue: 0.08))
-            }
-            .frame(maxWidth: .infinity, alignment: .topTrailing)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity)
-        .background(surface)
-        .cornerRadius(18)
-        .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
     }
 
     private func bakerInfoCard(
@@ -669,6 +604,15 @@ struct CustomerOrderStatusView: View {
         if liveValue > 0 { return liveValue }
         if let requestValue = viewModel.requestBudgetMax, requestValue > 0 { return requestValue }
         return fallbackOrder.budgetMax
+    }
+
+    private func resolvedBidAmountText(_ liveOrder: CakeOrder?, budgetMin: Double, budgetMax: Double) -> String {
+        if let amount = liveOrder?.amount, amount > 0 {
+            return "LKR \(Int(amount).formatted())"
+        }
+
+        let fallbackAmount = max(budgetMin, budgetMax)
+        return fallbackAmount > 0 ? "LKR \(Int(fallbackAmount).formatted())" : "N/A"
     }
 
     private func resolvedBakerName(_ liveOrder: CakeOrder?, profile: OrderStatusBakerProfile) -> String {

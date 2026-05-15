@@ -6,6 +6,8 @@ struct BakerPerformanceSnapshot {
     let completedOrders: Int
     let totalReviews: Int
     let averageRating: Double
+    let dailyOrders: [AnalyticsChartPoint]
+    let weeklyOrders: [AnalyticsChartPoint]
     let monthlyOrders: [AnalyticsChartPoint]
     let ratingTrend: [AnalyticsChartPoint]
     let categoryMix: [AnalyticsChartPoint]
@@ -17,6 +19,8 @@ struct BakerPerformanceSnapshot {
         completedOrders: 0,
         totalReviews: 0,
         averageRating: 0,
+        dailyOrders: [],
+        weeklyOrders: [],
         monthlyOrders: [],
         ratingTrend: [],
         categoryMix: [],
@@ -24,6 +28,14 @@ struct BakerPerformanceSnapshot {
     )
 
     static func build(orders: [CakeOrder], reviews: [Review], now: Date = Date()) -> BakerPerformanceSnapshot {
+        let dailyOrders = buildLastSevenDays(referenceDate: now) { dayStart, nextDay in
+            orders.filter { $0.deliveryDate >= dayStart && $0.deliveryDate < nextDay }.count
+        }
+
+        let weeklyOrders = buildLastEightWeeks(referenceDate: now) { weekStart, nextWeek in
+            orders.filter { $0.deliveryDate >= weekStart && $0.deliveryDate < nextWeek }.count
+        }
+
         let monthlyOrders = buildLastSixMonths(referenceDate: now) { monthStart, nextMonth in
             orders.filter { $0.deliveryDate >= monthStart && $0.deliveryDate < nextMonth }.count
         }
@@ -60,6 +72,8 @@ struct BakerPerformanceSnapshot {
             completedOrders: orders.count,
             totalReviews: reviews.count,
             averageRating: averageRating,
+            dailyOrders: dailyOrders,
+            weeklyOrders: weeklyOrders,
             monthlyOrders: monthlyOrders,
             ratingTrend: ratingTrend,
             categoryMix: categoryMix,
@@ -253,5 +267,37 @@ func lastSixMonthStarts(referenceDate: Date) -> [Date] {
     let currentMonthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: referenceDate)) ?? referenceDate
     return (-5...0).compactMap { offset in
         calendar.date(byAdding: .month, value: offset, to: currentMonthStart)
+    }
+}
+
+func buildLastSevenDays(referenceDate: Date, transform: (Date, Date) -> Int) -> [AnalyticsChartPoint] {
+    let calendar = Calendar.current
+    let formatter = DateFormatter()
+    formatter.dateFormat = "EEE"
+
+    let todayStart = calendar.startOfDay(for: referenceDate)
+    return (-6...0).compactMap { offset in
+        guard let dayStart = calendar.date(byAdding: .day, value: offset, to: todayStart),
+              let nextDay = calendar.date(byAdding: .day, value: 1, to: dayStart) else {
+            return nil
+        }
+        return AnalyticsChartPoint(label: formatter.string(from: dayStart), value: Double(transform(dayStart, nextDay)))
+    }
+}
+
+func buildLastEightWeeks(referenceDate: Date, transform: (Date, Date) -> Int) -> [AnalyticsChartPoint] {
+    let calendar = Calendar.current
+    let formatter = DateFormatter()
+    formatter.dateFormat = "MMM d"
+
+    let currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: referenceDate)?.start
+        ?? calendar.startOfDay(for: referenceDate)
+
+    return (-7...0).compactMap { offset in
+        guard let weekStart = calendar.date(byAdding: .weekOfYear, value: offset, to: currentWeekStart),
+              let nextWeek = calendar.date(byAdding: .weekOfYear, value: 1, to: weekStart) else {
+            return nil
+        }
+        return AnalyticsChartPoint(label: formatter.string(from: weekStart), value: Double(transform(weekStart, nextWeek)))
     }
 }

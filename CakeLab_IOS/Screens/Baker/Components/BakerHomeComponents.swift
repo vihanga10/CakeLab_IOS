@@ -193,12 +193,12 @@ struct MatchingRequestCard: View {
                 if let onPlaceBid = onPlaceBid {
                     Button(action: onPlaceBid) {
                         Text(buttonTitle)
-                            .font(.urbanistSemiBold(15))
+                            .font(buttonTitle == "Can you do this?" ? .urbanistSemiBold(12) : .urbanistSemiBold(13))
                             .foregroundColor(Color(red: 0.365, green: 0.216, blue: 0.082))
-                            .frame(width: 120)
+                            .padding(.horizontal, 18)
                             .padding(.vertical, 6)
                             .background(Color(red: 0.906, green: 0.871, blue: 0.847))
-                            .cornerRadius(9)
+                            .clipShape(Capsule())
                     }
                 }
             }

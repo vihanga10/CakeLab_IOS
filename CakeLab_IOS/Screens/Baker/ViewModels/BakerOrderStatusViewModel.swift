@@ -8,7 +8,6 @@ final class BakerOrderStatusViewModel: ObservableObject {
     @Published var selectedStep = 1
     @Published var isLoading = true
     @Published var isSaving = false
-    @Published var successMessage: String?
     @Published var errorMessage: String?
     @Published var progressTimestamps: [String: Date] = [:]
     @Published var createdAt: Date?
@@ -92,7 +91,6 @@ final class BakerOrderStatusViewModel: ObservableObject {
             try await db.collection("orders").document(orderID).updateData(updates)
             NotificationCenter.default.post(name: .orderDidChange, object: nil)
             WidgetDataSyncManager.shared.refreshFromCurrentSession()
-            successMessage = "Order status updated to \(stepInfo.title)."
             notificationManager.notifyBakerOrderStatusUpdated(
                 cakeName: order?.cakeName ?? "Order",
                 stageTitle: stepInfo.title,
