@@ -11,6 +11,7 @@ struct CustomerOrderStatusView: View {
     @EnvironmentObject var notificationManager: NotificationManager
     @State private var calendarAlert: CalendarAlert?
     @State private var showReviewModal = false
+    @State private var selectedBakerProfileID: String?
     @State private var observedStatusForNotification: String?
 
     private let steps: [(step: Int, statusKey: String, title: String)] = [
@@ -105,8 +106,11 @@ struct CustomerOrderStatusView: View {
                                 phone: bakerProfile.phone,
                                 profileImageBase64: bakerProfile.profileImageBase64,
                                 imageURL: bakerProfile.imageURL,
-                                artisanId: liveOrder?.artisanId ?? "",
-                                onReviewTapped: { showReviewModal = true }
+                                artisanId: liveOrder?.artisanId ?? fallbackOrder.bakerID,
+                                onReviewTapped: { showReviewModal = true },
+                                onBakerProfileTapped: { bakerID in
+                                    selectedBakerProfileID = bakerID
+                                }
                             )
                         }
                         .padding(.horizontal, 15)
@@ -122,8 +126,22 @@ struct CustomerOrderStatusView: View {
                 isPresented: $showReviewModal,
                 bakerName: viewModel.order?.artisanName ?? fallbackOrder.bakerName,
                 orderID: orderID,
-                artisanId: viewModel.order?.artisanId ?? "",
+                artisanId: viewModel.order?.artisanId ?? fallbackOrder.bakerID,
                 customerId: viewModel.order?.customerId ?? ""
+            )
+        }
+        .sheet(isPresented: Binding(
+            get: { selectedBakerProfileID != nil },
+            set: { if !$0 { selectedBakerProfileID = nil } }
+        )) {
+            let profile = viewModel.bakerProfile
+            CustomerPublicBakerProfileView(
+                bakerID: selectedBakerProfileID ?? "",
+                fallbackName: viewModel.order?.artisanName ?? fallbackOrder.bakerName,
+                fallbackProfileImageBase64: profile.profileImageBase64,
+                fallbackImageURL: profile.imageURL,
+                fallbackAddress: profile.address.isEmpty ? fallbackOrder.bakerAddress : profile.address,
+                fallbackCity: profile.city
             )
         }
         .task {
@@ -403,7 +421,8 @@ struct CustomerOrderStatusView: View {
         profileImageBase64: String,
         imageURL: String,
         artisanId: String,
-        onReviewTapped: @escaping () -> Void
+        onReviewTapped: @escaping () -> Void,
+        onBakerProfileTapped: @escaping (String) -> Void
     ) -> some View {
         let locationText = resolvedBakerLocation(address: address, city: city)
 
@@ -414,6 +433,14 @@ struct CustomerOrderStatusView: View {
 
             HStack(alignment: .top, spacing: 12) {
                 bakerProfileImage(base64: profileImageBase64, imageURL: imageURL)
+                    .contentShape(Circle())
+                    .highPriorityGesture(
+                        TapGesture().onEnded {
+                            let trimmedID = artisanId.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard !trimmedID.isEmpty else { return }
+                            onBakerProfileTapped(trimmedID)
+                        }
+                    )
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(name)

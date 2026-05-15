@@ -266,7 +266,7 @@ struct BakerProfileView: View {
         HStack(spacing: 0) {
             // Completed Orders - Clickable
             Button(action: { parentTabSelection = 2 }) {
-                profileStatItem(value: completedOrdersText, label: "Completed \n   Orders")
+                profileStatItem(value: completedOrdersText, label: "Completed\nOrders")
             }
             Divider().frame(height: 40)
             
@@ -291,9 +291,13 @@ struct BakerProfileView: View {
             Text(value)
                 .font(.urbanistBold(18))
                 .foregroundColor(Color.cakeBrown)
+                .frame(height: 22)
             Text(label)
                 .font(.urbanistRegular(11))
                 .foregroundColor(.cakeGrey)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .frame(height: 28, alignment: .top)
         }
         .frame(maxWidth: .infinity)
     }

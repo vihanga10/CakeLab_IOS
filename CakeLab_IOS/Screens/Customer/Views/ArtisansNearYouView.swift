@@ -17,6 +17,7 @@ struct ArtisansNearYouView: View {
         )
     )
     @State private var selectedArtisan: ArtisanProfile?
+    @State private var selectedProfileArtisan: ArtisanProfile?
     @State private var showConfirmation = false
     @State private var searchText = ""
     @State private var showDistrictPicker = false
@@ -169,6 +170,9 @@ struct ArtisansNearYouView: View {
                                             selectedArtisan = artisan
                                             showConfirmation = true
                                             centerMap(on: artisan)
+                                        },
+                                        onProfileImageTap: {
+                                            selectedProfileArtisan = artisan
                                         }
                                     )
                                 }
@@ -293,6 +297,16 @@ struct ArtisansNearYouView: View {
                 }
             )
             .presentationDetents([.medium, .large])
+        }
+        .sheet(item: $selectedProfileArtisan) { artisan in
+            CustomerPublicBakerProfileView(
+                bakerID: artisan.id,
+                fallbackName: artisan.name,
+                fallbackProfileImageBase64: artisan.profileImageBase64,
+                fallbackImageURL: artisan.imageURL ?? "",
+                fallbackAddress: artisan.location,
+                fallbackCity: artisan.city
+            )
         }
         .asCustomerSubScreen()
     }
@@ -464,6 +478,17 @@ private struct DistrictPickerSheet: View {
 struct ArtisanNearCard: View {
     let artisan: ArtisanProfile
     let onTap: () -> Void
+    let onProfileImageTap: () -> Void
+
+    init(
+        artisan: ArtisanProfile,
+        onTap: @escaping () -> Void,
+        onProfileImageTap: @escaping () -> Void = {}
+    ) {
+        self.artisan = artisan
+        self.onTap = onTap
+        self.onProfileImageTap = onProfileImageTap
+    }
 
     private var displaySpecialties: [String] {
         let trimmed = artisan.specialties
@@ -478,6 +503,12 @@ struct ArtisanNearCard: View {
                 HStack(alignment: .top, spacing: 14) {
                     // Left: image
                     artisanImage(size: 80)
+                        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .highPriorityGesture(
+                            TapGesture().onEnded {
+                                onProfileImageTap()
+                            }
+                        )
 
                     // Right: name, rating, specialty chips
                     VStack(alignment: .leading, spacing: 8) {

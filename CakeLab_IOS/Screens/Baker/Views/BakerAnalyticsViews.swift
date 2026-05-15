@@ -187,26 +187,90 @@ struct BakerPerformanceAnalyticsView: View {
 
     private var ratingBreakdownCard: some View {
         analyticsCard(title: "Rating Breakdown", subtitle: "How customers scored your work") {
-            if snapshot.ratingBreakdown.isEmpty {
+            if snapshot.ratingBreakdown.isEmpty || ratingBreakdownTotal == 0 {
                 analyticsEmptyState(message: "No rating breakdown available yet.")
             } else {
-                Chart(snapshot.ratingBreakdown) { item in
-                    BarMark(
-                        x: .value("Reviews", item.value),
-                        y: .value("Stars", item.label)
-                    )
-                    .foregroundStyle(performanceRatingBreakdownColor)
-                    .cornerRadius(6)
-                }
-                .frame(height: 220)
-                .chartPlotStyle { plotArea in
-                    plotArea.background(Color.white)
-                }
-                .chartXAxis {
-                    AxisMarks(position: .bottom)
-                }
+                ratingBreakdownDistribution
             }
         }
+    }
+
+    private var ratingBreakdownDistribution: some View {
+        HStack(alignment: .center, spacing: 18) {
+            VStack(spacing: 10) {
+                ForEach(sortedRatingBreakdown) { item in
+                    ratingBreakdownRow(
+                        star: ratingNumber(from: item.label),
+                        value: item.value,
+                        maxValue: maxRatingBreakdownValue
+                    )
+                }
+            }
+
+            VStack(spacing: 8) {
+                Text(snapshot.averageRatingText)
+                    .font(.urbanistBold(46))
+                    .foregroundColor(Color(hex: "5D3714"))
+                    .minimumScaleFactor(0.8)
+
+                HStack(spacing: 2) {
+                    ForEach(1...5, id: \.self) { index in
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(index <= Int(snapshot.averageRating.rounded()) ? performanceRatingBreakdownColor : Color(hex: "C8C4C1"))
+                    }
+                }
+
+                Text("(\(Int(ratingBreakdownTotal)))")
+                    .font(.urbanistSemiBold(13))
+                    .foregroundColor(.cakeGrey)
+            }
+            .frame(width: 88)
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 4)
+        .frame(maxWidth: .infinity)
+        .background(Color.white)
+    }
+
+    private func ratingBreakdownRow(star: Int, value: Double, maxValue: Double) -> some View {
+        HStack(spacing: 10) {
+            Text("\(star)")
+                .font(.urbanistSemiBold(14))
+                .foregroundColor(.cakeGrey)
+                .frame(width: 16, alignment: .trailing)
+
+            GeometryReader { proxy in
+                let ratio = maxValue == 0 ? 0 : value / maxValue
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color(hex: "C8C4C1").opacity(0.45))
+                    Capsule()
+                        .fill(performanceRatingBreakdownColor)
+                        .frame(width: value <= 0 ? 0 : max(8, proxy.size.width * ratio))
+                }
+            }
+            .frame(height: 10)
+        }
+        .frame(height: 20)
+    }
+
+    private var sortedRatingBreakdown: [AnalyticsChartPoint] {
+        snapshot.ratingBreakdown.sorted {
+            ratingNumber(from: $0.label) > ratingNumber(from: $1.label)
+        }
+    }
+
+    private var ratingBreakdownTotal: Double {
+        snapshot.ratingBreakdown.reduce(0) { $0 + $1.value }
+    }
+
+    private var maxRatingBreakdownValue: Double {
+        max(snapshot.ratingBreakdown.map(\.value).max() ?? 0, 1)
+    }
+
+    private func ratingNumber(from label: String) -> Int {
+        Int(label.filter(\.isNumber)) ?? 0
     }
 
     private func metricChip(title: String, value: String) -> some View {
@@ -363,6 +427,17 @@ struct BakerEarningsAnalyticsView: View {
                 .frame(height: 220)
                 .chartPlotStyle { plotArea in
                     plotArea.background(Color.white)
+                }
+                .chartYAxis {
+                    AxisMarks(position: .leading) { value in
+                        AxisValueLabel {
+                            if let method = value.as(String.self) {
+                                Text(method)
+                                    .font(.urbanistSemiBold(11))
+                                    .foregroundColor(.cakeGrey)
+                            }
+                        }
+                    }
                 }
             }
         }

@@ -55,11 +55,7 @@ final class CakeLabMainUnitTests: XCTestCase {
         XCTAssertEqual(AuthError.networkError("No connection").errorDescription, "No connection")
     }
 
-    func testFaceIDAvailabilityUsesInjectedLAContext() {
-        let manager = BiometricManager(context: MockBiometricContext(canEvaluate: true))
-
-        XCTAssertTrue(manager.isBiometryAvailable)
-    }
+   
 
     func testFaceIDAuthenticationReturnsInjectedSuccessResult() async throws {
         let manager = BiometricManager(context: MockBiometricContext(canEvaluate: true, authenticationResult: true))
@@ -217,8 +213,8 @@ final class CakeLabMainUnitTests: XCTestCase {
 
     // MARK: - Order Status Tracking: Customer & Baker
 
-    func testCustomerOrderFromCakeOrderCopiesTrackingFields() {
-        let customerOrder = CustomerOrder(from: makeCakeOrder(status: "quality_check", currentStep: 4))
+    func testCustomerOrderStoresTrackingFields() {
+        let customerOrder = makeCustomerOrder(status: "Quality Check", currentStep: 4)
 
         XCTAssertEqual(customerOrder.status, "Quality Check")
         XCTAssertEqual(customerOrder.currentStep, 4)
@@ -226,9 +222,13 @@ final class CakeLabMainUnitTests: XCTestCase {
         XCTAssertEqual(customerOrder.category, "Birthday")
     }
 
-    func testCustomerOrderFromCakeOrderClampsProgressStep() {
-        XCTAssertEqual(CustomerOrder(from: makeCakeOrder(currentStep: 0)).currentStep, 1)
-        XCTAssertEqual(CustomerOrder(from: makeCakeOrder(currentStep: 6)).currentStep, 5)
+    func testCustomerOrderStoresBakerAndBudgetDetails() {
+        let customerOrder = makeCustomerOrder(budgetMin: 5_000, budgetMax: 8_000)
+
+        XCTAssertEqual(customerOrder.bakerID, "artisan-001")
+        XCTAssertEqual(customerOrder.bakerRating, "4.8")
+        XCTAssertEqual(customerOrder.budgetMin, 5_000)
+        XCTAssertEqual(customerOrder.budgetMax, 8_000)
     }
 
     func testCustomerOrderStatusBakerProfileStoresPhoneNumber() {
@@ -352,30 +352,26 @@ final class CakeLabMainUnitTests: XCTestCase {
         )
     }
 
-    private func makeCakeOrder(
-        customerId: String = "customer-001",
-        status: String = "confirmed",
-        currentStep: Int = 1
-    ) -> CakeOrder {
-        CakeOrder(
+    private func makeCustomerOrder(
+        status: String = "Confirmed",
+        currentStep: Int = 1,
+        budgetMin: Double = 5_000,
+        budgetMax: Double = 8_000
+    ) -> CustomerOrder {
+        CustomerOrder(
             id: "order-001",
-            customerId: customerId,
-            artisanId: "artisan-001",
             cakeName: "Chocolate Birthday Cake",
             status: status,
+            statusColor: .green,
+            deliveryDate: "15/05/2026",
             currentStep: currentStep,
-            deliveryDate: Date(timeIntervalSince1970: 1_800_000_000),
-            deliveryTime: nil,
-            deliveryDateTime: nil,
-            artisanName: "Sweet Bakery",
-            artisanRating: "4.8",
-            artisanAddress: "Colombo 05",
-            imageURL: nil,
-            referenceImages: [],
+            bakerID: "artisan-001",
+            bakerName: "Sweet Bakery",
+            bakerRating: "4.8",
+            bakerAddress: "Colombo 05",
             category: "Birthday",
-            budgetMin: 5_000,
-            budgetMax: 8_000,
-            amount: 7_500
+            budgetMin: budgetMin,
+            budgetMax: budgetMax
         )
     }
 

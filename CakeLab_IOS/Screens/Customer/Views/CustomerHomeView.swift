@@ -10,6 +10,7 @@ struct CustomerHomeView: View {
     @StateObject private var artisansVM = ArtisansNearYouViewModel(customerDistrict: nil)
     @State private var profileAvatar: UIImage? = nil
     @State private var homeSelectedArtisan: ArtisanProfile? = nil
+    @State private var homeProfileArtisan: ArtisanProfile? = nil
     @EnvironmentObject var notificationManager: NotificationManager
 
     private let categories: [(name: String, image: String)] = [
@@ -194,7 +195,7 @@ struct CustomerHomeView: View {
                                                                 Image(systemName: "birthday.cake.fill").font(.system(size: 30)).foregroundColor(.cakeBrown.opacity(0.45))
                                                             }
                                                         }
-                                                        Text("Order No:\n\(order.id.prefix(6))")
+                                                        Text("Order No:\n\(String(order.id.prefix(6)).uppercased())")
                                                             .font(.urbanistRegular(11)).foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2)).multilineTextAlignment(.center)
                                                     }
                                                     .frame(width: 100)
@@ -233,7 +234,11 @@ struct CustomerHomeView: View {
                                 } else {
                                     VStack(spacing: 12) {
                                         ForEach(nearbyArtisans) { artisan in
-                                            ArtisanNearCard(artisan: artisan) { homeSelectedArtisan = artisan }
+                                            ArtisanNearCard(
+                                                artisan: artisan,
+                                                onTap: { homeSelectedArtisan = artisan },
+                                                onProfileImageTap: { homeProfileArtisan = artisan }
+                                            )
                                         }
                                     }
                                     .padding(.horizontal, 20)
@@ -260,6 +265,16 @@ struct CustomerHomeView: View {
                 async let artisans: () = artisansVM.loadArtisansFromDatabase()
                 await orders
                 await artisans
+            }
+            .sheet(item: $homeProfileArtisan) { artisan in
+                CustomerPublicBakerProfileView(
+                    bakerID: artisan.id,
+                    fallbackName: artisan.name,
+                    fallbackProfileImageBase64: artisan.profileImageBase64,
+                    fallbackImageURL: artisan.imageURL ?? "",
+                    fallbackAddress: artisan.location,
+                    fallbackCity: artisan.city
+                )
             }
         }
     }

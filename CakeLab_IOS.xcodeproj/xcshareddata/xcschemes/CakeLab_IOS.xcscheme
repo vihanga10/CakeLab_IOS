@@ -21,6 +21,20 @@
                ReferencedContainer = "container:CakeLab_IOS.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "B28ED02D2F80C908002345B5"
+               BuildableName = "CakeLab_IOSTests.xctest"
+               BlueprintName = "CakeLab_IOSTests"
+               ReferencedContainer = "container:CakeLab_IOS.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -29,6 +43,28 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES"
       shouldAutocreateTestPlan = "YES">
+      <MacroExpansion>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "B28ECF3A2F7F77B9002345B5"
+            BuildableName = "CakeLab_IOS.app"
+            BlueprintName = "CakeLab_IOS"
+            ReferencedContainer = "container:CakeLab_IOS.xcodeproj">
+         </BuildableReference>
+      </MacroExpansion>
+      <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "B28ED02D2F80C908002345B5"
+               BuildableName = "CakeLab_IOSTests.xctest"
+               BlueprintName = "CakeLab_IOSTests"
+               ReferencedContainer = "container:CakeLab_IOS.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+      </Testables>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"

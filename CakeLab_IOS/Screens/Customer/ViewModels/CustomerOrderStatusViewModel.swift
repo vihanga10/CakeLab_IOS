@@ -98,14 +98,15 @@ final class CustomerOrderStatusViewModel: ObservableObject {
     private func loadBakerProfile(bakerID: String, orderData: [String: Any]) async {
         async let artisanProfile = fetchBakerProfileData(collection: "artisans", bakerID: bakerID)
         async let userProfile = fetchBakerProfileData(collection: "users", bakerID: bakerID)
+        async let liveReviewStats = fetchBakerReviewStats(bakerID: bakerID)
 
-        let (artisanData, userData) = await (artisanProfile, userProfile)
+        let (artisanData, userData, reviewStats) = await (artisanProfile, userProfile, liveReviewStats)
         let primaryData = artisanData ?? [:]
         let fallbackData = userData ?? [:]
 
         let rawCity = firstString(primaryData["city"], fallbackData["city"], orderData["artisanCity"], orderData["bakerCity"])
-        let rating = Self.parseDouble(primaryData["rating"])
-        let reviewCount = Self.parseInt(primaryData["reviewCount"])
+        let rating = reviewStats?.rating ?? Self.parseDouble(primaryData["rating"])
+        let reviewCount = reviewStats?.count ?? Self.parseInt(primaryData["reviewCount"])
         let ratingText = rating > 0
             ? String(format: "%.1f", rating)
             : firstString(primaryData["artisanRating"], fallbackData["artisanRating"], orderData["artisanRating"])
@@ -144,7 +145,32 @@ final class CustomerOrderStatusViewModel: ObservableObject {
         }
     }
 
-    
+    private func fetchBakerReviewStats(bakerID: String) async -> (rating: Double, count: Int)? {
+        let trimmedID = bakerID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedID.isEmpty else { return nil }
+
+        var ratingsByID: [String: Int] = [:]
+        for key in ["bakerID", "bakerId", "artisanId"] {
+            do {
+                let snapshot = try await db.collection("reviews")
+                    .whereField(key, isEqualTo: trimmedID)
+                    .getDocuments()
+
+                for document in snapshot.documents {
+                    let rating = Self.parseInt(document.data()["rating"])
+                    if rating > 0 { ratingsByID[document.documentID] = rating }
+                }
+            } catch {
+                print("WARN unable to load order status baker reviews for \(trimmedID) by \(key): \(error.localizedDescription)")
+            }
+        }
+
+        let ratings = Array(ratingsByID.values)
+        guard !ratings.isEmpty else { return nil }
+
+        let average = Double(ratings.reduce(0, +)) / Double(ratings.count)
+        return (average, ratings.count)
+    }
 
     private static func parseDate(_ raw: Any?) -> Date? {
         if let ts = raw as? Timestamp { return ts.dateValue() }

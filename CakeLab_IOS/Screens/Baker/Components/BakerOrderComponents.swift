@@ -361,7 +361,7 @@ struct BakerActiveOrderCardFromCakeOrder: View {
                     HStack(alignment: .top, spacing: 10) {
                         Text(order.statusLabel)
                             .font(.urbanistSemiBold(11))
-                            .foregroundColor(order.statusColor)
+                            .foregroundColor(statusBadgeTextColor)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 4)
                             .background(order.statusColor.opacity(0.12))
@@ -422,6 +422,10 @@ struct BakerActiveOrderCardFromCakeOrder: View {
         .background(Color.cakeSurface)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 3)
+    }
+
+    private var statusBadgeTextColor: Color {
+        order.status.lowercased() == "baking" ? Color(hex: "B7791F") : order.statusColor
     }
 
     private var customerProfileImage: some View {

@@ -360,6 +360,7 @@ struct BidsReceivedView: View {
     @EnvironmentObject var notificationManager: NotificationManager
     @StateObject private var viewModel = BidsReceivedViewModel()
     @State private var activeSheet: BidsReceivedSheet?
+    @State private var selectedBakerProfileBid: CustomerBidOffer?
     @State private var isSubmittingPayment = false
     @State private var errorMessage: String?
 
@@ -418,6 +419,9 @@ struct BidsReceivedView: View {
                                     },
                                     onViewBidDetails: {
                                         activeSheet = .bidDetails(bid)
+                                    },
+                                    onBakerProfileTapped: {
+                                        selectedBakerProfileBid = bid
                                     }
                                 )
                                     .padding(.horizontal, 16)
@@ -458,6 +462,16 @@ struct BidsReceivedView: View {
             case .bidDetails(let bid):
                 BidFullDetailsSheet(request: request, bid: bid)
             }
+        }
+        .sheet(item: $selectedBakerProfileBid) { bid in
+            CustomerPublicBakerProfileView(
+                bakerID: bid.bakerID,
+                fallbackName: bid.bakerName,
+                fallbackProfileImageBase64: bid.bakerProfileImageBase64,
+                fallbackImageURL: bid.bakerImageURL,
+                fallbackAddress: bid.bakerAddress,
+                fallbackCity: bid.bakerCity
+            )
         }
         .alert("Payment Failed", isPresented: Binding(
             get: { errorMessage != nil },
@@ -718,6 +732,7 @@ struct BakerBidOfferCard: View {
     let bid: CustomerBidOffer
     let onAcceptBid: () -> Void
     let onViewBidDetails: () -> Void
+    let onBakerProfileTapped: () -> Void
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -735,6 +750,12 @@ struct BakerBidOfferCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
                 bakerProfileImage
+                    .contentShape(Circle())
+                    .highPriorityGesture(
+                        TapGesture().onEnded {
+                            onBakerProfileTapped()
+                        }
+                    )
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(bid.bakerName)
@@ -1355,6 +1376,7 @@ struct BidFullDetailsSheet: View {
     let request: CustomerBidRequest
     let bid: CustomerBidOffer
     @Environment(\.dismiss) private var dismiss
+    @State private var showBakerProfile = false
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -1418,6 +1440,16 @@ struct BidFullDetailsSheet: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .sheet(isPresented: $showBakerProfile) {
+            CustomerPublicBakerProfileView(
+                bakerID: bid.bakerID,
+                fallbackName: bid.bakerName,
+                fallbackProfileImageBase64: bid.bakerProfileImageBase64,
+                fallbackImageURL: bid.bakerImageURL,
+                fallbackAddress: bid.bakerAddress,
+                fallbackCity: bid.bakerCity
+            )
+        }
     }
     
     private var headerBar: some View {
@@ -1445,6 +1477,12 @@ struct BidFullDetailsSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
                 bakerProfileImage
+                    .contentShape(Circle())
+                    .highPriorityGesture(
+                        TapGesture().onEnded {
+                            showBakerProfile = true
+                        }
+                    )
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(bid.bakerName)

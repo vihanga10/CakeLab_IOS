@@ -60,6 +60,8 @@ struct WidgetMatchingRequestSummary: Codable, Hashable {
     let id: String
     let title: String
     let category: String
+    let location: String
+    let referenceImageBase64: String?
     let expectedDate: Date
     let bidCount: Int
     let budgetMin: Double
@@ -258,12 +260,14 @@ final class WidgetDataSyncManager {
     private func fetchBakerProfile(bakerID: String) async -> WidgetBakerProfile {
         async let artisanProfile = fetchProfileData(collection: "artisans", documentID: bakerID)
         async let userProfile = fetchProfileData(collection: "users", documentID: bakerID)
+        async let liveReviewStats = fetchBakerReviewStats(bakerID: bakerID)
 
-        let (artisanData, userData) = await (artisanProfile, userProfile)
+        let (artisanData, userData, reviewStats) = await (artisanProfile, userProfile, liveReviewStats)
         let primaryData = artisanData ?? [:]
         let fallbackData = userData ?? [:]
 
-        let rating = doubleFromAny(primaryData["rating"])
+        let rating = reviewStats?.rating ?? doubleFromAny(primaryData["rating"])
+        let reviewCount = reviewStats?.count ?? intFromAny(primaryData["reviewCount"])
         let ratingText = rating > 0
             ? String(format: "%.1f", rating)
             : firstString(primaryData["artisanRating"], fallbackData["artisanRating"])
@@ -271,7 +275,7 @@ final class WidgetDataSyncManager {
         return WidgetBakerProfile(
             name: firstString(primaryData["shopName"], primaryData["name"], fallbackData["name"]),
             ratingText: ratingText,
-            reviewCount: intFromAny(primaryData["reviewCount"]),
+            reviewCount: reviewCount,
             address: firstString(primaryData["address"], primaryData["location"], fallbackData["address"]),
             city: firstString(primaryData["city"], fallbackData["city"]),
             profileImageBase64: firstString(primaryData["profileImageBase64"], fallbackData["profileImageBase64"]),
@@ -286,6 +290,33 @@ final class WidgetDataSyncManager {
         } catch {
             return nil
         }
+    }
+
+    private func fetchBakerReviewStats(bakerID: String) async -> (rating: Double, count: Int)? {
+        let trimmedID = bakerID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedID.isEmpty else { return nil }
+
+        var ratingsByID: [String: Int] = [:]
+        for key in ["bakerID", "bakerId", "artisanId"] {
+            do {
+                let snapshot = try await db.collection("reviews")
+                    .whereField(key, isEqualTo: trimmedID)
+                    .getDocuments()
+
+                for document in snapshot.documents {
+                    let rating = intFromAny(document.data()["rating"])
+                    if rating > 0 { ratingsByID[document.documentID] = rating }
+                }
+            } catch {
+                print("Widget review stats failed for baker \(trimmedID) by \(key): \(error.localizedDescription)")
+            }
+        }
+
+        let ratings = Array(ratingsByID.values)
+        guard !ratings.isEmpty else { return nil }
+
+        let average = Double(ratings.reduce(0, +)) / Double(ratings.count)
+        return (average, ratings.count)
     }
 
     private func enrichBakerOrdersWithCustomerProfiles(_ orders: [WidgetOrderSummary]) async -> [WidgetOrderSummary] {
@@ -398,6 +429,11 @@ final class WidgetDataSyncManager {
                 id: doc.documentID,
                 title: (title?.isEmpty == false) ? title! : "Untitled Request",
                 category: categoryCandidates.first ?? "Cake",
+                location: displayLocation(
+                    address: firstString(data["customerAddress"], data["deliveryAddress"], data["address"]),
+                    city: firstString(data["customerCity"], data["deliveryCity"], data["city"])
+                ),
+                referenceImageBase64: (data["referenceImages"] as? [String])?.first,
                 expectedDate: expectedDate,
                 bidCount: intFromAny(data["bidCount"]),
                 budgetMin: doubleFromAny(data["budgetMin"]),
@@ -489,6 +525,15 @@ final class WidgetDataSyncManager {
         values.compactMap { $0 as? String }
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first(where: { !$0.isEmpty }) ?? ""
+    }
+
+    private func displayLocation(address: String?, city: String?) -> String {
+        let trimmedAddress = address?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let trimmedCity = city?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        if trimmedAddress.isEmpty { return trimmedCity.isEmpty ? "Location not provided" : trimmedCity }
+        if trimmedCity.isEmpty || trimmedAddress.localizedCaseInsensitiveContains(trimmedCity) { return trimmedAddress }
+        return "\(trimmedAddress), \(trimmedCity)"
     }
 
     private func dateFromAny(_ raw: Any?) -> Date? {

@@ -36,7 +36,8 @@ final class ArtisansNearYouViewModel: ObservableObject {
             let rawArtisans = snapshot.documents.compactMap(ArtisanProfile.init(document:))
             let userFallback = try await fetchBakersFromUsersCollection()
             let merged = mergeProfiles(primary: rawArtisans, fallback: userFallback)
-            let hydrated = await hydrateMissingCoordinates(for: merged)
+            let reviewed = await hydrateReviewStats(for: merged)
+            let hydrated = await hydrateMissingCoordinates(for: reviewed)
 
             artisans = hydrated
             if let customerDistrict {
@@ -147,6 +148,67 @@ final class ArtisansNearYouViewModel: ObservableObject {
             }
             return $0.rating > $1.rating
         }
+    }
+
+    private func hydrateReviewStats(for source: [ArtisanProfile]) async -> [ArtisanProfile] {
+        var output: [ArtisanProfile] = []
+        output.reserveCapacity(source.count)
+
+        for artisan in source {
+            guard let stats = await fetchBakerReviewStats(bakerID: artisan.id) else {
+                output.append(artisan)
+                continue
+            }
+
+            output.append(ArtisanProfile(
+                id: artisan.id,
+                name: artisan.name,
+                rating: stats.rating,
+                reviewCount: stats.count,
+                specialties: artisan.specialties,
+                city: artisan.city,
+                location: artisan.location,
+                isOnline: artisan.isOnline,
+                imageURL: artisan.imageURL,
+                profileImageBase64: artisan.profileImageBase64,
+                latitude: artisan.latitude,
+                longitude: artisan.longitude
+            ))
+        }
+
+        return output.sorted {
+            if $0.rating == $1.rating {
+                return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
+            return $0.rating > $1.rating
+        }
+    }
+
+    private func fetchBakerReviewStats(bakerID: String) async -> (rating: Double, count: Int)? {
+        let trimmedID = bakerID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedID.isEmpty else { return nil }
+
+        var ratingsByID: [String: Int] = [:]
+        for key in ["bakerID", "bakerId", "artisanId"] {
+            do {
+                let snapshot = try await db.collection("reviews")
+                    .whereField(key, isEqualTo: trimmedID)
+                    .getDocuments()
+
+                for document in snapshot.documents {
+                    let rating = asInt(document.data()["rating"]) ?? 0
+                    if rating > 0 { ratingsByID[document.documentID] = rating }
+                }
+            } catch {
+                print("WARN unable to load reviews for baker \(trimmedID) by \(key): \(error.localizedDescription)")
+            }
+        }
+
+        let ratings = Array(ratingsByID.values)
+        guard !ratings.isEmpty else { return nil }
+
+        let average = Double(ratings.reduce(0, +)) / Double(ratings.count)
+        return (average, ratings.count)
     }
 
     private func hydrateMissingCoordinates(for source: [ArtisanProfile]) async -> [ArtisanProfile] {

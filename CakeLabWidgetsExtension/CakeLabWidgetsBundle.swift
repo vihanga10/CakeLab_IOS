@@ -41,6 +41,8 @@ private struct SnapshotMatchingRequest: Codable {
     let id: String
     let title: String
     let category: String
+    let location: String?
+    let referenceImageBase64: String?
     let expectedDate: Date
     let bidCount: Int
     let budgetMin: Double
@@ -198,14 +200,10 @@ private struct CustomerNearestDeliveryCard: View {
                 orderImage
 
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .top, spacing: 8) {
-                        Text(order.cakeName)
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(Color(red: 0.11, green: 0.11, blue: 0.11))
-                            .lineLimit(2)
-
-                        Spacer(minLength: 0)
-                    }
+                    Text(order.cakeName)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(Color(red: 0.11, green: 0.11, blue: 0.11))
+                        .lineLimit(2)
 
                     HStack(alignment: .top, spacing: 8) {
                         CompactStatusBadge(status: order.status)
@@ -224,12 +222,12 @@ private struct CustomerNearestDeliveryCard: View {
                 }
             }
             .padding(.horizontal, horizontalInset)
-            .padding(.top, 8)
-            .padding(.bottom, 4)
+            .padding(.top, 6)
+            .padding(.bottom, 6)
 
             WidgetOrderProgressTracker(currentStep: order.currentStep)
                 .padding(.horizontal, horizontalInset)
-                .padding(.bottom, 4)
+                .padding(.bottom, 6)
 
             Divider()
                 .padding(.horizontal, horizontalInset)
@@ -239,7 +237,7 @@ private struct CustomerNearestDeliveryCard: View {
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(bakerName)
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(red: 0.10, green: 0.10, blue: 0.10))
                         .lineLimit(1)
                     HStack(spacing: 3) {
@@ -300,18 +298,33 @@ private struct CustomerNearestDeliveryCard: View {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
+            } else if let url = URL(string: order.bakerImageURL ?? ""), !(order.bakerImageURL ?? "").isEmpty {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    default:
+                        bakerProfileFallback
+                    }
+                }
             } else {
-                Circle()
-                    .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
-                    .overlay(
-                        Image(systemName: "person.fill")
-                            .font(.system(size: 13))
-                            .foregroundColor(Color(red: 0.37, green: 0.22, blue: 0.08).opacity(0.5))
-                    )
+                bakerProfileFallback
             }
         }
         .frame(width: 28, height: 28)
         .clipShape(Circle())
+    }
+
+    private var bakerProfileFallback: some View {
+        Circle()
+            .fill(Color(red: 0.92, green: 0.90, blue: 0.87))
+            .overlay(
+                Image(systemName: "person.fill")
+                    .font(.system(size: 13))
+                    .foregroundColor(Color(red: 0.37, green: 0.22, blue: 0.08).opacity(0.5))
+            )
     }
 
     private var bakerName: String {
@@ -358,6 +371,8 @@ private struct CompactStatusBadge: View {
 private struct WidgetOrderProgressTracker: View {
     let currentStep: Int
     private let labels = ["Confirmed", "Baking", "Decorating", "Quality\nChecking", "Delivered"]
+    private let circleDiameter: CGFloat = 18
+    private let progressLabelWidth: CGFloat = 58
 
     var body: some View {
         VStack(spacing: 3) {
@@ -373,21 +388,60 @@ private struct WidgetOrderProgressTracker: View {
                 }
             }
 
-            HStack(spacing: 0) {
-                ForEach(labels.indices, id: \.self) { index in
-                    Text(labels[index])
-                        .font(.system(size: 7, weight: .regular))
-                        .foregroundColor(Color(red: 0.40, green: 0.40, blue: 0.40))
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                        .frame(maxWidth: .infinity)
-                }
-            }
+            progressLabelRow
         }
     }
 
     private var clampedStep: Int {
         max(1, min(5, currentStep))
+    }
+
+    private var progressLabelRow: some View {
+        GeometryReader { proxy in
+            let connectorWidth = max(
+                0,
+                (proxy.size.width - (circleDiameter * CGFloat(labels.count))) / CGFloat(labels.count - 1)
+            )
+
+            ZStack(alignment: .topLeading) {
+                ForEach(labels.indices, id: \.self) { index in
+                    Text(labels[index])
+                        .font(.system(size: 7, weight: .regular))
+                        .foregroundColor(Color(red: 0.40, green: 0.40, blue: 0.40))
+                        .multilineTextAlignment(progressLabelTextAlignment(for: index))
+                        .lineLimit(2)
+                        .frame(width: progressLabelWidth, alignment: progressLabelFrameAlignment(for: index))
+                        .position(
+                            x: progressLabelX(index: index, totalWidth: proxy.size.width, connectorWidth: connectorWidth),
+                            y: 8
+                        )
+                }
+            }
+        }
+        .frame(height: 20)
+    }
+
+    private func progressLabelX(index: Int, totalWidth: CGFloat, connectorWidth: CGFloat) -> CGFloat {
+        if index == 0 { return progressLabelWidth / 2 }
+        if index == labels.count - 1 { return totalWidth - (progressLabelWidth / 2) }
+
+        return CGFloat(index) * (circleDiameter + connectorWidth) + (circleDiameter / 2)
+    }
+
+    private func progressLabelTextAlignment(for index: Int) -> TextAlignment {
+        switch index {
+        case 0: return .leading
+        case labels.count - 1: return .trailing
+        default: return .center
+        }
+    }
+
+    private func progressLabelFrameAlignment(for index: Int) -> Alignment {
+        switch index {
+        case 0: return .leading
+        case labels.count - 1: return .trailing
+        default: return .center
+        }
     }
 
     private func stepCircle(_ step: Int) -> some View {
@@ -680,49 +734,116 @@ private struct BakerLatestMatchingWidgetView: View {
             } else if entry.payload.role != .baker {
                 RoleMismatchWidgetCard(message: "This widget is available for baker accounts.")
             } else if let request = entry.payload.bakerLatestMatchingRequest {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("Matching Request")
-                            .font(.system(size: 15, weight: .bold))
-                        Spacer()
-                        Text("\(request.bidCount) bids")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.brown)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.brown.opacity(0.15))
-                            .clipShape(Capsule())
-                    }
-
-                    Text(request.title)
-                        .font(.system(size: 15, weight: .semibold))
-                        .lineLimit(2)
-
-                    HStack(spacing: 8) {
-                        Text(request.category)
-                            .font(.system(size: 11, weight: .semibold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.blue.opacity(0.14))
-                            .clipShape(Capsule())
-
-                        Text(shortDateText(request.expectedDate))
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-
-                    Text("LKR \(Int(request.budgetMin).formatted()) - \(Int(request.budgetMax).formatted())")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.primary)
-                }
-                .padding(14)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .background(WidgetCardBackground())
+                matchingRequestCard(request)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .background(WidgetMatchingCardBackground())
             } else {
                 EmptyDataWidgetCard(message: "No matching requests yet.")
             }
         }
         .widgetURL(URL(string: "cakelab://widget/baker/matching"))
+    }
+
+    private func matchingRequestCard(_ request: SnapshotMatchingRequest) -> some View {
+        VStack(spacing: 7) {
+            HStack(alignment: .top, spacing: 10) {
+                matchingRequestImage(request)
+
+                VStack(alignment: .leading, spacing: 7) {
+                    Text(request.title)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(Color(red: 0.13, green: 0.13, blue: 0.13))
+                        .lineLimit(1)
+
+                    HStack(spacing: 6) {
+                        Text(request.category.isEmpty ? "Cake" : request.category)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(Color(red: 0.25, green: 0.25, blue: 0.25))
+                            .lineLimit(1)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color(red: 0.88, green: 0.94, blue: 0.97))
+                            .clipShape(Capsule())
+
+                        Spacer(minLength: 4)
+
+                        Label(shortDateText(request.expectedDate), systemImage: "calendar")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    HStack(spacing: 6) {
+                        Label(locationText(for: request), systemImage: "mappin.and.ellipse")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+
+                        Spacer(minLength: 4)
+
+                        Label("\(request.bidCount) bids", systemImage: "person.2.fill")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(Color(red: 0.37, green: 0.22, blue: 0.08))
+                            .lineLimit(1)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color(red: 0.91, green: 0.88, blue: 0.84))
+                            .clipShape(Capsule())
+                    }
+                }
+            }
+
+            Divider()
+
+            HStack(alignment: .bottom) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Budget (LKR)")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.secondary)
+                    Text("LKR \(Int(request.budgetMin).formatted()) - \(Int(request.budgetMax).formatted())")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+
+                Spacer(minLength: 8)
+
+                Text("Place Bid")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Color(red: 0.37, green: 0.22, blue: 0.08))
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 7)
+                    .background(Color(red: 0.91, green: 0.86, blue: 0.82))
+                    .clipShape(Capsule())
+            }
+        }
+    }
+
+    private func matchingRequestImage(_ request: SnapshotMatchingRequest) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(red: 0.95, green: 0.93, blue: 0.90))
+
+            if let image = widgetImage(from: request.referenceImageBase64) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: "birthday.cake.fill")
+                    .font(.system(size: 27))
+                    .foregroundColor(Color(red: 0.37, green: 0.22, blue: 0.08).opacity(0.42))
+            }
+        }
+        .frame(width: 74, height: 74)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipped()
+    }
+
+    private func locationText(for request: SnapshotMatchingRequest) -> String {
+        let location = request.location?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return location.isEmpty ? "Location not provided" : location
     }
 }
 
@@ -733,6 +854,17 @@ private struct WidgetCardBackground: View {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
+    }
+}
+
+private struct WidgetMatchingCardBackground: View {
+    var body: some View {
+        RoundedRectangle(cornerRadius: 20, style: .continuous)
+            .fill(Color.white)
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(Color.black.opacity(0.08), lineWidth: 1)
+            )
     }
 }
 

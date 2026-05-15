@@ -5,6 +5,7 @@ struct CustomerOrdersView: View {
     let user: AppUser
 
     @State private var selectedTab = 0
+    @State private var selectedBakerProfileOrder: CustomerOrder?
     @StateObject private var viewModel = CustomerOrdersViewModel()
     @EnvironmentObject var notificationManager: NotificationManager
 
@@ -42,7 +43,13 @@ struct CustomerOrdersView: View {
                                         NavigationLink {
                                             CustomerOrderStatusView(orderID: order.id, fallbackOrder: order)
                                         } label: {
-                                            OrderCard(order: order, stepLabels: stepLabels)
+                                            OrderCard(
+                                                order: order,
+                                                stepLabels: stepLabels,
+                                                onBakerProfileTapped: {
+                                                    selectedBakerProfileOrder = order
+                                                }
+                                            )
                                         }
                                         .buttonStyle(.plain)
                                     }
@@ -65,7 +72,12 @@ struct CustomerOrdersView: View {
                                                 showsCalendarAction: false
                                             )
                                         } label: {
-                                            CompletedOrderCard(order: order)
+                                            CompletedOrderCard(
+                                                order: order,
+                                                onBakerProfileTapped: {
+                                                    selectedBakerProfileOrder = order
+                                                }
+                                            )
                                         }
                                         .buttonStyle(.plain)
                                     }
@@ -95,6 +107,16 @@ struct CustomerOrdersView: View {
                 await notificationManager.syncCustomerOrderStatusNotifications(customerID: user.id)
                 await viewModel.loadOrders(customerID: user.id)
             }
+        }
+        .sheet(item: $selectedBakerProfileOrder) { order in
+            CustomerPublicBakerProfileView(
+                bakerID: order.bakerID,
+                fallbackName: order.bakerName,
+                fallbackProfileImageBase64: order.bakerProfileImageBase64,
+                fallbackImageURL: order.bakerImageURL,
+                fallbackAddress: order.bakerAddress,
+                fallbackCity: order.bakerCity
+            )
         }
     }
 
@@ -128,6 +150,7 @@ struct CustomerOrdersView: View {
 struct OrderCard: View {
     let order: CustomerOrder
     let stepLabels: [String]
+    let onBakerProfileTapped: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -188,6 +211,12 @@ struct OrderCard: View {
 
             HStack(spacing: 12) {
                 bakerProfileImage
+                    .contentShape(Circle())
+                    .highPriorityGesture(
+                        TapGesture().onEnded {
+                            onBakerProfileTapped()
+                        }
+                    )
                 VStack(alignment: .leading, spacing: 3) {
                     Text(order.bakerName).font(.urbanistBold(14)).foregroundColor(.cakePrimaryText)
                     HStack(spacing: 3) {
@@ -214,9 +243,13 @@ struct OrderCard: View {
 
     private var statusBadge: some View {
         Text(order.status)
-            .font(.urbanistSemiBold(11)).foregroundColor(order.statusColor)
+            .font(.urbanistSemiBold(11)).foregroundColor(statusBadgeTextColor)
             .padding(.horizontal, 10).padding(.vertical, 4)
             .background(order.statusColor.opacity(0.12)).cornerRadius(8)
+    }
+
+    private var statusBadgeTextColor: Color {
+        order.status.lowercased() == "baking" ? Color(hex: "B7791F") : order.statusColor
     }
 
     private var bakerProfileImage: some View {
@@ -269,6 +302,7 @@ struct OrderCard: View {
 // MARK: - Completed Order Card
 struct CompletedOrderCard: View {
     let order: CustomerOrder
+    let onBakerProfileTapped: () -> Void
 
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
@@ -287,6 +321,12 @@ struct CompletedOrderCard: View {
                 }
                 HStack(spacing: 6) {
                     bakerProfileImage
+                        .contentShape(Circle())
+                        .highPriorityGesture(
+                            TapGesture().onEnded {
+                                onBakerProfileTapped()
+                            }
+                        )
                     VStack(alignment: .leading, spacing: 1) {
                         Text(order.bakerName).font(.urbanistSemiBold(12))
                             .foregroundColor(Color(red: 0.22, green: 0.22, blue: 0.22)).lineLimit(1)

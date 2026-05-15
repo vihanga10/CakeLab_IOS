@@ -421,7 +421,7 @@ struct BakerHomeView: View {
                                                 .foregroundColor(.cakeBrown.opacity(0.45))
                                         }
                                     }
-                                    Text("Order No:\n\(order.id.prefix(6))")
+                                    Text("Order No:\n\(String(order.id.prefix(6)).uppercased())")
                                         .font(.urbanistRegular(11))
                                         .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
                                         .multilineTextAlignment(.center)
