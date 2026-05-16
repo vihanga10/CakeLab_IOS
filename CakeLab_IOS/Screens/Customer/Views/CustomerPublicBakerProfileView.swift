@@ -3,6 +3,7 @@ import FirebaseFirestore
 import UIKit
 import Combine
 
+// MARK: - Customer Public Baker Profile View
 @MainActor
 struct CustomerPublicBakerProfileView: View {
     let bakerID: String
@@ -77,9 +78,11 @@ struct CustomerPublicBakerProfileView: View {
             )
         }
         .sheet(item: $selectedPortfolioWork) { work in
+            // Portfolio detail sheet opened from portfolio photo.
             CustomerPortfolioPreviewDetailSheet(work: work)
         }
         .sheet(isPresented: $showReviews) {
+            // Reviews sheet opened from Reviews stat.
             CustomerPublicBakerReviewsSheet(
                 bakerName: profile.shopName.isEmpty ? fallbackName : profile.shopName,
                 reviews: viewModel.reviews,
@@ -88,6 +91,7 @@ struct CustomerPublicBakerProfileView: View {
         }
     }
 
+    // MARK: - Header
     private var profileHeaderBar: some View {
         HStack {
             Button { dismiss() } label: {
@@ -113,6 +117,7 @@ struct CustomerPublicBakerProfileView: View {
         .background(Color.cakeSurface)
     }
 
+    // MARK: - Baker Cover and Profile Header
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .bottomLeading) {
@@ -152,6 +157,7 @@ struct CustomerPublicBakerProfileView: View {
         .background(Color.cakeSurface)
     }
 
+    // MARK: - Cover Image
     private var coverImage: some View {
         Group {
             if let image = decodeBase64Image(profile.coverImageBase64) {
@@ -182,6 +188,7 @@ struct CustomerPublicBakerProfileView: View {
         )
     }
 
+    // MARK: - Profile Image
     private var profileImage: some View {
         ZStack {
             Circle()
@@ -228,6 +235,7 @@ struct CustomerPublicBakerProfileView: View {
             .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
+    // MARK: - Profile Stats Card
     private var statsSection: some View {
         HStack(spacing: 0) {
             publicStat(value: "\(profile.completedOrders)", label: "Completed\nOrders")
@@ -266,6 +274,7 @@ struct CustomerPublicBakerProfileView: View {
         .frame(maxWidth: .infinity)
     }
 
+    // MARK: - Specialities Card
     private var specialtiesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("My Specialities")
@@ -289,6 +298,7 @@ struct CustomerPublicBakerProfileView: View {
         .sectionCard()
     }
 
+    // MARK: - About Card
     private var aboutSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("About Me")
@@ -302,6 +312,7 @@ struct CustomerPublicBakerProfileView: View {
         .sectionCard()
     }
 
+    // MARK: - Portfolio Card
     private var portfolioSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("My Portfolio")
@@ -318,6 +329,7 @@ struct CustomerPublicBakerProfileView: View {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 2), spacing: 10) {
                     ForEach(profile.portfolioWorks) { work in
                         Button {
+                            // Open portfolio work details.
                             selectedPortfolioWork = work
                         } label: {
                             portfolioImage(work)
@@ -388,6 +400,7 @@ private extension View {
     }
 }
 
+// MARK: - Portfolio Detail Sheet
 private struct CustomerPortfolioPreviewDetailSheet: View {
     let work: PortfolioPreviewWork
     @Environment(\.dismiss) private var dismiss
@@ -401,6 +414,7 @@ private struct CustomerPortfolioPreviewDetailSheet: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 12) {
+                        // Portfolio image, title, description, and traits.
                         CustomerPortfolioWorkImageView(imageReference: work.imageReference, height: 170)
 
                         Text(work.title)
@@ -457,6 +471,7 @@ private struct CustomerPortfolioPreviewDetailSheet: View {
     }
 }
 
+// MARK: - Portfolio Image View
 private struct CustomerPortfolioWorkImageView: View {
     let imageReference: String
     let height: CGFloat
@@ -512,6 +527,7 @@ private struct CustomerPortfolioWorkImageView: View {
     }
 }
 
+// MARK: - Public Baker Reviews Sheet
 private struct CustomerPublicBakerReviewsSheet: View {
     let bakerName: String
     let reviews: [Review]
@@ -596,6 +612,7 @@ private struct CustomerPublicBakerReviewsSheet: View {
     }
 
     private var averageRatingHeader: some View {
+        // Average rating summary at top of reviews sheet.
         VStack(spacing: 12) {
             HStack(spacing: 4) {
                 ForEach(0..<5, id: \.self) { index in
@@ -618,6 +635,7 @@ private struct CustomerPublicBakerReviewsSheet: View {
     }
 
     private func reviewRow(_ review: Review) -> some View {
+        // Individual customer review card.
         let customer = resolvedCustomer(for: review)
         let rating = min(max(review.rating, 0), 5)
 
@@ -726,6 +744,7 @@ private struct CustomerPublicBakerReviewsSheet: View {
     }
 }
 
+// MARK: - Customer Public Baker Profile ViewModel
 @MainActor
 final class CustomerPublicBakerProfileViewModel: ObservableObject {
     @Published var profileData: BakerProfileData = .empty
@@ -743,6 +762,7 @@ final class CustomerPublicBakerProfileViewModel: ObservableObject {
         fallbackAddress: String = "",
         fallbackCity: String = ""
     ) async {
+        // Load public profile, portfolio, reviews, and completed order count.
         isLoading = true
         defer { isLoading = false }
 

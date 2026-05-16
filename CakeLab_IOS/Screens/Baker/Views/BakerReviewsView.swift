@@ -19,6 +19,7 @@ struct BakerReviewsView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .task {
+            // Load reviews and matching customer profiles.
             await vm.loadReviews(for: user)
         }
         .refreshable {
@@ -51,6 +52,7 @@ struct BakerReviewsView: View {
     @ViewBuilder
     private var content: some View {
         if vm.isLoading {
+            // Loading state while reviews are fetched.
             VStack(spacing: 16) {
                 ProgressView()
                     .tint(.cakeBrown)
@@ -60,6 +62,7 @@ struct BakerReviewsView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if vm.reviews.isEmpty {
+            // Empty state before customers leave reviews.
             VStack(spacing: 16) {
                 Image(systemName: "star.slash")
                     .font(.system(size: 48))
@@ -75,6 +78,7 @@ struct BakerReviewsView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         } else {
+            // Review summary and customer review cards.
             ScrollView {
                 VStack(spacing: 0) {
                     averageRatingHeader
@@ -93,6 +97,7 @@ struct BakerReviewsView: View {
     }
 
     private var averageRatingHeader: some View {
+        // Average rating summary card.
         VStack(spacing: 12) {
             HStack(spacing: 4) {
                 ForEach(0..<5, id: \.self) { index in
@@ -115,6 +120,7 @@ struct BakerReviewsView: View {
     }
 
     private func reviewRow(_ review: Review) -> some View {
+        // Individual review card with customer, comment, stars, and date.
         let customer = vm.resolvedCustomer(for: review)
 
         return VStack(alignment: .leading, spacing: 12) {

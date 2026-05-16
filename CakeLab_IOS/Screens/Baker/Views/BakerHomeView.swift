@@ -33,21 +33,21 @@ struct BakerHomeView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
-                        
+                        // Header with avatar, greeting, and notifications.
                         bakerHeader
                             .padding(.bottom, 16)
 
-                        
+                        // Location filter banner.
                         locationBanner
                             .padding(.horizontal, 20)
                             .padding(.bottom, 28)
 
-                        
+                        // Dashboard stats cards.
                         statsSection
                             .padding(.horizontal, 20)
                             .padding(.bottom, 28)
 
-                        
+                        // Matching requests preview cards.
                         VStack(alignment: .leading, spacing: 14) {
                             sectionHeader("Matching Requests", count: newRequests) {
                                 withAnimation(.easeInOut(duration: 0.15)) {
@@ -89,6 +89,7 @@ struct BakerHomeView: View {
                 }
                 
                 NavigationLink(
+                    // Hidden navigation link to bid detail form.
                     destination: Group {
                         if let req = selectedRequest {
                             BakerBidDetailView(request: req)
@@ -101,16 +102,20 @@ struct BakerHomeView: View {
                 .hidden()
             }
             .navigationDestination(isPresented: $showAllOpen) {
+                // Full list of other open requests.
                 BakerOtherRequestsView(viewModel: matchingRequestsVM)
             }
             .sheet(isPresented: $showLocationSheet) {
+                // City filter picker for matching requests.
                 LocationPickerSheet(filterCity: $filterCity)
             }
             .task {
+                // Load request previews and live home stats.
                 await matchingRequestsVM.loadMatchingRequests()
                 await homeVM.loadLiveStats()
             }
             .onAppear {
+                // Load profile avatar and default city filter.
                 homeVM.loadProfileAvatar(userID: user.id)
                 homeVM.loadBakerCity()
             }
@@ -325,6 +330,7 @@ struct BakerHomeView: View {
     private var matchingRequestsPreview: some View {
         VStack(spacing: 12) {
             if matchingRequestsVM.isLoading {
+                // Loading state for matching request cards.
                 VStack(spacing: 12) {
                     ProgressView()
                         .tint(.cakeBrown)
@@ -359,6 +365,7 @@ struct BakerHomeView: View {
                 ForEach(Array(filteredRequests.prefix(2))) { cakeReq in
                     let req = cakeReq.toCakeRequest()
                     MatchingRequestCard(request: req) {
+                        // Open bid detail from matching card.
                         selectedRequest = req
                         showBidDetail = true
                     }
@@ -371,7 +378,7 @@ struct BakerHomeView: View {
     private var activeOrdersPreview: some View {
         Group {
             if homeVM.isLoadingStats {
-                // Loading skeleton — horizontal scrolling circles
+                // Loading skeleton for active order preview.
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 16) {
                         ForEach(0..<3, id: \.self) { _ in
@@ -392,7 +399,7 @@ struct BakerHomeView: View {
             } else if homeVM.activeOrdersList.isEmpty {
                 activeOrdersEmptyState
             } else {
-                // Horizontal scrolling circles
+                // Horizontal active order cards.
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 16) {
                         ForEach(homeVM.activeOrdersList) { order in
@@ -456,6 +463,7 @@ struct BakerHomeView: View {
     private var otherOpenRequestsPreview: some View {
         VStack(spacing: 12) {
             if matchingRequestsVM.isLoading {
+                // Loading state for other open requests.
                 ProgressView()
                     .tint(.cakeBrown)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -473,6 +481,7 @@ struct BakerHomeView: View {
                     MatchingRequestCard(
                         request: req,
                         onPlaceBid: {
+                            // Open bid detail for an open request.
                             selectedRequest = req
                             showBidDetail = true
                         },

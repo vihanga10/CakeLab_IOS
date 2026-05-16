@@ -15,14 +15,17 @@ struct DraftIdeasView: View {
                 headerBar
 
                 if vm.isLoading {
+                    // Loading state while draft requests are fetched.
                     VStack(spacing: 16) {
                         ProgressView().tint(.cakeBrown)
                         Text("Loading drafts...").font(.urbanistRegular(13)).foregroundColor(.cakeGrey)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if vm.drafts.isEmpty {
+                    // Empty state before any draft is saved.
                     emptyState
                 } else {
+                    // Saved draft cards that can continue editing.
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 14) {
                             ForEach(vm.drafts) { draft in
@@ -40,6 +43,7 @@ struct DraftIdeasView: View {
         .task { await vm.fetchDrafts() }
         .refreshable { await vm.fetchDrafts() }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("customerRequestDidChange"))) { _ in
+            // Refresh drafts after a request is saved, edited, or published.
             Task { await vm.fetchDrafts() }
         }
         .asCustomerSubScreen()
@@ -87,6 +91,7 @@ private struct DraftRequestCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // Draft title, category, and status badge.
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(draft.displayTitle)
@@ -105,6 +110,7 @@ private struct DraftRequestCard: View {
                     .background(Color(red: 0.93, green: 0.88, blue: 0.82)).cornerRadius(8)
             }
 
+            // Draft completion progress.
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text("Completion").font(.urbanistRegular(11)).foregroundColor(.cakeGrey)
@@ -123,6 +129,7 @@ private struct DraftRequestCard: View {
 
             Divider()
 
+            // Continue editing action opens CreateCakeRequestView with draft values.
             HStack {
                 HStack(spacing: 5) {
                     Image(systemName: "clock").font(.system(size: 12)).foregroundColor(.cakeGrey)

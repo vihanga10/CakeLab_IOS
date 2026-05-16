@@ -1,6 +1,7 @@
 import SwiftUI
 import FirebaseFirestore
 
+// MARK: - Customer Bids List View
 struct CustomerBidsView: View {
     let user: AppUser
     @StateObject private var viewModel = CustomerBidsViewModel()
@@ -24,9 +25,11 @@ struct CustomerBidsView: View {
                 Color.cakeBackground.ignoresSafeArea()
 
                 if viewModel.isLoading {
+                    // Loading state while customer requests are fetched.
                     ProgressView("Loading your request bids...")
                         .tint(.cakeBrown)
                 } else if viewModel.requests.isEmpty {
+                    // Empty state before the customer publishes requests.
                     VStack(spacing: 8) {
                         Image(systemName: "tray")
                             .font(.system(size: 24, weight: .regular))
@@ -43,6 +46,7 @@ struct CustomerBidsView: View {
                     }
                     .padding(.horizontal, 32)
                 } else {
+                    // Published request cards that can open received bids.
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 16) {
                             ForEach(viewModel.requests) { request in
@@ -68,6 +72,7 @@ struct CustomerBidsView: View {
                 }
             }
             .task {
+                // Load all customer requests that can receive baker bids.
                 await viewModel.loadRequests(customerID: user.id)
             }
             .refreshable {
@@ -87,6 +92,7 @@ struct CustomerBidsView: View {
     }
 }
 
+// MARK: - Customer Bid Request Card
 struct CustomerBidRequestCard: View {
     let request: CustomerBidRequest
     let user: AppUser
@@ -95,6 +101,7 @@ struct CustomerBidRequestCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Card header: cake photo, title, category, date, and budget.
             HStack(alignment: .top, spacing: 16) {
                 thumbnailView
 
@@ -353,6 +360,7 @@ private extension CustomerBidRequest {
     }
 }
 
+// MARK: - Bids Received View
 struct BidsReceivedView: View {
     let request: CustomerBidRequest
     let user: AppUser
@@ -385,6 +393,7 @@ struct BidsReceivedView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 16) {
+                        // Request summary card at the top of bids screen.
                         requestSummaryCard
                             .padding(.horizontal, 16)
                             .padding(.top, 12)
@@ -411,6 +420,7 @@ struct BidsReceivedView: View {
                             .padding(.horizontal, 24)
                             .padding(.top, 20)
                         } else {
+                            // Baker bid cards with accept, details, and profile actions.
                             ForEach(viewModel.bids) { bid in
                                 BakerBidOfferCard(
                                     bid: bid,
@@ -446,12 +456,14 @@ struct BidsReceivedView: View {
             }
         }
         .task {
+            // Load bids for the selected published request.
             await viewModel.loadBids(requestID: request.id, customerID: request.customerID)
         }
         .refreshable {
             await viewModel.loadBids(requestID: request.id, customerID: request.customerID)
         }
         .sheet(item: $activeSheet) { sheet in
+            // Payment or bid detail sheet based on selected bid action.
             switch sheet {
             case .payment(let bid):
                 PaymentCheckoutView(request: request, bid: bid, user: user) { payload in
@@ -464,6 +476,7 @@ struct BidsReceivedView: View {
             }
         }
         .sheet(item: $selectedBakerProfileBid) { bid in
+            // Public baker profile from a baker bid card.
             CustomerPublicBakerProfileView(
                 bakerID: bid.bakerID,
                 fallbackName: bid.bakerName,
@@ -507,6 +520,7 @@ struct BidsReceivedView: View {
         .background(Color.cakeSurface)
     }
 
+    // MARK: - Accept Bid Process
     private func processAcceptedBid(bid: CustomerBidOffer, payment: PaymentPayload) async {
         isSubmittingPayment = true
         defer { isSubmittingPayment = false }
@@ -698,6 +712,7 @@ struct BidsReceivedView: View {
         return calendar.date(from: merged) ?? date
     }
 
+    // MARK: - Request Summary Card
     private var requestSummaryCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(request.title)
@@ -728,6 +743,7 @@ struct BidsReceivedView: View {
     }
 }
 
+// MARK: - Baker Bid Offer Card
 struct BakerBidOfferCard: View {
     let bid: CustomerBidOffer
     let onAcceptBid: () -> Void
@@ -748,6 +764,7 @@ struct BakerBidOfferCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // Baker profile row with photo and submitted time.
             HStack(spacing: 12) {
                 bakerProfileImage
                     .contentShape(Circle())
@@ -792,6 +809,7 @@ struct BakerBidOfferCard: View {
             }
 
             HStack(spacing: 12) {
+                // Accept or inspect this bid.
                 Button(action: onAcceptBid) {
                     Text("Accept Bid")
                         .font(.urbanistSemiBold(13))
@@ -898,6 +916,7 @@ struct BakerBidOfferCard: View {
     }
 }
 
+// MARK: - Payment Checkout View
 struct PaymentCheckoutView: View {
     let request: CustomerBidRequest
     let bid: CustomerBidOffer
@@ -939,6 +958,7 @@ struct PaymentCheckoutView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 16) {
+                        // Checkout cards: location, method, optional card fields.
                         paymentSummaryCard
                         paymentMethodCard
 
@@ -949,6 +969,7 @@ struct PaymentCheckoutView: View {
                         warningMessage
 
                         Button {
+                            // Builds the payment payload used to create the order.
                             onPay(
                                 PaymentPayload(
                                     method: selectedMethod,
@@ -982,6 +1003,7 @@ struct PaymentCheckoutView: View {
             }
         }
         .sheet(isPresented: $showDeliveryLocationSheet) {
+            // Edit delivery address before paying.
             EditDeliveryLocationSheet(
                 userID: user.id,
                 address: $deliveryAddress,
@@ -1021,6 +1043,7 @@ struct PaymentCheckoutView: View {
         }
     }
 
+    // MARK: - Payment Summary Card
     private var paymentSummaryCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Delivery Location Section
@@ -1073,6 +1096,7 @@ struct PaymentCheckoutView: View {
         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
     }
 
+    // MARK: - Payment Method Card
     private var paymentMethodCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Payment Method")
@@ -1096,6 +1120,7 @@ struct PaymentCheckoutView: View {
         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
     }
 
+    // MARK: - Card Details Card
     private var cardDetailsCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Card Details")
@@ -1176,6 +1201,7 @@ struct PaymentCheckoutView: View {
     }
 }
 
+// MARK: - Edit Delivery Location Sheet
 struct EditDeliveryLocationSheet: View {
     let userID: String
     @Binding var address: String
@@ -1196,6 +1222,7 @@ struct EditDeliveryLocationSheet: View {
                     headerBar
 
                     VStack(spacing: 18) {
+                        // Address and city fields used for this checkout.
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Address")
                                 .font(.urbanistSemiBold(12))
@@ -1244,6 +1271,7 @@ struct EditDeliveryLocationSheet: View {
                         Spacer()
 
                         Button {
+                            // Save updated delivery location to user profile.
                             Task { await saveLocation() }
                         } label: {
                             Group {
@@ -1272,6 +1300,7 @@ struct EditDeliveryLocationSheet: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showDistrictPicker) {
+                // City picker for delivery location.
                 DistrictPickerSheet(
                     districts: SriLankaDistricts.all,
                     selectedDistrict: tempCity.isEmpty ? nil : tempCity,
@@ -1284,6 +1313,7 @@ struct EditDeliveryLocationSheet: View {
             }
         }
         .onAppear {
+            // Prefill from the current checkout address.
             tempAddress = address
             tempCity = SriLankaDistricts.canonical(city) ?? city
         }
@@ -1315,6 +1345,7 @@ struct EditDeliveryLocationSheet: View {
         .background(Color.cakeSurface)
     }
 
+    // MARK: - Save Delivery Location Process
     private func saveLocation() async {
         let savedAddress = tempAddress.trimmingCharacters(in: .whitespacesAndNewlines)
         let savedCity = SriLankaDistricts.canonical(tempCity) ?? tempCity.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1340,6 +1371,7 @@ struct EditDeliveryLocationSheet: View {
     }
 }
 
+// MARK: - City Picker Sheet
 private struct DistrictPickerSheet: View {
     let districts: [String]
     let selectedDistrict: String?
@@ -1372,6 +1404,7 @@ private struct DistrictPickerSheet: View {
     }
 }
 
+// MARK: - Bid Full Details Sheet
 struct BidFullDetailsSheet: View {
     let request: CustomerBidRequest
     let bid: CustomerBidOffer
@@ -1399,8 +1432,10 @@ struct BidFullDetailsSheet: View {
                 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 14) {
+                        // Top card with baker photo, name, location, and summary.
                         heroCard
                         
+                        // Detail rows for the selected bid.
                         detailCard(
                             icon: "doc.text",
                             title: "Cake Request",
@@ -1441,6 +1476,7 @@ struct BidFullDetailsSheet: View {
         }
         .navigationBarBackButtonHidden(true)
         .sheet(isPresented: $showBakerProfile) {
+            // Public baker profile from bid details.
             CustomerPublicBakerProfileView(
                 bakerID: bid.bakerID,
                 fallbackName: bid.bakerName,
@@ -1452,6 +1488,7 @@ struct BidFullDetailsSheet: View {
         }
     }
     
+    // MARK: - Bid Details Header
     private var headerBar: some View {
         HStack {
             Button { dismiss() } label: {
@@ -1473,6 +1510,7 @@ struct BidFullDetailsSheet: View {
         .background(Color.cakeSurface)
     }
 
+    // MARK: - Bid Hero Card
     private var heroCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {

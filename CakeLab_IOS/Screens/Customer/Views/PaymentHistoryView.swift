@@ -29,13 +29,16 @@ struct PaymentHistoryView: View {
                 headerBar
 
                 if vm.isLoading {
+                    // Loading state while payment records are fetched.
                     ProgressView("Loading payments...")
                         .tint(.cakeBrown)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if vm.payments.isEmpty && vm.errorMessage == nil {
+                    // Empty state when the customer has no payments yet.
                     emptyState
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let error = vm.errorMessage {
+                    // Error state with retry action.
                     VStack(spacing: 14) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 40))
@@ -53,6 +56,7 @@ struct PaymentHistoryView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
+                    // Payment history grouped by month.
                     ScrollView(showsIndicators: false) {
                         LazyVStack(spacing: 20, pinnedViews: []) {
                             summaryCard
@@ -95,6 +99,7 @@ struct PaymentHistoryView: View {
         }
         .navigationBarBackButtonHidden(true)
         .task {
+            // Load customer payment history.
             await vm.load(customerID: user.id)
         }
         .asCustomerSubScreen()
@@ -234,9 +239,9 @@ struct PaymentRecordCard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Main row
+            // Main payment row with method, cake, baker, amount, and status.
             HStack(alignment: .top, spacing: 14) {
-                // Method icon
+                // Payment method icon.
                 ZStack {
                     RoundedRectangle(cornerRadius: 13)
                         .fill(paymentMethodBackgroundColor())
@@ -246,7 +251,7 @@ struct PaymentRecordCard: View {
                         .foregroundColor(paymentMethodIconColor())
                 }
 
-                // Details
+                // Cake and baker details.
                 VStack(alignment: .leading, spacing: 5) {
                     Text(record.cakeName)
                         .font(.urbanistBold(15))
@@ -257,13 +262,13 @@ struct PaymentRecordCard: View {
                         .font(.urbanistRegular(13))
                         .foregroundColor(Color(red: 0.42, green: 0.42, blue: 0.42))
 
-                    // Payment Method Display
+                    // Payment method badge.
                     paymentMethodBadge()
                 }
 
                 Spacer(minLength: 4)
 
-                // Amount + Status + Date
+                // Amount, status, and paid date.
                 VStack(alignment: .trailing, spacing: 6) {
                     Text("LKR \(currencyFmt.string(for: record.total) ?? "0")")
                         .font(.urbanistBold(15))
@@ -296,7 +301,7 @@ struct PaymentRecordCard: View {
             .padding(.top, 16)
             .padding(.bottom, 12)
 
-            // Cost breakdown row
+            // Cost breakdown row.
             Rectangle()
                 .fill(Color(red: 0.92, green: 0.92, blue: 0.92))
                 .frame(height: 1)
@@ -335,12 +340,14 @@ struct PaymentRecordCard: View {
         .shadow(color: Color.black.opacity(0.055), radius: 10, x: 0, y: 3)
         .contextMenu {
             Button {
+                // Opens generated PDF receipt.
                 selectedReceipt = receiptData
             } label: {
                 Label("View PDF Receipt", systemImage: "doc.richtext")
             }
         }
         .sheet(item: $selectedReceipt) { receipt in
+            // PDF receipt preview sheet.
             PDFReceiptPreviewView(receipt: receipt)
         }
     }

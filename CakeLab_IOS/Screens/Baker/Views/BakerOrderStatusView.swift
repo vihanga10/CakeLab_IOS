@@ -28,10 +28,12 @@ struct BakerOrderStatusView: View {
                 headerBar
 
                 if viewModel.isLoading {
+                    // Loading state while live order is fetched.
                     ProgressView("Loading order...")
                         .tint(.cakeBrown)
                         .frame(maxHeight: .infinity)
                 } else if let error = viewModel.errorMessage, viewModel.order == nil {
+                    // Error state when order cannot be loaded.
                     VStack(spacing: 10) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 34))
@@ -46,6 +48,7 @@ struct BakerOrderStatusView: View {
                 } else if let order = viewModel.order {
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 16) {
+                            // Order status cards: details, progress editor, update action, customer info.
                             orderDetailsCard(order: order)
                             progressEditorCard(order: order)
                             orderActionButtons(order: order)
@@ -60,6 +63,7 @@ struct BakerOrderStatusView: View {
         }
         .navigationBarBackButtonHidden(true)
         .task {
+            // Start Firestore listener for this order.
             viewModel.startListening(orderID: orderID)
         }
         .alert("Error", isPresented: Binding(
@@ -71,6 +75,7 @@ struct BakerOrderStatusView: View {
             Text(viewModel.errorMessage ?? "")
         }
         .alert(item: $calendarAlert) { alert in
+            // Calendar success/error/permission result.
             switch alert {
             case .success(let msg):
                 return Alert(title: Text("Added to Calendar"), message: Text(msg), dismissButton: .default(Text("OK")))
@@ -198,7 +203,7 @@ struct BakerOrderStatusView: View {
     private func progressEditorCard(order: CakeOrder) -> some View {
         VStack(alignment: .leading, spacing: 0) {
 
-            
+            // Timeline steps baker can tap to choose the next status.
             ForEach(viewModel.steps, id: \.step) { item in
                 HStack(alignment: .top, spacing: 12) {
                     VStack(spacing: 0) {
@@ -264,6 +269,7 @@ struct BakerOrderStatusView: View {
             }
 
             Button {
+                // Add order delivery reminder to iOS Calendar.
                 Task { await addDeliveryEventToCalendar(order: order) }
             } label: {
                 HStack(spacing: 8) {
@@ -288,6 +294,7 @@ struct BakerOrderStatusView: View {
     private func orderActionButtons(order: CakeOrder) -> some View {
         VStack(spacing: 12) {
             Button {
+                // Save selected progress step and notify customer.
                 Task { await viewModel.updateStatus(orderID: order.id, notificationManager: notificationManager) }
             } label: {
                 if viewModel.isSaving {

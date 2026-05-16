@@ -30,6 +30,7 @@ struct CustomerOrdersView: View {
                     .padding(.bottom, 16)
 
                     if selectedTab == 0 {
+                        // MARK: Active Orders List - orders still in progress
                         if viewModel.isLoading {
                             ProgressView("Loading orders...")
                                 .tint(.cakeBrown)
@@ -59,6 +60,7 @@ struct CustomerOrdersView: View {
                             }
                         }
                     } else {
+                        // MARK: Completed Orders List - delivered order history
                         if viewModel.completedOrders.isEmpty {
                             emptyState(message: "No completed orders")
                         } else {
@@ -103,12 +105,14 @@ struct CustomerOrdersView: View {
             await viewModel.loadOrders(customerID: user.id)
         }
         .onReceive(NotificationCenter.default.publisher(for: .orderDidChange)) { _ in
+            // Refresh order cards when an order status changes.
             Task {
                 await notificationManager.syncCustomerOrderStatusNotifications(customerID: user.id)
                 await viewModel.loadOrders(customerID: user.id)
             }
         }
         .sheet(item: $selectedBakerProfileOrder) { order in
+            // Public baker profile from order card baker photo.
             CustomerPublicBakerProfileView(
                 bakerID: order.bakerID,
                 fallbackName: order.bakerName,
@@ -155,6 +159,7 @@ struct OrderCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
 
+            // Top card area: cake image, name, status, and delivery date.
             HStack(alignment: .top, spacing: 12) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 12)
@@ -209,6 +214,7 @@ struct OrderCard: View {
 
             Divider().padding(.horizontal, 18)
 
+            // Baker details row at the bottom of active order card.
             HStack(spacing: 12) {
                 bakerProfileImage
                     .contentShape(Circle())
@@ -306,6 +312,7 @@ struct CompletedOrderCard: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
+            // Completed order card with cake image, baker, date, and delivered badge.
             orderImage
             VStack(alignment: .leading, spacing: 7) {
                 HStack(alignment: .top, spacing: 8) {
@@ -426,6 +433,7 @@ struct OrderProgressTracker: View {
 
     var body: some View {
         VStack(spacing: 6) {
+            // Progress circles and connector line.
             HStack(spacing: 0) {
                 ForEach(1...totalSteps, id: \.self) { step in
                     stepCircle(step: step)
@@ -434,6 +442,7 @@ struct OrderProgressTracker: View {
             }
 
             GeometryReader { proxy in
+                // Progress labels aligned under each circle.
                 ZStack(alignment: .topLeading) {
                     ForEach(0..<totalSteps, id: \.self) { idx in
                         Text(labels[idx])

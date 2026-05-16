@@ -17,19 +17,23 @@ struct BakerBidHistoryView: View {
                     headerBar
 
                     if viewModel.isLoading {
+                        // Loading state while baker bid history is fetched.
                         Spacer()
                         ProgressView("Loading bid history...")
                             .tint(.cakeBrown)
                         Spacer()
                     } else if let errorMessage = viewModel.errorMessage {
+                        // Error state when bids cannot be loaded.
                         emptyState(icon: "exclamationmark.circle", title: "Could Not Load Bids", message: errorMessage)
                     } else if viewModel.items.isEmpty {
+                        // Empty state before baker places any bids.
                         emptyState(
                             icon: "tray",
                             title: "No Bid History",
                             message: "Requests you place bids on will move here from Matching Requests."
                         )
                     } else {
+                        // Bid history cards, each opens a detail view.
                         ScrollView(showsIndicators: false) {
                             VStack(spacing: 14) {
                                 HStack {
@@ -57,10 +61,12 @@ struct BakerBidHistoryView: View {
                 }
             }
             .navigationDestination(item: $selectedItem) { item in
+                // Bid history detail screen.
                 BakerBidHistoryDetailView(item: item)
             }
             .toolbar(.hidden, for: .navigationBar)
             .task {
+                // Load placed bids for this baker.
                 await viewModel.loadBidHistory(bakerID: user.id)
             }
             .refreshable {

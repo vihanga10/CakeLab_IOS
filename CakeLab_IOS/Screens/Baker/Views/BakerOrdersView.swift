@@ -47,6 +47,7 @@ struct BakerOrdersView: View {
                     .padding(.bottom, 16)
 
                     if selectedTab == .active {
+                        // Active orders list: orders currently in progress.
                         if vm.isLoadingActive {
                             ProgressView("Loading active orders...")
                                 .tint(.cakeBrown)
@@ -57,6 +58,7 @@ struct BakerOrdersView: View {
                             activeOrdersList
                         }
                     } else {
+                        // Completed orders list: delivered order history and earnings.
                         if vm.isLoading {
                             ProgressView("Loading completed orders...")
                                 .tint(.cakeBrown)
@@ -72,10 +74,12 @@ struct BakerOrdersView: View {
             .toolbar(.hidden, for: .navigationBar)
         }
         .task {
+            // Load active and completed order data.
             await vm.loadActiveOrdersData()
             await vm.loadCompletedOrdersData()
         }
         .onReceive(NotificationCenter.default.publisher(for: .orderDidChange)) { _ in
+            // Refresh when any order status changes.
             Task {
                 await vm.loadActiveOrdersData()
                 await vm.loadCompletedOrdersData()
@@ -119,6 +123,7 @@ struct BakerOrdersView: View {
             VStack(spacing: 16) {
                 ForEach(vm.activeOrders) { order in
                     NavigationLink {
+                        // Opens active order status editor.
                         BakerOrderStatusView(orderID: order.id)
                     } label: {
                         BakerActiveOrderCardFromCakeOrder(
@@ -139,7 +144,7 @@ struct BakerOrdersView: View {
     private var completedOrdersList: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 14) {
-                // Earnings summary header
+                // Earnings summary card for completed orders.
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Total Earned")
@@ -167,6 +172,7 @@ struct BakerOrdersView: View {
 
                 ForEach(vm.completedOrders) { order in
                     NavigationLink {
+                        // Opens status detail for completed order.
                         BakerOrderStatusView(orderID: order.id)
                     } label: {
                         BakerCompletedOrderCardFromCakeOrder(
@@ -204,7 +210,7 @@ struct BakerOrderDetailView: View {
             Color(red: 0.97, green: 0.96, blue: 0.94).ignoresSafeArea()
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
-                    // Order header card
+                    // Order header card.
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
@@ -235,7 +241,7 @@ struct BakerOrderDetailView: View {
                     .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
                     .padding(.horizontal, 20)
                     
-                    // Progress Steps
+                    // Progress editor card.
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Update Order Status")
                             .font(.urbanistBold(16))
@@ -303,7 +309,7 @@ struct BakerOrderDetailView: View {
                     .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
                     .padding(.horizontal, 20)
                     
-                    // Customer Details
+                    // Customer details card.
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Customer Details")
                             .font(.urbanistBold(16))

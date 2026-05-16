@@ -20,6 +20,7 @@ struct BakerTabView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             Group {
+                // Main baker tab routing.
                 switch navState.selectedTab {
                 case 0: BakerHomeView(user: user, selectedTab: selectedTabBinding)
                 case 1: BakerMatchingRequestsView()
@@ -31,9 +32,11 @@ struct BakerTabView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             if !navState.isOnSubScreen {
+                // Floating baker bottom tab bar.
                 BakerTabBar(selectedTab: selectedTabBinding)
             }
 
+            // Floating voice readout/accessibility button.
             VStack {
                 Spacer()
                 HStack {
@@ -47,6 +50,7 @@ struct BakerTabView: View {
         }
         .ignoresSafeArea(.keyboard)
         .onChange(of: widgetRoute) { _, newRoute in
+            // Widget deep links move baker to matching request or order status tab.
             guard let newRoute else { return }
             switch newRoute {
             case .bakerStatus:   BakerNavState.shared.selectedTab = 2
@@ -56,6 +60,7 @@ struct BakerTabView: View {
             widgetRoute = nil
         }
         .task {
+            // Initial notification sync and matching request notification check.
             if !notificationsShown {
                 await notificationManager.syncBakerOrderAndPaymentNotifications(bakerID: user.id)
                 notificationManager.reloadNotifications(for: "baker", userID: user.id)

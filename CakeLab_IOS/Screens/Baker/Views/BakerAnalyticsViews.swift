@@ -1,6 +1,7 @@
 import SwiftUI
 import Charts
 
+// MARK: - Baker Performance Analytics View
 struct BakerPerformanceAnalyticsView: View {
     let snapshot: BakerPerformanceSnapshot
     @Environment(\.dismiss) private var dismiss
@@ -14,6 +15,7 @@ struct BakerPerformanceAnalyticsView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
+                        // Performance cards and charts.
                         summaryCard
                         dailyOrdersCard
                         weeklyOrdersCard
@@ -33,6 +35,7 @@ struct BakerPerformanceAnalyticsView: View {
         .asBakerSubScreen()
     }
 
+    // MARK: - Performance Summary Card
     private var summaryCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("How your bakery is performing")
@@ -54,6 +57,7 @@ struct BakerPerformanceAnalyticsView: View {
         .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
 
+    // MARK: - Completed Orders Per Day Chart
     private var dailyOrdersCard: some View {
         analyticsCard(title: "Completed Orders Per Day", subtitle: "Last 7 days") {
             if snapshot.dailyOrders.allSatisfy({ $0.value == 0 }) {
@@ -78,6 +82,7 @@ struct BakerPerformanceAnalyticsView: View {
         }
     }
 
+    // MARK: - Completed Orders Per Week Chart
     private var weeklyOrdersCard: some View {
         analyticsCard(title: "Completed Orders Per Week", subtitle: "Last 8 weeks") {
             if snapshot.weeklyOrders.allSatisfy({ $0.value == 0 }) {
@@ -102,6 +107,7 @@ struct BakerPerformanceAnalyticsView: View {
         }
     }
 
+    // MARK: - Completed Orders Trend Chart
     private var monthlyOrdersCard: some View {
         analyticsCard(title: "Completed Orders Trend", subtitle: "Last 6 months") {
             if snapshot.monthlyOrders.isEmpty {
@@ -126,6 +132,7 @@ struct BakerPerformanceAnalyticsView: View {
         }
     }
 
+    // MARK: - Average Rating Trend Chart
     private var reviewTrendCard: some View {
         analyticsCard(title: "Average Rating Trend", subtitle: "Monthly review score") {
             if snapshot.ratingTrend.isEmpty {
@@ -163,6 +170,7 @@ struct BakerPerformanceAnalyticsView: View {
         }
     }
 
+    // MARK: - Category Mix Chart
     private var categoryMixCard: some View {
         analyticsCard(title: "Category Mix", subtitle: "Completed work by category") {
             if snapshot.categoryMix.isEmpty {
@@ -185,6 +193,7 @@ struct BakerPerformanceAnalyticsView: View {
         }
     }
 
+    // MARK: - Rating Breakdown Card
     private var ratingBreakdownCard: some View {
         analyticsCard(title: "Rating Breakdown", subtitle: "How customers scored your work") {
             if snapshot.ratingBreakdown.isEmpty || ratingBreakdownTotal == 0 {
@@ -314,6 +323,7 @@ struct BakerPerformanceAnalyticsView: View {
     }
 }
 
+// MARK: - Baker Earnings Analytics View
 struct BakerEarningsAnalyticsView: View {
     let snapshot: BakerEarningsSnapshot
     @Environment(\.dismiss) private var dismiss
@@ -327,6 +337,7 @@ struct BakerEarningsAnalyticsView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
+                        // Earnings summary and breakdown charts.
                         summaryCard
                         monthlyEarningsCard
                         categoryEarningsCard
@@ -343,6 +354,7 @@ struct BakerEarningsAnalyticsView: View {
         .asBakerSubScreen()
     }
 
+    // MARK: - Earnings Summary Card
     private var summaryCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Your earnings overview")
@@ -365,6 +377,7 @@ struct BakerEarningsAnalyticsView: View {
         .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
 
+    // MARK: - Monthly Earnings Chart
     private var monthlyEarningsCard: some View {
         analyticsCard(title: "Monthly Earnings", subtitle: "Last 6 months") {
             if snapshot.monthlyEarnings.isEmpty {
@@ -389,6 +402,7 @@ struct BakerEarningsAnalyticsView: View {
         }
     }
 
+    // MARK: - Earnings by Category Chart
     private var categoryEarningsCard: some View {
         analyticsCard(title: "Earnings by Category", subtitle: "Where your revenue is coming from") {
             if snapshot.categoryEarnings.isEmpty {
@@ -411,6 +425,7 @@ struct BakerEarningsAnalyticsView: View {
         }
     }
 
+    // MARK: - Payment Methods Chart
     private var paymentMethodsCard: some View {
         analyticsCard(title: "Payment Methods", subtitle: "Successful payment mix") {
             if snapshot.paymentMethods.isEmpty {
@@ -483,6 +498,7 @@ struct BakerEarningsAnalyticsView: View {
     }
 }
 
+// MARK: - Shared Analytics Card
 private func analyticsCard<Content: View>(title: String, subtitle: String, @ViewBuilder content: () -> Content) -> some View {
     VStack(alignment: .leading, spacing: 14) {
         VStack(alignment: .leading, spacing: 4) {

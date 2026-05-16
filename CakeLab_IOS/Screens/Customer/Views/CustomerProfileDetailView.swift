@@ -51,7 +51,7 @@ struct CustomerProfileDetailView: View {
                 Color.cakeBackground.ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    // Header with back button for detail views
+                    // Header changes between main profile and inline detail pages.
                     if selectedDetailView != nil {
                         HStack {
                             Button(action: { selectedDetailView = nil }) {
@@ -79,7 +79,7 @@ struct CustomerProfileDetailView: View {
                             .padding(.bottom, 10)
                     }
 
-                    // Content
+                    // Main content or selected settings/help detail.
                     if let detailedView = selectedDetailView {
                         ScrollView(showsIndicators: false) {
                             switch detailedView {
@@ -97,6 +97,7 @@ struct CustomerProfileDetailView: View {
                         }
                         
                         if detailViewNeedsSaveButton {
+                            // Save button for language and privacy settings.
                             VStack(spacing: 12) {
                                 Button(action: {
                                     saveDetailSettings()
@@ -119,6 +120,7 @@ struct CustomerProfileDetailView: View {
                     } else {
                         ScrollView(showsIndicators: false) {
                             VStack(spacing: 26) {
+                                // Profile avatar, name, and location summary.
                                 VStack(spacing: 10) {
                                     profileAvatar(size: 138)
                                         .padding(.top, 8)
@@ -141,6 +143,7 @@ struct CustomerProfileDetailView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.top, 8)
 
+                                // Account actions card.
                                 ProfileSection(title: "Account") {
                                     NavigationLink(destination: EditProfileView(viewModel: viewModel)) {
                                         MenuItemRow(
@@ -184,6 +187,7 @@ struct CustomerProfileDetailView: View {
                                 }
                                 .padding(.horizontal, 16)
 
+                                // Preference settings card.
                                 ProfileSection(title: "Preferences") {
                                     Button(action: { selectedDetailView = "language" }) {
                                         MenuItemRow(
@@ -208,6 +212,7 @@ struct CustomerProfileDetailView: View {
                                 AccessibilitySettingsSection()
                                     .padding(.horizontal, 16)
 
+                                // Support and legal links card.
                                 ProfileSection(title: "Support") {
                                     Button(action: { selectedDetailView = "help" }) {
                                         MenuItemRow(
@@ -229,6 +234,7 @@ struct CustomerProfileDetailView: View {
                                 }
                                 .padding(.horizontal, 16)
 
+                                // Log out action.
                                 Button(action: {
                                     showLogoutAlert = true
                                 }) {
@@ -253,6 +259,7 @@ struct CustomerProfileDetailView: View {
                 }
 
                 if selectedDetailView != nil {
+                    // Keep bottom tab visible on inline profile detail pages.
                     VStack {
                         Spacer()
                         CustomerSubScreenTabBar { tag in
@@ -265,6 +272,7 @@ struct CustomerProfileDetailView: View {
             .navigationBarBackButtonHidden(true)
             .navigationBarHidden(true)
             .navigationDestination(isPresented: $showPaymentHistory) {
+                // Payment history sub-screen.
                 PaymentHistoryView(user: user)
             }
             .alert("Log Out?", isPresented: $showLogoutAlert) {
@@ -284,8 +292,8 @@ struct CustomerProfileDetailView: View {
                 Text("Are you sure you want to delete your account? This action cannot be undone and all your data will be permanently deleted.")
             }
             .task {
+                // Load profile details and local avatar.
                 await viewModel.fetchProfile()
-                // Load avatar from local storage
                 localAvatar = viewModel.loadAvatarFromUserDefaults()
             }
             .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("profileAvatarUpdated"))) { _ in
@@ -315,6 +323,7 @@ struct CustomerProfileDetailView: View {
     }
     
     private func saveDetailSettings() {
+        // Persist local preference toggles.
         UserDefaults.standard.set(selectedLanguage, forKey: "appLanguage")
         UserDefaults.standard.set(profileVisibility, forKey: "profileVisibility")
         UserDefaults.standard.set(showOrderHistory, forKey: "showOrderHistory")
@@ -324,6 +333,7 @@ struct CustomerProfileDetailView: View {
     }
 
     private func performLogout() {
+        // Clear app session and return to auth flow.
         do {
             try AppSessionManager.shared.signOutCompletely()
         } catch {
@@ -1032,12 +1042,14 @@ struct EditProfileView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 26) {
+                        // Editable profile photo.
                         Button(action: { showImagePicker = true }) {
                             profileEditorAvatar
                         }
                         .buttonStyle(.plain)
                         .padding(.top, 22)
 
+                        // Editable customer profile fields.
                         VStack(spacing: 18) {
                             formField(label: "Full Name", placeholder: "Enter your full name", text: $localFullName)
                             readOnlyField(label: "Email Address", value: viewModel.user.email)
@@ -1064,6 +1076,7 @@ struct EditProfileView: View {
                         }
 
                         Button(action: {
+                            // Save customer profile changes.
                             Task {
                                 await viewModel.updateProfile(
                                     name: localFullName,
@@ -1113,6 +1126,7 @@ struct EditProfileView: View {
             photoLibrary: .shared()
         )
         .onChange(of: selectedPhotoPickerItem) { item in
+            // Preview selected avatar immediately.
             Task {
                 if let data = try await item?.loadTransferable(type: Data.self),
                    let uiImage = UIImage(data: data) {
@@ -1123,19 +1137,20 @@ struct EditProfileView: View {
             }
         }
         .onAppear {
+            // Seed edit form with current profile values.
             localFullName = viewModel.user.name
             localPhoneNumber = viewModel.user.phoneNumber ?? ""
             localAddress = viewModel.user.address ?? ""
             localCity = SriLankaDistricts.canonical(viewModel.user.city) ?? (viewModel.user.city ?? "")
             localPostalCode = viewModel.user.postalCode ?? ""
             localDateOfBirth = viewModel.user.dateOfBirth
-            // Load avatar from local storage
             localAvatar = viewModel.loadAvatarFromUserDefaults()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("profileAvatarUpdated"))) { _ in
             localAvatar = viewModel.loadAvatarFromUserDefaults()
         }
         .sheet(isPresented: $showDistrictPicker) {
+            // City picker for customer profile address.
             DistrictPickerSheet(
                 districts: SriLankaDistricts.all,
                 selectedDistrict: localCity.isEmpty ? nil : localCity,
@@ -1171,6 +1186,7 @@ struct EditProfileView: View {
     }
 
     private var profileEditorAvatar: some View {
+        // Profile avatar with camera badge.
         ZStack(alignment: .bottomTrailing) {
             profileImage(size: 148)
 

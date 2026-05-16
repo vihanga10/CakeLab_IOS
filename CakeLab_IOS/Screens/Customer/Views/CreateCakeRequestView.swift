@@ -108,7 +108,7 @@ struct CreateCakeRequestView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
                         
-                        //  Cake Details Section 
+                        // MARK: Cake Details Card - title, description, date, and time
                         sectionHeader("Cake Details")
                         
                         VStack(spacing: 14) {
@@ -137,7 +137,7 @@ struct CreateCakeRequestView: View {
                                 }
                             }
                             
-                            // Date + Time row
+                            // Expected delivery date and time selectors.
                             HStack(spacing: 12) {
                                 // Expected Date
                                 VStack(alignment: .leading, spacing: 6) {
@@ -197,7 +197,7 @@ struct CreateCakeRequestView: View {
                         .padding(.horizontal, 16)
                         .padding(.bottom, 16)
                         
-                        //  Reference Images 
+                        // MARK: Reference Images Card - add gallery or camera photos
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Add Reference Image")
                                 .font(.urbanistSemiBold(14))
@@ -224,7 +224,7 @@ struct CreateCakeRequestView: View {
                                 }
                             }
                             
-                            // Display uploaded images
+                            // Uploaded image preview list with remove button.
                             if !referenceImagesBase64.isEmpty {
                                 VStack(alignment: .leading, spacing: 8) {
                                     Text("Uploaded Images (\(referenceImagesBase64.count))")
@@ -268,7 +268,7 @@ struct CreateCakeRequestView: View {
                                 .cornerRadius(8)
                             }
                             
-                            // Size warning
+                            // Image size warning after compression.
                             if !imageSizeWarning.isEmpty {
                                 Text(imageSizeWarning)
                                     .font(.urbanistRegular(11))
@@ -285,12 +285,12 @@ struct CreateCakeRequestView: View {
                         .padding(.horizontal, 16)
                         .padding(.bottom, 20)
                         
-                        //  Cake Specifications Section 
+                        // MARK: Cake Specifications Card - budget, category, style, and flavours
                         sectionHeader("Cake Specifications")
                         
                         VStack(spacing: 18) {
                             
-                            // Budget Range Slider
+                            // Budget range selector.
                             VStack(alignment: .leading, spacing: 10) {
                                 HStack {
                                     Text("Budget")
@@ -315,7 +315,7 @@ struct CreateCakeRequestView: View {
                             
                             specDivider()
                             
-                            // Category
+                            // Category chips.
                             ChipSelector(
                                 title: "Category",
                                 helpText: "Choose main category",
@@ -326,7 +326,7 @@ struct CreateCakeRequestView: View {
                             
                             specDivider()
                             
-                            // Cake Style
+                            // Cake style chips.
                             ChipSelector(
                                 title: "Cake Style",
                                 helpText: "Choose Cake Style",
@@ -336,7 +336,7 @@ struct CreateCakeRequestView: View {
                             
                             specDivider()
                             
-                            // Dietary
+                            // Dietary preference chips.
                             ChipSelector(
                                 title: "Dietary",
                                 helpText: "Choose Dietary",
@@ -346,7 +346,7 @@ struct CreateCakeRequestView: View {
                             
                             specDivider()
                             
-                            // Tiers
+                            // Tier selector with custom tier add button.
                             VStack(alignment: .leading, spacing: 10) {
                                 HStack(spacing: 4) {
                                     Text("Tiers")
@@ -446,7 +446,7 @@ struct CreateCakeRequestView: View {
                             
                             specDivider()
                             
-                            // Cake Flavour
+                            // Cake flavour chips.
                             ChipSelector(
                                 title: "Cake Flavour",
                                 helpText: "Choose Cake Flavor",
@@ -456,7 +456,7 @@ struct CreateCakeRequestView: View {
                             
                             specDivider()
                             
-                            // Filling Flavour
+                            // Filling flavour text input.
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Filling Flavour")
                                     .font(.urbanistSemiBold(14))
@@ -473,7 +473,7 @@ struct CreateCakeRequestView: View {
                             
                             specDivider()
                             
-                            // Special Instructions
+                            // Special instructions text area.
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Special Instructions")
                                     .font(.urbanistSemiBold(14))
@@ -506,9 +506,10 @@ struct CreateCakeRequestView: View {
                         .padding(.horizontal, 16)
                         .padding(.bottom, 16)
                         
-                        //  Action Buttons 
+                        // MARK: Action Buttons Card - publish request or save as draft
                         VStack(spacing: 12) {
                             Button {
+                                // Publish process: validate data, save request, send notifications.
                                 if !actionInProgress {
                                     isPublishing = true
                                     actionInProgress = true
@@ -537,6 +538,7 @@ struct CreateCakeRequestView: View {
                             .contentShape(Capsule())
                             
                             Button {
+                                // Draft process: save current form without notifying bakers.
                                 if !actionInProgress {
                                     isSavingDraft = true
                                     actionInProgress = true
@@ -581,10 +583,12 @@ struct CreateCakeRequestView: View {
             .navigationBarBackButtonHidden(true)
             .navigationBarTitleDisplayMode(.inline)
             .fullScreenCover(isPresented: $showCamera) {
+                // MARK: Camera Picker
                 CameraPickerView(capturedImage: $cameraImage, isPresented: $showCamera)
                     .ignoresSafeArea()
             }
             .sheet(isPresented: $showDatePicker) {
+                // MARK: Expected Date Picker
                 VStack {
                     DatePicker("", selection: $expectedDate, displayedComponents: .date)
                         .datePickerStyle(.graphical)
@@ -598,6 +602,7 @@ struct CreateCakeRequestView: View {
                 .presentationDetents([.medium])
             }
             .sheet(isPresented: $showTimePicker) {
+                // MARK: Expected Time Picker
                 VStack(spacing: 16) {
                     Text("Select Time")
                         .font(.urbanistSemiBold(16))
@@ -614,13 +619,14 @@ struct CreateCakeRequestView: View {
                 .presentationDetents([.fraction(0.45)])
             }
             .onAppear {
+                // Restore saved draft values when editing an existing draft.
                 applyInitialDraftIfNeeded()
             }
         }
         .asCustomerSubScreen()
     }
 
-    // MARK: - Save to Firebase
+    // MARK: - Publish Process
     @MainActor
     private func publishRequest() async {
         guard let userID = requestVM.currentUserID() else { return }
@@ -638,7 +644,7 @@ struct CreateCakeRequestView: View {
         await requestVM.publishRequest(requestData: data, collection: "cakeRequests", documentID: docID, cleanupDraftID: initialDraft?.id, triggerNotification: true, requestTitle: title, customerID: userID, notificationManager: notificationManager, onSuccess: { dismiss() })
     }
 
-    // MARK: - Save as Draft
+    // MARK: - Draft Save Process
     @MainActor
     private func saveDraft() async {
         guard let userID = requestVM.currentUserID() else { return }
@@ -650,14 +656,14 @@ struct CreateCakeRequestView: View {
         let draftTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         notificationManager.notifyDraftSaved(requestTitle: draftTitle, userID: userID)
     }
-    
+    // Required fields before publishing as an open cake request.
     private var canPublishRequest: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !selectedCategories.isEmpty
     }
     
-    
+    // MARK: - Reference Image Upload Process
     private func uploadPhotosToStorage(_ items: [PhotosPickerItem]) {
         for item in items {
             Task {
@@ -703,6 +709,8 @@ struct CreateCakeRequestView: View {
             }
         }
     }
+
+    // Converts a captured camera image into compressed Base64.
     private func uploadCameraImageToStorage(_ uiImage: UIImage) {
         Task {
             do {
@@ -735,6 +743,8 @@ struct CreateCakeRequestView: View {
             }
         }
     }
+
+    // MARK: - Request Data Builder
     @MainActor
     private func buildRequestData(
         documentID: String,
@@ -795,7 +805,7 @@ struct CreateCakeRequestView: View {
         return data
     }
     
-    // MARK: - Helpers
+    // MARK: - Form UI Helpers
     private func sectionHeader(_ text: String) -> some View {
         Text(text)
             .font(.urbanistBold(15))
@@ -828,6 +838,7 @@ struct CreateCakeRequestView: View {
     }
 
     private func applyInitialDraftIfNeeded() {
+        // Edit draft process: hydrate form controls from saved draft data.
         guard !hasAppliedInitialDraft, let draft = initialDraft else { return }
         hasAppliedInitialDraft = true
 
@@ -887,18 +898,18 @@ struct BudgetRangeSlider: View {
             let maxX  = CGFloat((maxVal - lo) / range) * w
             
             ZStack(alignment: .leading) {
-                // Track
+                // Slider track.
                 Capsule()
                     .fill(Color(red: 0.88, green: 0.88, blue: 0.88))
                     .frame(height: 4)
                 
-                // Selected range
+                // Selected budget range.
                 Capsule()
                     .fill(Color.cakeBrown)
                     .frame(width: max(0, maxX - minX), height: 4)
                     .offset(x: minX)
                 
-                // Min thumb
+                // Minimum budget thumb.
                 thumb(at: minX)
                     .gesture(DragGesture(minimumDistance: 0)
                         .onChanged { v in
@@ -906,7 +917,7 @@ struct BudgetRangeSlider: View {
                             minVal = max(lo, min(pct * range + lo, maxVal - 1000))
                         })
                 
-                // Max thumb
+                // Maximum budget thumb.
                 thumb(at: maxX)
                     .gesture(DragGesture(minimumDistance: 0)
                         .onChanged { v in
@@ -957,6 +968,7 @@ struct ChipSelector: View {
             }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
+                    // Selectable option chips.
                     ForEach(options, id: \.self) { opt in
                         Button {
                             if selected.contains(opt) { selected.remove(opt) }
@@ -979,6 +991,7 @@ struct ChipSelector: View {
             }
         }
         .alert("Add \(title)", isPresented: $showAddAlert) {
+            // Add custom chip option.
             TextField("Enter name", text: $newItemText)
             Button("Add") {
                 let trimmed = newItemText.trimmingCharacters(in: .whitespaces)

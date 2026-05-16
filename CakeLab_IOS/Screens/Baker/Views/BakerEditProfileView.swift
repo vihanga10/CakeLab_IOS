@@ -30,31 +30,31 @@ struct BakerEditProfileView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
-                        
+                        // Cover image and edit cover button.
                         headerSection
                             .padding(.bottom, 24)
 
-                        
+                        // Baker profile photo picker.
                         profilePhotoSection
                             .padding(.horizontal, 20)
                             .padding(.bottom, 24)
 
-                        
+                        // Active or inactive availability toggle.
                         activeToggleSection
                             .padding(.horizontal, 20)
                             .padding(.bottom, 20)
 
-                        
+                        // Shop name, address, city, phone, and bio fields.
                         formSection
                             .padding(.horizontal, 20)
                             .padding(.bottom, 20)
 
-                        
+                        // Baker speciality category chips.
                         categoriesSection
                             .padding(.horizontal, 20)
                             .padding(.bottom, 20)
 
-                        
+                        // Save profile changes.
                         updateButton
                             .padding(.horizontal, 20)
                             .padding(.bottom, 104)
@@ -66,14 +66,17 @@ struct BakerEditProfileView: View {
         .navigationBarHidden(true)
         .asBakerSubScreen()
         .task {
+            // Load saved baker profile values.
             await viewModel.loadExistingData()
         }
         .onChange(of: selectedCoverPickerItem) { item in
+            // Update cover image from Photos picker.
             Task {
                 await viewModel.updateCoverImage(from: item)
             }
         }
         .onChange(of: selectedProfilePickerItem) { item in
+            // Update profile image from Photos picker.
             Task {
                 await viewModel.updateProfileImage(from: item)
             }
@@ -84,6 +87,7 @@ struct BakerEditProfileView: View {
             Text(viewModel.errorMessage)
         }
         .sheet(isPresented: $showDistrictPicker) {
+            // City picker for baker profile address.
             BakerDistrictPickerSheet(
                 districts: SriLankaDistricts.all,
                 selectedDistrict: viewModel.city.isEmpty ? nil : viewModel.city,
@@ -406,6 +410,7 @@ struct BakerEditProfileView: View {
     // MARK: - Update Button
     private var updateButton: some View {
         Button(action: {
+            // Save baker profile and send success notification.
             Task {
                 await viewModel.saveProfile()
             }

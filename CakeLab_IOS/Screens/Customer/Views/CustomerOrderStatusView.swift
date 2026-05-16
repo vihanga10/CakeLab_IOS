@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 
+// MARK: - Customer Order Status View
 struct CustomerOrderStatusView: View {
     let orderID: String
     let fallbackOrder: CustomerOrder
@@ -51,10 +52,12 @@ struct CustomerOrderStatusView: View {
                 headerBar
 
                 if viewModel.isLoading {
+                    // Loading state while listening to the live order document.
                     ProgressView("Loading status...")
                         .tint(.cakeBrown)
                         .frame(maxHeight: .infinity)
                 } else if let error = viewModel.errorMessage {
+                    // Error state when the order cannot be loaded.
                     VStack(spacing: 10) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 34))
@@ -82,7 +85,7 @@ struct CustomerOrderStatusView: View {
 
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 16) {
-                            // Order Details (Date, Budget, Category)
+                            // MARK: Order Details Card - cake, status, delivery, time, and amount.
                             orderDetailsCard(
                                 deliveryDate: deliveryDateText,
                                 category: category,
@@ -93,10 +96,10 @@ struct CustomerOrderStatusView: View {
                                 amountText: amountText
                             )
 
-                            // Status Timeline
+                            // MARK: Status Timeline Card - confirmed through delivered steps.
                             statusTimelineCard(currentStep: currentStep, deliveryDateText: deliveryDateText)
 
-                            // Baker Info
+                            // MARK: Baker Details Card - baker contact, profile, and review action.
                             bakerInfoCard(
                                 name: resolvedBakerName(liveOrder, profile: bakerProfile),
                                 rating: resolvedBakerRating(liveOrder, profile: bakerProfile),
@@ -122,6 +125,7 @@ struct CustomerOrderStatusView: View {
         }
         .navigationBarBackButtonHidden(true)
         .sheet(isPresented: $showReviewModal) {
+            // Review modal shown after delivery or from baker details.
             ReviewModalView(
                 isPresented: $showReviewModal,
                 bakerName: viewModel.order?.artisanName ?? fallbackOrder.bakerName,
@@ -134,6 +138,7 @@ struct CustomerOrderStatusView: View {
             get: { selectedBakerProfileID != nil },
             set: { if !$0 { selectedBakerProfileID = nil } }
         )) {
+            // Public baker profile opened from baker photo.
             let profile = viewModel.bakerProfile
             CustomerPublicBakerProfileView(
                 bakerID: selectedBakerProfileID ?? "",
@@ -145,12 +150,14 @@ struct CustomerOrderStatusView: View {
             )
         }
         .task {
+            // Start listening for live order status updates.
             viewModel.startListening(orderID: orderID)
         }
         .onChange(of: viewModel.order?.status) { _, newStatus in
             handleLiveStatusNotification(newStatus: newStatus)
         }
         .alert(item: $calendarAlert) { alert in
+            // Calendar result or permission alert.
             switch alert {
             case .success(let message):
                 return Alert(
@@ -176,6 +183,7 @@ struct CustomerOrderStatusView: View {
         .asCustomerSubScreen()
     }
 
+    // MARK: - Live Status Notification Process
     private func handleLiveStatusNotification(newStatus: String?) {
         guard let newStatus = newStatus?.trimmingCharacters(in: .whitespacesAndNewlines),
               !newStatus.isEmpty else { return }
@@ -200,6 +208,7 @@ struct CustomerOrderStatusView: View {
         )
     }
 
+    // MARK: - Header
     private var headerBar: some View {
         HStack {
             Button { dismiss() } label: {
@@ -219,6 +228,7 @@ struct CustomerOrderStatusView: View {
         .background(Color.cakeSurface)
     }
 
+    // MARK: - Order Details Card
     private func orderDetailsCard(
         deliveryDate: String,
         category: String,
@@ -315,6 +325,7 @@ struct CustomerOrderStatusView: View {
         .padding(.horizontal, 8)
     }
 
+    // MARK: - Status Timeline Card
     private func statusTimelineCard(currentStep: Int, deliveryDateText: String) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             ForEach(steps, id: \.step) { item in
@@ -386,6 +397,7 @@ struct CustomerOrderStatusView: View {
 
             if showsCalendarAction {
                 Button {
+                    // Add expected delivery time to iOS Calendar.
                     Task {
                         await addDeliveryEventToCalendar(deliveryDateText: deliveryDateText)
                     }
@@ -411,6 +423,7 @@ struct CustomerOrderStatusView: View {
         .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 3)
     }
 
+    // MARK: - Baker Details Card
     private func bakerInfoCard(
         name: String,
         rating: String,
@@ -484,6 +497,7 @@ struct CustomerOrderStatusView: View {
             }
 
             Button {
+                // Opens customer review modal.
                 onReviewTapped()
             } label: {
                 Text("Write a Review")

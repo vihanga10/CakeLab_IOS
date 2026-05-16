@@ -28,6 +28,7 @@ struct BakerPortfolioManagerView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
+                        // Portfolio summary, published preview, and added works cards.
                         portfolioSummaryCard
                         publishedPreviewSection
                         worksSection
@@ -42,9 +43,11 @@ struct BakerPortfolioManagerView: View {
         .navigationBarHidden(true)
         .asBakerSubScreen()
         .task {
+            // Load all portfolio works and published selections.
             await viewModel.loadPortfolio()
         }
         .sheet(isPresented: $isPresentingEditor) {
+            // Add/edit portfolio work editor sheet.
             PortfolioWorkEditorSheet(
                 draft: $draft,
                 isSaving: viewModel.isSaving,
@@ -64,6 +67,7 @@ struct BakerPortfolioManagerView: View {
         }
         .alert("Delete work?", isPresented: deleteAlertBinding) {
             Button("Delete", role: .destructive) {
+                // Delete selected portfolio work.
                 guard let workPendingDelete else { return }
                 Task {
                     await viewModel.deleteWork(workPendingDelete)
@@ -189,6 +193,7 @@ struct BakerPortfolioManagerView: View {
 
     private var publishedPreviewSection: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // Works currently visible on public baker profile.
             HStack {
                 Text("Published in Profile")
                     .font(.urbanistBold(16))
@@ -232,6 +237,7 @@ struct BakerPortfolioManagerView: View {
 
     private var worksSection: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // All added portfolio works with publish/edit/delete actions.
             HStack {
                 Text("Added Works")
                     .font(.urbanistBold(16))
@@ -256,6 +262,7 @@ struct BakerPortfolioManagerView: View {
                             work: work,
                             isPublished: viewModel.publishedWorkIDs.contains(work.id),
                             onTogglePublished: {
+                                // Publish or remove this work from profile.
                                 Task { await viewModel.togglePublished(for: work) }
                             },
                             onEdit: {
@@ -294,12 +301,14 @@ struct BakerPortfolioManagerView: View {
     }
 
     private func startCreatingWork() {
+        // Open editor with a blank portfolio draft.
         draft = .empty
         editingWorkID = nil
         isPresentingEditor = true
     }
 
     private func startEditing(_ work: PortfolioWork) {
+        // Open editor using existing work values.
         draft = PortfolioWorkDraft(work: work)
         editingWorkID = work.id
         isPresentingEditor = true
@@ -316,6 +325,7 @@ struct PortfolioWorkCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            // Portfolio card image and published/draft badge.
             ZStack(alignment: .topTrailing) {
                 PortfolioWorkImageView(imageBase64: work.imageBase64, height: 150)
 
@@ -354,6 +364,7 @@ struct PortfolioWorkCard: View {
             }
 
             if showsActions {
+                // Publish, edit, and delete controls.
                 HStack(spacing: 10) {
                     Button(action: onTogglePublished) {
                         Text(isPublished ? "Remove From Profile" : "Publish to Profile")
@@ -414,6 +425,7 @@ private struct PortfolioWorkEditorSheet: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
+                    // Editor cards: photo, details, traits, and save action.
                     photoSection
                     detailsSection
                     traitsSection
@@ -425,6 +437,7 @@ private struct PortfolioWorkEditorSheet: View {
             }
         }
         .onChange(of: selectedPhotoItem) { _, item in
+            // Convert selected photo to Base64 for Firestore.
             Task {
                 guard let data = try await item?.loadTransferable(type: Data.self),
                       let image = UIImage(data: data) else { return }
@@ -458,6 +471,7 @@ private struct PortfolioWorkEditorSheet: View {
 
     private var photoSection: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // Portfolio work photo picker.
             Text("Photo")
                 .font(.urbanistBold(15))
                 .foregroundColor(Color(hex: "5D3714"))
@@ -477,6 +491,7 @@ private struct PortfolioWorkEditorSheet: View {
     }
 
     private var detailsSection: some View {
+        // Portfolio title and description inputs.
         VStack(spacing: 16) {
             editorField(label: "Title", placeholder: "e.g. Royal Wedding Cake", text: $draft.title)
 
@@ -500,6 +515,7 @@ private struct PortfolioWorkEditorSheet: View {
     }
 
     private var traitsSection: some View {
+        // Trait editor for cake work skills and scores.
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("Talent Traits")
@@ -507,6 +523,7 @@ private struct PortfolioWorkEditorSheet: View {
                     .foregroundColor(Color(hex: "5D3714"))
                 Spacer()
                 Button {
+                    // Add a new trait row.
                     draft.traits.append(PortfolioTraitDraft())
                 } label: {
                     Text("Add Trait")
@@ -570,6 +587,7 @@ private struct PortfolioWorkEditorSheet: View {
 
     private var saveButton: some View {
         Button {
+            // Save new or edited portfolio work.
             onSave()
         } label: {
             Text(isSaving ? "Saving..." : "Save Portfolio Work")

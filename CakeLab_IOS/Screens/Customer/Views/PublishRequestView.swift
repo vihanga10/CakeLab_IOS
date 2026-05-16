@@ -15,14 +15,17 @@ struct PublishRequestView: View {
                 headerBar
 
                 if vm.isLoading {
+                    // Loading state while published requests are fetched.
                     VStack(spacing: 16) {
                         ProgressView().tint(.cakeBrown)
                         Text("Loading requests...").font(.urbanistRegular(13)).foregroundColor(.cakeGrey)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if vm.requests.isEmpty {
+                    // Empty state before customer publishes any request.
                     emptyState
                 } else {
+                    // Published request cards that open full cake details.
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 12) {
                             ForEach(vm.requests) { request in
@@ -101,6 +104,7 @@ private struct PublishedRequestCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Card top area: image, title, summary, and category.
             HStack(alignment: .top, spacing: 17) {
                 thumbnailView
 

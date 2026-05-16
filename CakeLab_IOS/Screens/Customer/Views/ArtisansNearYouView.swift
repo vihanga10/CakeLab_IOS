@@ -47,6 +47,7 @@ struct ArtisansNearYouView: View {
                 headerBar
 
                 VStack(spacing: 0) {
+                    // MARK: Map Area - shows baker pins near the customer
                     Map(position: $position) {
                         ForEach(mapArtisans, id: \.id) { artisan in
                             Annotation("", coordinate: CLLocationCoordinate2D(latitude: artisan.latitude, longitude: artisan.longitude)) {
@@ -93,6 +94,7 @@ struct ArtisansNearYouView: View {
 
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 12) {
+                            // MARK: Search Bar - filters bakers by name or speciality
                             HStack(spacing: 10) {
                                 Image(systemName: "magnifyingglass")
                                     .font(.system(size: 15))
@@ -108,6 +110,7 @@ struct ArtisansNearYouView: View {
                             .clipShape(Capsule())
                             .padding(.horizontal, 20)
 
+                            // MARK: District Filter - opens district picker and clears selected district
                             HStack(spacing: 12) {
                                 Button {
                                     showDistrictPicker = true
@@ -154,6 +157,7 @@ struct ArtisansNearYouView: View {
                                     .padding(.top, 12)
                             }
 
+                            // MARK: Empty State - shown when no bakers match filters
                             if !viewModel.isLoading && filteredArtisans.isEmpty {
                                 Text("No bakers found for this district.")
                                     .font(.urbanistRegular(13))
@@ -162,6 +166,7 @@ struct ArtisansNearYouView: View {
                                     .padding(.vertical, 16)
                             }
 
+                            // MARK: Artisan Cards - tap card to send request, tap photo to view profile
                             VStack(spacing: 12) {
                                 ForEach(filteredArtisans, id: \.id) { artisan in
                                     ArtisanNearCard(
@@ -185,6 +190,7 @@ struct ArtisansNearYouView: View {
                 }
             }
 
+            // MARK: Send Request Confirmation - confirms before creating a direct cake request
             if showConfirmation, let artisan = selectedArtisan {
                 ZStack {
                     Color.black.opacity(0.4)
@@ -280,13 +286,16 @@ struct ArtisansNearYouView: View {
         .navigationBarBackButtonHidden(true)
         .navigationBarHidden(true)
         .task {
+            // Load bakers from Firestore when screen opens, then center map.
             await viewModel.loadArtisansFromDatabase()
             moveToBestVisibleRegion()
         }
         .onChange(of: filteredArtisans.map(\.id)) { _, _ in
+            // Recenter map when search or district filter changes visible bakers.
             moveToBestVisibleRegion(onlyIfAutomatic: true)
         }
         .sheet(isPresented: $showDistrictPicker) {
+            // MARK: District Picker Sheet
             DistrictPickerSheet(
                 districts: SriLankaDistricts.all,
                 selectedDistrict: viewModel.selectedDistrict,
@@ -299,6 +308,7 @@ struct ArtisansNearYouView: View {
             .presentationDetents([.medium, .large])
         }
         .sheet(item: $selectedProfileArtisan) { artisan in
+            // MARK: Public Baker Profile Sheet
             CustomerPublicBakerProfileView(
                 bakerID: artisan.id,
                 fallbackName: artisan.name,
@@ -311,6 +321,7 @@ struct ArtisansNearYouView: View {
         .asCustomerSubScreen()
     }
 
+    // MARK: - Map Position Helpers
     private func centerMap(on artisan: ArtisanProfile) {
         guard artisan.hasValidCoordinates else { return }
         withAnimation {
@@ -335,6 +346,7 @@ struct ArtisansNearYouView: View {
         }
     }
 
+    // MARK: - Header
     private var headerBar: some View {
         HStack {
             Button { dismiss() } label: {
@@ -356,6 +368,7 @@ struct ArtisansNearYouView: View {
         .background(Color.cakeSurface)
     }
 
+    // MARK: - Shared Image Helpers
     @ViewBuilder
     private func artisanImageView(artisan: ArtisanProfile, size: CGFloat, cornerRadius: CGFloat) -> some View {
         if let image = decodeBase64Image(artisan.profileImageBase64) {
@@ -414,6 +427,7 @@ struct ArtisansNearYouView: View {
         return UIImage(data: data)
     }
 
+    // MARK: - Map Pin Popup Card
     @ViewBuilder
     private func mapPinPopup(for artisan: ArtisanProfile) -> some View {
         VStack(spacing: 0) {
@@ -446,6 +460,8 @@ struct ArtisansNearYouView: View {
         }
     }
 }
+
+// MARK: - District Picker Sheet
 private struct DistrictPickerSheet: View {
     let districts: [String]
     let selectedDistrict: String?
@@ -500,8 +516,8 @@ struct ArtisanNearCard: View {
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 0) {
+                // Card top row: baker image, name, rating, status, and categories.
                 HStack(alignment: .top, spacing: 14) {
-                    // Left: image
                     artisanImage(size: 80)
                         .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                         .highPriorityGesture(
@@ -510,7 +526,6 @@ struct ArtisanNearCard: View {
                             }
                         )
 
-                    // Right: name, rating, specialty chips
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(alignment: .top) {
                             Text(artisan.name)
@@ -553,7 +568,7 @@ struct ArtisanNearCard: View {
                     }
                 }
 
-                // Full-width location row — no truncation, shows complete address
+                // full baker location.
                 if !artisan.location.isEmpty {
                     HStack(alignment: .top, spacing: 5) {
                         Image(systemName: "mappin")
@@ -580,6 +595,7 @@ struct ArtisanNearCard: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: - Card Image
     @ViewBuilder
     private func artisanImage(size: CGFloat) -> some View {
         if let image = decodeBase64Image(artisan.profileImageBase64) {
@@ -638,6 +654,7 @@ struct ArtisanNearCard: View {
         return UIImage(data: data)
     }
 
+    // MARK: - Category Chip Colors
     private func categoryChipStyle(for category: String) -> (background: Color, text: Color) {
         let key = category.lowercased()
 

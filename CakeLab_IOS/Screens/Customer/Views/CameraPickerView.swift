@@ -11,6 +11,7 @@ struct CameraPickerView: UIViewControllerRepresentable {
     }
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
+        // Native camera screen used by customer forms.
         let picker = UIImagePickerController()
         picker.sourceType = .camera
         picker.allowsEditing = false
@@ -31,6 +32,7 @@ struct CameraPickerView: UIViewControllerRepresentable {
             _ picker: UIImagePickerController,
             didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
         ) {
+            // Return captured image to SwiftUI and close the camera.
             if let image = info[.originalImage] as? UIImage {
                 parent.capturedImage = image
             }
@@ -38,6 +40,7 @@ struct CameraPickerView: UIViewControllerRepresentable {
         }
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            // Close camera without selecting an image.
             parent.isPresented = false
         }
     }

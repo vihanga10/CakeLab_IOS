@@ -259,6 +259,7 @@ struct CustomerHomeView: View {
                 loadProfileAvatar()
             }
             .task {
+                // Load home data: current user, active orders, and nearby bakers.
                 user = await viewModel.refreshUser(current: user)
                 let currentUID = user.id
                 async let orders: ()   = viewModel.fetchActiveOrders(for: currentUID)
@@ -267,6 +268,7 @@ struct CustomerHomeView: View {
                 await artisans
             }
             .sheet(item: $homeProfileArtisan) { artisan in
+                // Public baker profile opened from home artisan card photo.
                 CustomerPublicBakerProfileView(
                     bakerID: artisan.id,
                     fallbackName: artisan.name,
@@ -318,6 +320,7 @@ struct CustomerHomeView: View {
     }
 
     private var homeSearchResults: some View {
+        // Search results grouped by categories, active orders, and artisans.
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text("Search Results").font(.urbanistBold(15)).foregroundColor(.cakePrimaryText)
@@ -484,6 +487,7 @@ struct CustomerHomeView: View {
     // MARK: - Artisan Confirmation Overlay
     @ViewBuilder
     private func homeArtisanOverlay(for artisan: ArtisanProfile) -> some View {
+        // Confirmation modal before creating a direct request to an artisan.
         ZStack {
             Color.black.opacity(0.4).ignoresSafeArea().onTapGesture { homeSelectedArtisan = nil }
 

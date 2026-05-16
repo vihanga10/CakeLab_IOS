@@ -19,6 +19,7 @@ struct CustomerTabView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             Group {
+                // Main customer tab routing.
                 switch navState.selectedTab {
                 case 0: CustomerHomeView(user: user, selectedTab: selectedTabBinding)
                     .id(navState.tabResetIDs[0])
@@ -35,9 +36,11 @@ struct CustomerTabView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             if !navState.isOnSubScreen {
+                // Floating customer bottom tab bar.
                 CustomerTabBar(selectedTab: selectedTabBinding)
             }
 
+            // Floating voice readout/accessibility button.
             VStack {
                 Spacer()
                 HStack {
@@ -51,6 +54,7 @@ struct CustomerTabView: View {
         }
         .ignoresSafeArea(.keyboard)
         .onChange(of: widgetRoute) { _, newRoute in
+            // Widget deep links move the customer to the correct tab.
             guard let newRoute else { return }
             switch newRoute {
             case .customerStatus:     CustomerNavState.shared.selectedTab = 2
@@ -60,6 +64,7 @@ struct CustomerTabView: View {
             widgetRoute = nil
         }
         .task {
+            // Initial customer notification sync.
             if !notificationsShown {
                 await notificationManager.syncNewBidReceivedNotifications(customerID: user.id)
                 await notificationManager.syncCustomerOrderStatusNotifications(customerID: user.id)

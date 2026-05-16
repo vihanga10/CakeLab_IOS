@@ -11,12 +11,12 @@ struct PublishedCakeDetailView: View {
             Color.cakeBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header matching PublishRequestView pattern
+                // Header matching the published request list.
                 headerBar
 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
-                        // Title and Description
+                        // MARK: Title and Description Card
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Title")
                                 .font(.urbanistMedium(12))
@@ -38,7 +38,7 @@ struct PublishedCakeDetailView: View {
                                 .lineLimit(nil)
                         }
 
-                        // Reference Images
+                        // MARK: Reference Images Card
                         if !request.referenceImages.isEmpty {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Reference Images")
@@ -62,7 +62,7 @@ struct PublishedCakeDetailView: View {
                                 }
                             }
                         } else {
-                            // Placeholder when no images
+                            // Placeholder when no reference images exist.
                             ZStack {
                                 RoundedRectangle(cornerRadius: 12)
                                     .fill(Color(red: 0.93, green: 0.91, blue: 0.88))
@@ -79,6 +79,7 @@ struct PublishedCakeDetailView: View {
                             .frame(height: 120)
                         }
 
+                        // MARK: Cake Specification Rows
                         // Budget
                         infoRow(label: "Budget (LKR)", value: request.budgetText)
 
@@ -120,7 +121,7 @@ struct PublishedCakeDetailView: View {
                             }
                         }
 
-                        // Expected Date
+                        // MARK: Expected Delivery Date Card
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Expected Date")
                                 .font(.urbanistMedium(12))
@@ -143,7 +144,7 @@ struct PublishedCakeDetailView: View {
                             .cornerRadius(10)
                         }
 
-                        // Expected Time
+                        // MARK: Expected Delivery Time Card
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Expected Time")
                                 .font(.urbanistMedium(12))
@@ -166,7 +167,7 @@ struct PublishedCakeDetailView: View {
                             .cornerRadius(10)
                         }
 
-                        // Baker — shown only when this is a direct request to a specific artisan
+                        // MARK: Direct Baker Card - shown only for direct artisan requests
                         if request.isDirectRequest, let bakerName = request.targetArtisanName, !bakerName.isEmpty {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Baker")
@@ -205,6 +206,7 @@ struct PublishedCakeDetailView: View {
         .asCustomerSubScreen()
     }
 
+    // MARK: - Header
     private var headerBar: some View {
         HStack {
             Button { dismiss() } label: {
@@ -226,6 +228,7 @@ struct PublishedCakeDetailView: View {
         .background(Color.cakeSurface)
     }
 
+    // MARK: - Reusable Detail Row
     private func infoRow(label: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(label)

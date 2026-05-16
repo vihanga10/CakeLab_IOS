@@ -1,6 +1,7 @@
 import SwiftUI
 
 
+// MARK: - Baker Other Open Requests View
 @MainActor
 struct BakerOtherRequestsView: View {
     @ObservedObject var viewModel: BakerMatchingRequestsViewModel
@@ -60,19 +61,22 @@ struct BakerOtherRequestsView: View {
                 .padding(.top, 16)
                 .padding(.bottom, 14)
 
-                // MARK: - Content
+                // MARK: - Other Requests Content
                 if viewModel.isLoading {
+                    // Loading state while open requests are fetched.
                     Spacer()
                     ProgressView("Loading requests...")
                         .tint(.cakeBrown)
                     Spacer()
                 } else if viewModel.otherOpenRequests.isEmpty {
+                    // Empty state when no outside-specialty requests exist.
                     emptyState(
                         icon: "tray",
                         title: "No other open requests yet",
                         message: "Requests outside your specialties will appear here when available."
                     )
                 } else {
+                    // Request cards outside baker matching specialties.
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 14) {
                             HStack {
@@ -88,6 +92,7 @@ struct BakerOtherRequestsView: View {
                                 MatchingRequestCard(
                                     request: req,
                                     onPlaceBid: {
+                                        // Open bid detail form for this request.
                                         selectedRequest = req
                                         showBidDetail = true
                                     },
@@ -103,6 +108,7 @@ struct BakerOtherRequestsView: View {
             }
 
             NavigationLink(
+                // Hidden navigation link used to push bid detail view.
                 destination: Group {
                     if let req = selectedRequest {
                         BakerBidDetailView(request: req)
@@ -117,6 +123,7 @@ struct BakerOtherRequestsView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .refreshable {
+            // Refresh open requests list.
             await viewModel.loadMatchingRequests()
         }
         .asBakerSubScreen()

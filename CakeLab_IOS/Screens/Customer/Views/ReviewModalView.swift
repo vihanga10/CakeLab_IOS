@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 
+// MARK: - Review Modal View
 struct ReviewModalView: View {
     @Binding var isPresented: Bool
     let bakerName: String
@@ -32,6 +33,7 @@ struct ReviewModalView: View {
 
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 20) {
+                            // Review intro title.
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("How is your order?")
                                     .font(.urbanistBold(28))
@@ -42,7 +44,7 @@ struct ReviewModalView: View {
                                     .foregroundColor(.cakeGrey)
                             }
 
-                            // Rating Section
+                            // MARK: Rating Card
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Your overall rating")
                                     .font(.urbanistSemiBold(16))
@@ -62,7 +64,7 @@ struct ReviewModalView: View {
                                 }
                             }
 
-                            // Review Text Section
+                            // MARK: Review Text Card
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Write your review")
                                     .font(.urbanistSemiBold(16))
@@ -97,9 +99,11 @@ struct ReviewModalView: View {
 
                             photoSection
 
+                            // Submit review button.
                             submitButton
 
                             if let errorMessage {
+                                // Inline validation or upload error.
                                 Text(errorMessage)
                                     .font(.urbanistRegular(12))
                                     .foregroundColor(.red)
@@ -118,6 +122,7 @@ struct ReviewModalView: View {
                     }
 
                     if reviewVM.showSuccessMessage {
+                        // Success overlay after review submit.
                         VStack {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 60))
@@ -136,20 +141,24 @@ struct ReviewModalView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showCamera) {
+                // Camera sheet for review photo.
                 CameraPickerView(capturedImage: $capturedImage, isPresented: $showCamera)
                     .ignoresSafeArea()
             }
             .onChange(of: selectedPhotoItem) { item in
+                // Add image selected from gallery.
                 Task {
                     await appendGalleryImage(item)
                 }
             }
             .onChange(of: capturedImage) { image in
+                // Add captured camera image.
                 appendImage(image)
             }
         }
     }
 
+    // MARK: - Header
     private var headerBar: some View {
         HStack {
             Button {
@@ -172,6 +181,7 @@ struct ReviewModalView: View {
         .background(Color.cakeSurface)
     }
 
+    // MARK: - Submit Review Process
     private var submitButton: some View {
         Button {
             errorMessage = nil
@@ -209,6 +219,7 @@ struct ReviewModalView: View {
         .opacity(canSubmit ? 1 : 0.45)
     }
 
+    // MARK: - Photo Upload Card
     private var photoSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Add a photo (optional)")
@@ -216,6 +227,7 @@ struct ReviewModalView: View {
                 .foregroundColor(.cakePrimaryText)
 
             if !selectedImages.isEmpty {
+                // Selected review photo preview list.
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         ForEach(Array(selectedImages.enumerated()), id: \.offset) { index, image in
@@ -242,6 +254,7 @@ struct ReviewModalView: View {
             }
 
             HStack(spacing: 12) {
+                // Gallery and camera actions.
                 PhotosPicker(selection: $selectedPhotoItem, matching: .images, photoLibrary: .shared()) {
                     photoActionContent(icon: "photo.stack.fill", title: "Gallery")
                 }
@@ -287,6 +300,7 @@ struct ReviewModalView: View {
         !reviewVM.isSubmitting && !reviewText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    // MARK: - Review Image Process
     private func appendGalleryImage(_ item: PhotosPickerItem?) async {
         guard let item, selectedImages.count < maxPhotoCount else { return }
 

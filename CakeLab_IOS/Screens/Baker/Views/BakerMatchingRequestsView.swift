@@ -82,13 +82,15 @@ struct BakerMatchingRequestsView: View {
                     }
                     .padding(.bottom, 14)
 
-                    // MARK: - Content
+                    // MARK: - Matching Requests Content
                     if viewModel.isLoading {
+                        // Loading state while matching requests are fetched.
                         Spacer()
                         ProgressView("Loading matching requests...")
                             .tint(.cakeBrown)
                         Spacer()
                     } else if !viewModel.bakerSpecialties.isEmpty && filtered.isEmpty {
+                        // Empty state after search/specialty filtering.
                         emptyState(
                             icon: "sparkles",
                             title: "No matching requests yet",
@@ -96,6 +98,7 @@ struct BakerMatchingRequestsView: View {
                             iconColor: Color.cakeBrown.opacity(0.35)
                         )
                     } else if viewModel.bakerSpecialties.isEmpty {
+                        // Prompt baker to complete specialties before matching.
                         emptyState(
                             icon: "person.crop.circle.badge.plus",
                             title: "Complete your profile",
@@ -103,6 +106,7 @@ struct BakerMatchingRequestsView: View {
                             iconColor: Color.cakeBrown.opacity(0.35)
                         )
                     } else {
+                        // Matching request cards.
                         ScrollView(showsIndicators: false) {
                             VStack(spacing: 14) {
                                 HStack {
@@ -116,6 +120,7 @@ struct BakerMatchingRequestsView: View {
                                 ForEach(filtered) { request in
                                     let cakeRequest = request.toCakeRequest()
                                     MatchingRequestCard(request: cakeRequest) {
+                                        // Open bid detail form.
                                         selectedRequest = cakeRequest
                                         showBidDetail = true
                                     }
@@ -129,6 +134,7 @@ struct BakerMatchingRequestsView: View {
                 }
 
                 NavigationLink(
+                    // Hidden navigation link to bid detail view.
                     destination: Group {
                         if let req = selectedRequest {
                             BakerBidDetailView(request: req)
@@ -142,12 +148,14 @@ struct BakerMatchingRequestsView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .task {
+                // Load baker specialties and matching requests.
                 await viewModel.loadMatchingRequests()
             }
             .refreshable {
                 await viewModel.loadMatchingRequests()
             }
             .onReceive(NotificationCenter.default.publisher(for: .bidDidChange)) { _ in
+                // Refresh after baker places or updates a bid.
                 Task {
                     await viewModel.loadMatchingRequests()
                 }
